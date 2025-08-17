@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+DerivedData/
+*.log
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.xcuserdata
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+build/
+*.app
+*.ipa
+*.dSYM.zip
+*.dSYM
