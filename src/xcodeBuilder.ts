@@ -353,6 +353,230 @@ export class XcodeBuilder {
   }
 
   /**
+   * List available schemes in a project
+   */
+  async listSchemesInstance(projectPath: string, shared: boolean = true): Promise<string[]> {
+    try {
+      logger.info({ projectPath, shared }, 'Listing schemes');
+      
+      const projectType = projectPath.endsWith('.xcworkspace') ? 'workspace' : 'project';
+      const projectFlag = projectType === 'workspace' ? '-workspace' : '-project';
+      
+      const { stdout } = await this.execAsync(
+        `xcodebuild -list ${projectFlag} "${projectPath}" -json`
+      );
+      
+      const data = JSON.parse(stdout);
+      const schemes: string[] = [];
+      
+      // Get schemes from the project/workspace
+      if (data.project?.schemes) {
+        schemes.push(...data.project.schemes);
+      }
+      if (data.workspace?.schemes) {
+        schemes.push(...data.workspace.schemes);
+      }
+      
+      logger.info({ schemes: schemes.length }, 'Found schemes');
+      return schemes;
+    } catch (error: any) {
+      logger.error({ error, projectPath }, 'Failed to list schemes');
+      throw new Error(`Failed to list schemes: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get build settings for a scheme
+   */
+  async getBuildSettingsInstance(
+    projectPath: string,
+    scheme: string,
+    configuration?: string,
+    platform?: Platform
+  ): Promise<Record<string, string>> {
+    try {
+      logger.info({ projectPath, scheme, configuration, platform }, 'Getting build settings');
+      
+      const projectType = projectPath.endsWith('.xcworkspace') ? 'workspace' : 'project';
+      const projectFlag = projectType === 'workspace' ? '-workspace' : '-project';
+      
+      let command = `xcodebuild -showBuildSettings ${projectFlag} "${projectPath}" -scheme "${scheme}"`;
+      
+      if (configuration) {
+        command += ` -configuration "${configuration}"`;
+      }
+      
+      if (platform) {
+        const destination = PlatformHandler.getDestination(platform);
+        command += ` -destination "${destination}"`;
+      }
+      
+      const { stdout } = await this.execAsync(command);
+      
+      // Parse build settings
+      const settings: Record<string, string> = {};
+      const lines = stdout.split('\n');
+      
+      for (const line of lines) {
+        const match = line.match(/^\s{4}(\w+)\s*=\s*(.*)$/);
+        if (match) {
+          settings[match[1]] = match[2];
+        }
+      }
+      
+      logger.info({ settingsCount: Object.keys(settings).length }, 'Retrieved build settings');
+      return settings;
+    } catch (error: any) {
+      logger.error({ error, projectPath, scheme }, 'Failed to get build settings');
+      throw new Error(`Failed to get build settings: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get project information (bundle ID, version, etc.)
+   */
+  async getProjectInfoInstance(projectPath: string): Promise<any> {
+    try {
+      logger.info({ projectPath }, 'Getting project info');
+      
+      const projectType = projectPath.endsWith('.xcworkspace') ? 'workspace' : 'project';
+      const projectFlag = projectType === 'workspace' ? '-workspace' : '-project';
+      
+      // Get list output in JSON format
+      const { stdout } = await this.execAsync(
+        `xcodebuild -list ${projectFlag} "${projectPath}" -json`
+      );
+      
+      const data = JSON.parse(stdout);
+      
+      const info = {
+        name: data.project?.name || data.workspace?.name,
+        schemes: data.project?.schemes || data.workspace?.schemes || [],
+        targets: data.project?.targets || [],
+        configurations: data.project?.configurations || []
+      };
+      
+      logger.info({ info }, 'Retrieved project info');
+      return info;
+    } catch (error: any) {
+      logger.error({ error, projectPath }, 'Failed to get project info');
+      throw new Error(`Failed to get project info: ${error.message}`);
+    }
+  }
+
+  /**
+   * List targets in a project
+   */
+  async listTargetsInstance(projectPath: string): Promise<string[]> {
+    try {
+      logger.info({ projectPath }, 'Listing targets');
+      
+      const projectType = projectPath.endsWith('.xcworkspace') ? 'workspace' : 'project';
+      const projectFlag = projectType === 'workspace' ? '-workspace' : '-project';
+      
+      const { stdout } = await this.execAsync(
+        `xcodebuild -list ${projectFlag} "${projectPath}" -json`
+      );
+      
+      const data = JSON.parse(stdout);
+      const targets = data.project?.targets || [];
+      
+      logger.info({ targets: targets.length }, 'Found targets');
+      return targets;
+    } catch (error: any) {
+      logger.error({ error, projectPath }, 'Failed to list targets');
+      throw new Error(`Failed to list targets: ${error.message}`);
+    }
+  }
+
+  /**
+   * Archive a project
+   */
+  async archiveProjectInstance(
+    projectPath: string,
+    scheme: string,
+    platform: Platform,
+    configuration: string,
+    archivePath?: string
+  ): Promise<string> {
+    try {
+      logger.info({ projectPath, scheme, platform, configuration }, 'Archiving project');
+      
+      const projectType = projectPath.endsWith('.xcworkspace') ? 'workspace' : 'project';
+      const projectFlag = projectType === 'workspace' ? '-workspace' : '-project';
+      
+      // Default archive path if not specified
+      const finalArchivePath = archivePath || 
+        `${process.env.HOME}/Library/Developer/Xcode/Archives/${new Date().toISOString().split('T')[0]}/${scheme}.xcarchive`;
+      
+      let command = `xcodebuild archive ${projectFlag} "${projectPath}" -scheme "${scheme}" -configuration "${configuration}" -archivePath "${finalArchivePath}"`;
+      
+      // Add platform-specific destination
+      const destination = PlatformHandler.getDestination(platform);
+      command += ` -destination "${destination}"`;
+      
+      const { stdout } = await this.execAsync(command, { maxBuffer: 50 * 1024 * 1024 });
+      
+      logger.info({ archivePath: finalArchivePath }, 'Archive created successfully');
+      return finalArchivePath;
+    } catch (error: any) {
+      logger.error({ error, projectPath, scheme }, 'Failed to archive project');
+      throw new Error(`Failed to archive project: ${error.message}`);
+    }
+  }
+
+  /**
+   * Export IPA from archive
+   */
+  async exportIPAInstance(
+    archivePath: string,
+    exportPath?: string,
+    exportMethod: string = 'development'
+  ): Promise<string> {
+    try {
+      logger.info({ archivePath, exportMethod }, 'Exporting IPA');
+      
+      const finalExportPath = exportPath || `${process.cwd()}/Export`;
+      
+      // Create export options plist
+      const exportOptionsPlist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>${exportMethod}</string>
+    <key>compileBitcode</key>
+    <false/>
+</dict>
+</plist>`;
+      
+      // Write export options to temp file
+      const fs = require('fs');
+      const tempPlistPath = `/tmp/exportOptions-${Date.now()}.plist`;
+      fs.writeFileSync(tempPlistPath, exportOptionsPlist);
+      
+      try {
+        const { stdout } = await this.execAsync(
+          `xcodebuild -exportArchive -archivePath "${archivePath}" -exportPath "${finalExportPath}" -exportOptionsPlist "${tempPlistPath}"`
+        );
+        
+        // Clean up temp file
+        fs.unlinkSync(tempPlistPath);
+        
+        logger.info({ exportPath: finalExportPath }, 'IPA exported successfully');
+        return finalExportPath;
+      } catch (error) {
+        // Clean up temp file on error
+        fs.unlinkSync(tempPlistPath);
+        throw error;
+      }
+    } catch (error: any) {
+      logger.error({ error, archivePath }, 'Failed to export IPA');
+      throw new Error(`Failed to export IPA: ${error.message}`);
+    }
+  }
+
+  /**
    * Parse test output to extract results (static for easy testing)
    */
   static parseTestOutput(output: string): TestResult {

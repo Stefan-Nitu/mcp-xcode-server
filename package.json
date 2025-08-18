@@ -1,7 +1,7 @@
 {
-  "name": "mcp-apple-simulator",
+  "name": "mcp-xcode",
   "version": "2.2.0",
-  "description": "MCP server for building, running, and testing Apple platform projects (iOS, macOS, tvOS, watchOS, visionOS)",
+  "description": "MCP server for Xcode - build, test, run, and manage Apple platform projects (iOS, macOS, tvOS, watchOS, visionOS)",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

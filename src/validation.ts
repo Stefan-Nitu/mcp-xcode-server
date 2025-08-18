@@ -125,3 +125,48 @@ export const cleanBuildSchema = z.object({
 });
 
 export type CleanBuildArgs = z.infer<typeof cleanBuildSchema>;
+
+// Scheme management schemas
+export const listSchemesSchema = z.object({
+  projectPath: safePathSchema,
+  shared: z.boolean().optional().default(true) // Include shared schemes
+});
+
+export const getBuildSettingsSchema = z.object({
+  projectPath: safePathSchema,
+  scheme: z.string(),
+  configuration: configurationSchema.optional(),
+  platform: platformSchema.optional()
+});
+
+// Project info schemas
+export const getProjectInfoSchema = z.object({
+  projectPath: safePathSchema
+});
+
+export const listTargetsSchema = z.object({
+  projectPath: safePathSchema
+});
+
+// Archive schemas
+export const archiveProjectSchema = z.object({
+  projectPath: safePathSchema,
+  scheme: z.string(),
+  platform: platformSchema.optional().default(Platform.iOS),
+  configuration: z.enum(['Debug', 'Release']).default('Release'),
+  archivePath: z.string().optional() // Default to Xcode's archive location
+});
+
+export const exportIPASchema = z.object({
+  archivePath: safePathSchema,
+  exportPath: safePathSchema.optional(),
+  exportMethod: z.enum(['app-store', 'ad-hoc', 'enterprise', 'development']).default('development')
+});
+
+// Type exports for new schemas
+export type ListSchemesArgs = z.infer<typeof listSchemesSchema>;
+export type GetBuildSettingsArgs = z.infer<typeof getBuildSettingsSchema>;
+export type GetProjectInfoArgs = z.infer<typeof getProjectInfoSchema>;
+export type ListTargetsArgs = z.infer<typeof listTargetsSchema>;
+export type ArchiveProjectArgs = z.infer<typeof archiveProjectSchema>;
+export type ExportIPAArgs = z.infer<typeof exportIPASchema>;

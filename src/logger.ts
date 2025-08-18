@@ -24,7 +24,7 @@ export const logger = pino({
   } : undefined,
   // Add metadata to all logs
   base: {
-    service: 'mcp-apple-simulator',
+    service: 'mcp-xcode',
     version: '2.2.0'
   },
   // Redact sensitive information

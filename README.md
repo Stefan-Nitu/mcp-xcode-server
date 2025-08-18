@@ -1,6 +1,6 @@
-# MCP Apple Simulator
+# MCP Xcode
 
-A Model Context Protocol (MCP) server for building, running, and testing Apple platform projects (iOS, macOS, tvOS, watchOS, visionOS).
+A Model Context Protocol (MCP) server for Xcode - build, test, run, and manage Apple platform projects (iOS, macOS, tvOS, watchOS, visionOS).
 
 ## Version: 2.2.0
 
@@ -10,6 +10,7 @@ This MCP server enables AI assistants and development tools to interact with App
 
 ## Key Features
 
+### Core Functionality
 - **Multi-platform Support**: Build and test for iOS, macOS, tvOS, watchOS, and visionOS
 - **Xcode Project Management**: Build and run Xcode projects and workspaces
 - **Swift Package Manager**: Test SPM modules across all Apple platforms
@@ -22,6 +23,14 @@ This MCP server enables AI assistants and development tools to interact with App
 - **Device Logs**: Retrieve and filter device logs for debugging
 - **Build Maintenance**: Clean build folders, DerivedData, and test results without leaving Claude
 
+### Production Ready
+- **Input Validation**: All tool arguments are validated using Zod schemas for type safety and clear error messages
+- **Structured Logging**: Pino-based logging system with environment-aware configuration
+- **Graceful Shutdown**: Proper cleanup handling for SIGTERM and SIGINT signals
+- **Error Handling**: Comprehensive error handling with detailed error messages
+- **Test Coverage**: 78% test coverage with unit, integration, and end-to-end tests
+- **CI/CD Pipeline**: Automated testing via GitHub Actions on all pushes and pull requests
+
 ## Installation
 
 ### 1. Install Dependencies and Build
@@ -33,7 +42,7 @@ npm run build
 
 ### 2. Configure MCP Server
 
-To make the Apple Simulator MCP server available to your MCP client (e.g., Claude Desktop), you need to add it to your configuration.
+To make the MCP Xcode server available to your MCP client (e.g., Claude Desktop), you need to add it to your configuration.
 
 #### For Claude Desktop
 
@@ -42,11 +51,11 @@ Add the following to your `~/.claude.json` file:
 ```json
 {
   "mcpServers": {
-    "apple-simulator": {
+    "mcp-xcode": {
       "type": "stdio",
       "command": "node",
       "args": [
-        "/path/to/mcp-apple-simulator/dist/index.js"
+        "/path/to/mcp-xcode/dist/index.js"
       ],
       "env": {}
     }
@@ -54,12 +63,12 @@ Add the following to your `~/.claude.json` file:
 }
 ```
 
-Replace `/path/to/mcp-apple-simulator` with the actual path to where you cloned this repository.
+Replace `/path/to/mcp-xcode` with the actual path to where you cloned this repository.
 
 #### Using Claude CLI (if available)
 
 ```bash
-claude mcp add apple-simulator --scope user node /path/to/mcp-apple-simulator/dist/index.js
+claude mcp add mcp-xcode --scope user node /path/to/mcp-xcode/dist/index.js
 ```
 
 After updating the configuration, restart your MCP client for the changes to take effect.
@@ -179,13 +188,23 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
 
 ## Architecture
 
-The server follows SOLID principles with modular components:
+The server follows SOLID principles with modular, class-based tool architecture:
 
+### Core Components
+- **`index.ts`**: MCP server with tool registry and request handling
 - **`types.ts`**: Type definitions and interfaces
-- **`platformHandler.ts`**: Platform-specific configuration (Open/Closed Principle)
-- **`simulatorManager.ts`**: Simulator lifecycle management (Single Responsibility)
-- **`xcodeBuilder.ts`**: Build and test operations with full output support
-- **`index.ts`**: MCP server setup and request handling
+- **`logger.ts`**: Structured logging with Pino, including test-aware logging
+- **`platformHandler.ts`**: Platform-specific configuration
+- **`simulatorManager.ts`**: Simulator lifecycle management
+- **`xcodeBuilder.ts`**: Build and test operations with dependency injection
+
+### Tool Architecture
+Each tool is a self-contained class in the `tools/` directory:
+- **Individual tool classes**: Each tool implements its own validation, execution logic, and MCP definition
+- **`validators.ts`**: Shared validation schemas for common patterns (paths, platforms, configurations)
+- **`XcodeBuilderAdapter.ts`**: Adapter pattern for handling static/instance method compatibility
+- **No inheritance**: Each tool is independent, avoiding complex hierarchies
+- **Dependency injection**: Tools accept dependencies in constructors for testability
 
 ## Example Usage
 
@@ -293,21 +312,25 @@ npm run test:coverage # With coverage report
 
 ### Project Structure
 ```
-mcp-apple-simulator/
+mcp-xcode/
 ├── src/
-│   ├── index.ts              # MCP server entry point
+│   ├── index.ts              # MCP server entry point with graceful shutdown
 │   ├── types.ts              # TypeScript type definitions
+│   ├── validation.ts         # Zod schemas for input validation
+│   ├── logger.ts             # Structured logging with Pino
 │   ├── platformHandler.ts    # Platform abstraction layer
 │   ├── simulatorManager.ts   # Simulator management
 │   ├── xcodeBuilder.ts       # Build and test operations
-│   └── __tests__/           # Test suites
-│       ├── unit/            # Unit tests
+│   └── __tests__/           # Test suites (78% coverage)
+│       ├── unit/            # Unit tests with dependency injection
 │       ├── integration/     # Integration tests
-│       └── e2e/            # End-to-end tests
+│       └── e2e/             # End-to-end tests for all 12 tools
 ├── dist/                    # Compiled JavaScript
-├── examples/               # Usage examples
+├── test_artifacts/          # Test projects for validation
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # GitHub Actions CI/CD pipeline
 └── README.md
-
 ```
 
 ## Contributing
