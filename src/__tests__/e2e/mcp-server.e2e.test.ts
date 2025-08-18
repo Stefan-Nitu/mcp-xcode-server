@@ -166,9 +166,10 @@ import Testing
       expect(toolNames).toContain('uninstall_app');
       expect(toolNames).toContain('view_simulator_screen');
       expect(toolNames).toContain('get_device_logs');
+      expect(toolNames).toContain('clean_build');
       
-      // Should have exactly 11 tools
-      expect(response.tools.length).toBe(11);
+      // Should have exactly 12 tools
+      expect(response.tools.length).toBe(12);
     });
   });
   
