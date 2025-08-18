@@ -513,6 +513,121 @@ import Testing
       expect(result.platform).toBe('macOS');
     }, 60000);
   });
+
+  describe('Build Cleaning', () => {
+    test('should clean build artifacts', async () => {
+      // First build a project to create artifacts
+      await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build_project',
+          arguments: {
+            projectPath: join(testArtifactsPath, 'TestProjectXCTest/TestProjectXCTest.xcodeproj'),
+            scheme: 'TestProjectXCTest',
+            platform: 'iOS',
+            configuration: 'Debug'
+          }
+        }
+      }, CallToolResultSchema);
+
+      // Now clean the build
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'clean_build',
+          arguments: {
+            projectPath: join(testArtifactsPath, 'TestProjectXCTest/TestProjectXCTest.xcodeproj'),
+            scheme: 'TestProjectXCTest',
+            platform: 'iOS',
+            configuration: 'Debug',
+            cleanTarget: 'build'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      expect(response.content[0].type).toBe('text');
+      const result = JSON.parse((response.content[0] as any).text);
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Cleaned build folder');
+    }, 90000);
+
+    test('should clean DerivedData', async () => {
+      // Clean just DerivedData
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'clean_build',
+          arguments: {
+            cleanTarget: 'derivedData',
+            derivedDataPath: './DerivedData'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      expect(response.content[0].type).toBe('text');
+      const result = JSON.parse((response.content[0] as any).text);
+      expect(result.success).toBe(true);
+      // Message will either be "Removed DerivedData" or "No DerivedData found"
+      expect(result.message).toMatch(/(?:Removed DerivedData|No DerivedData found)/);
+    });
+
+    test('should clean test results', async () => {
+      // Run tests first to create test results
+      await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'test_project',
+          arguments: {
+            projectPath: join(testArtifactsPath, 'TestProjectXCTest/TestProjectXCTest.xcodeproj'),
+            scheme: 'TestProjectXCTest',
+            platform: 'iOS',
+            testTarget: 'TestProjectXCTestTests'
+          }
+        }
+      }, CallToolResultSchema);
+
+      // Clean test results
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'clean_build',
+          arguments: {
+            cleanTarget: 'testResults',
+            derivedDataPath: './DerivedData'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      expect(response.content[0].type).toBe('text');
+      const result = JSON.parse((response.content[0] as any).text);
+      expect(result.success).toBe(true);
+      expect(result.message).toMatch(/(?:Cleared test results|No test results found)/);
+    }, 120000);
+
+    test('should clean all targets', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'clean_build',
+          arguments: {
+            projectPath: join(testArtifactsPath, 'TestProjectXCTest/TestProjectXCTest.xcodeproj'),
+            scheme: 'TestProjectXCTest',
+            cleanTarget: 'all',
+            derivedDataPath: './DerivedData'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      expect(response.content[0].type).toBe('text');
+      const result = JSON.parse((response.content[0] as any).text);
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Cleaned');
+    }, 90000);
+  });
   
   describe('Device Logs', () => {
     test('should retrieve device logs', async () => {

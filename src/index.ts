@@ -699,7 +699,7 @@ App installed at: ${result.appPath || 'N/A'}`
       content: [
         {
           type: 'text',
-          text: result.message
+          text: JSON.stringify(result)
         }
       ]
     };

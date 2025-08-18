@@ -47,7 +47,31 @@ export const logger = pino({
 
 // Create child loggers for different modules
 export const createModuleLogger = (module: string) => {
-  return logger.child({ module });
+  const moduleLogger = logger.child({ module });
+  
+  // In test environment, wrap methods to add test name dynamically
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+    const methods = ['info', 'error', 'warn', 'debug', 'trace', 'fatal'] as const;
+    
+    methods.forEach(method => {
+      const originalMethod = moduleLogger[method].bind(moduleLogger);
+      (moduleLogger as any)[method] = function(obj: any, ...rest: any[]) {
+        try {
+          // @ts-ignore - expect is only available in test environment
+          const testName = global.expect?.getState?.()?.currentTestName;
+          if (testName && obj && typeof obj === 'object') {
+            // Add test name to the context object
+            obj = { ...obj, testName };
+          }
+        } catch {
+          // Ignore if expect is not available
+        }
+        return originalMethod(obj, ...rest);
+      };
+    });
+  }
+  
+  return moduleLogger;
 };
 
 // Export log levels for use in code
