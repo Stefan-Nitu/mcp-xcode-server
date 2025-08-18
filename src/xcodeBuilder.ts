@@ -5,11 +5,14 @@
 
 import { exec as nodeExec, ExecException } from 'child_process';
 import { promisify } from 'util';
-import { existsSync } from 'fs';
+import { existsSync, rmSync } from 'fs';
 import path from 'path';
 import { BuildConfiguration, TestConfiguration, TestResult, Platform } from './types.js';
 import { PlatformHandler } from './platformHandler.js';
 import { SimulatorManager } from './simulatorManager.js';
+import { createModuleLogger } from './logger.js';
+
+const logger = createModuleLogger('XcodeBuilder');
 
 // Type for the exec function and promisified version
 export type ExecFunction = typeof nodeExec;
@@ -77,7 +80,8 @@ export class XcodeBuilder {
     
     command += ' -derivedDataPath ./DerivedData build';
 
-    console.error(`Building project with command: ${command}`);
+    logger.info({ projectPath, scheme, platform, configuration }, 'Building project');
+    logger.debug({ command }, 'Build command');
     
     try {
       const { stdout } = await this.execAsync(command, { maxBuffer: XcodeBuilder.MAX_BUFFER });
@@ -96,6 +100,7 @@ export class XcodeBuilder {
         appPath: appPath || undefined
       };
     } catch (error: any) {
+      logger.error({ error, projectPath, scheme }, 'Failed to build project');
       throw new Error(`Failed to build project: ${error.message}`);
     }
   }
@@ -158,8 +163,8 @@ export class XcodeBuilder {
       command += ' -parallel-testing-enabled NO';
     }
 
-    console.error(`Running tests with command: ${command}`);
-    console.error(`Building and running tests... (this may take a while)`);
+    logger.info({ projectPath, scheme, platform, testTarget }, 'Running tests');
+    logger.debug({ command }, 'Test command');
     
     try {
       const { stdout } = await this.execAsync(command, { 
@@ -181,6 +186,7 @@ export class XcodeBuilder {
       }
       
       // Build or other error
+      logger.error({ error, projectPath, scheme }, 'Failed to run tests');
       throw new Error(`Failed to run tests: ${error.message}`);
     }
   }
@@ -224,7 +230,8 @@ export class XcodeBuilder {
       }
     }
 
-    console.error(`Testing SPM module with command: ${command}`);
+    logger.info({ packagePath, platform, testFilter }, 'Testing SPM module');
+    logger.debug({ command }, 'SPM test command');
 
     try {
       const { stdout } = await this.execAsync(command, { 
@@ -253,6 +260,95 @@ export class XcodeBuilder {
       return stdout.trim() || null;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Clean build artifacts, DerivedData, or test results
+   */
+  async cleanProjectInstance(config: {
+    projectPath?: string;
+    scheme?: string;
+    platform?: Platform;
+    configuration?: string;
+    cleanTarget?: 'build' | 'derivedData' | 'testResults' | 'all';
+    derivedDataPath?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const { 
+      projectPath, 
+      scheme, 
+      platform = Platform.iOS, 
+      configuration = 'Debug',
+      cleanTarget = 'build',
+      derivedDataPath = './DerivedData'
+    } = config;
+    
+    const messages: string[] = [];
+    
+    try {
+      // Clean build folder using xcodebuild clean
+      if (cleanTarget === 'build' || cleanTarget === 'all') {
+        if (projectPath && existsSync(projectPath)) {
+          const isWorkspace = projectPath.endsWith('.xcworkspace');
+          const projectFlag = isWorkspace ? '-workspace' : '-project';
+          
+          let command = `xcodebuild clean ${projectFlag} "${projectPath}"`;
+          
+          if (scheme) {
+            command += ` -scheme "${scheme}"`;
+          }
+          
+          command += ` -configuration "${configuration}"`;
+          
+          logger.info({ projectPath, scheme, configuration }, 'Cleaning build folder');
+          
+          try {
+            await this.execAsync(command);
+            messages.push(`Cleaned build folder for ${scheme || path.basename(projectPath)}`);
+          } catch (error: any) {
+            logger.warn({ error, projectPath }, 'Failed to clean build folder');
+            messages.push(`Warning: Could not clean build folder: ${error.message}`);
+          }
+        } else if (cleanTarget === 'build') {
+          return {
+            success: false,
+            message: 'Project path required for cleaning build folder'
+          };
+        }
+      }
+      
+      // Clean DerivedData folder
+      if (cleanTarget === 'derivedData' || cleanTarget === 'testResults' || cleanTarget === 'all') {
+        if (existsSync(derivedDataPath)) {
+          if (cleanTarget === 'testResults') {
+            // Only clean test results
+            const testLogsPath = path.join(derivedDataPath, 'Logs', 'Test');
+            if (existsSync(testLogsPath)) {
+              rmSync(testLogsPath, { recursive: true, force: true });
+              messages.push('Cleared test results');
+              logger.info({ path: testLogsPath }, 'Cleared test results');
+            } else {
+              messages.push('No test results to clear');
+            }
+          } else {
+            // Clean entire DerivedData
+            rmSync(derivedDataPath, { recursive: true, force: true });
+            messages.push(`Removed DerivedData at ${derivedDataPath}`);
+            logger.info({ path: derivedDataPath }, 'Removed DerivedData');
+          }
+        } else {
+          messages.push(`No DerivedData found at ${derivedDataPath}`);
+        }
+      }
+      
+      return {
+        success: true,
+        message: messages.length > 0 ? messages.join('. ') : 'Nothing to clean'
+      };
+      
+    } catch (error: any) {
+      logger.error({ error, projectPath, cleanTarget }, 'Failed to clean project');
+      throw new Error(`Failed to clean project: ${error.message}`);
     }
   }
 
@@ -326,5 +422,16 @@ export class XcodeBuilder {
     osVersion?: string
   ): Promise<TestResult> {
     return XcodeBuilder.getDefaultInstance().testSPMModuleInstance(packagePath, platform, testFilter, osVersion);
+  }
+
+  static async cleanProject(config: {
+    projectPath?: string;
+    scheme?: string;
+    platform?: Platform;
+    configuration?: string;
+    cleanTarget?: 'build' | 'derivedData' | 'testResults' | 'all';
+    derivedDataPath?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return XcodeBuilder.getDefaultInstance().cleanProjectInstance(config);
   }
 }

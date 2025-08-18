@@ -16,6 +16,22 @@ import { SimulatorManager } from './simulatorManager.js';
 import { XcodeBuilder } from './xcodeBuilder.js';
 import { PlatformHandler } from './platformHandler.js';
 import { Platform } from './types.js';
+import {
+  listSimulatorsSchema,
+  bootSimulatorSchema,
+  shutdownSimulatorSchema,
+  buildProjectSchema,
+  runProjectSchema,
+  testProjectSchema,
+  testSPMModuleSchema,
+  installAppSchema,
+  uninstallAppSchema,
+  viewSimulatorScreenSchema,
+  getDeviceLogsSchema,
+  cleanBuildSchema
+} from './validation.js';
+import { ZodError } from 'zod';
+import { logger, logToolExecution, logError } from './logger.js';
 
 class AppleSimulatorServer {
   private server: Server;
@@ -294,52 +310,127 @@ class AppleSimulatorServer {
               }
             }
           }
+        },
+        {
+          name: 'clean_build',
+          description: 'Clean build artifacts, DerivedData, or test results',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectPath: {
+                type: 'string',
+                description: 'Path to the Xcode project or workspace (optional for DerivedData-only cleaning)'
+              },
+              scheme: {
+                type: 'string',
+                description: 'Xcode scheme (optional)'
+              },
+              platform: {
+                type: 'string',
+                description: 'Target platform (iOS, macOS, tvOS, watchOS, visionOS)',
+                enum: ['iOS', 'macOS', 'tvOS', 'watchOS', 'visionOS'],
+                default: 'iOS'
+              },
+              configuration: {
+                type: 'string',
+                description: 'Build configuration (Debug/Release)',
+                enum: ['Debug', 'Release'],
+                default: 'Debug'
+              },
+              cleanTarget: {
+                type: 'string',
+                description: 'What to clean: build (xcodebuild clean), derivedData, testResults, or all',
+                enum: ['build', 'derivedData', 'testResults', 'all'],
+                default: 'build'
+              },
+              derivedDataPath: {
+                type: 'string',
+                description: 'Path to DerivedData folder',
+                default: './DerivedData'
+              }
+            }
+          }
         }
       ]
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
+      const startTime = Date.now();
+
+      logger.debug({ tool: name, args }, 'Tool request received');
 
       try {
+        let result;
         switch (name) {
           case 'list_simulators':
-            return await this.listSimulators(args);
+            result = await this.listSimulators(args);
+            break;
           
           case 'boot_simulator':
-            return await this.bootSimulator(args);
+            result = await this.bootSimulator(args);
+            break;
           
           case 'shutdown_simulator':
-            return await this.shutdownSimulator(args);
+            result = await this.shutdownSimulator(args);
+            break;
           
           case 'build_project':
-            return await this.buildProject(args);
+            result = await this.buildProject(args);
+            break;
           
           case 'run_project':
-            return await this.runProject(args);
+            result = await this.runProject(args);
+            break;
           
           case 'test_project':
-            return await this.testProject(args);
+            result = await this.testProject(args);
+            break;
           
           case 'test_spm_module':
-            return await this.testSPMModule(args);
+            result = await this.testSPMModule(args);
+            break;
           
           case 'install_app':
-            return await this.installApp(args);
+            result = await this.installApp(args);
+            break;
           
           case 'uninstall_app':
-            return await this.uninstallApp(args);
+            result = await this.uninstallApp(args);
+            break;
           
           case 'view_simulator_screen':
-            return await this.viewSimulatorScreen(args);
+            result = await this.viewSimulatorScreen(args);
+            break;
           
           case 'get_device_logs':
-            return await this.getDeviceLogs(args);
+            result = await this.getDeviceLogs(args);
+            break;
+          
+          case 'clean_build':
+            result = await this.cleanBuild(args);
+            break;
           
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
+        
+        // Log successful execution
+        logToolExecution(name, args, Date.now() - startTime);
+        return result;
       } catch (error) {
+        if (error instanceof ZodError) {
+          logger.warn({ tool: name, errors: error.errors }, 'Validation failed');
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Validation error: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`
+              }
+            ]
+          };
+        }
+        logError(error as Error, { tool: name, args });
         return {
           content: [
             {
@@ -353,10 +444,10 @@ class AppleSimulatorServer {
   }
 
   private async listSimulators(args: any) {
-    const { showAll = false, platform } = args;
+    const validated = listSimulatorsSchema.parse(args);
+    const { showAll, platform } = validated;
     
-    const platformEnum = platform ? PlatformHandler.parsePlatformFromString(platform) : undefined;
-    const devices = await SimulatorManager.listSimulators(showAll, platformEnum);
+    const devices = await SimulatorManager.listSimulators(showAll, platform);
     
     return {
       content: [
@@ -369,7 +460,8 @@ class AppleSimulatorServer {
   }
 
   private async bootSimulator(args: any) {
-    const { deviceId } = args;
+    const validated = bootSimulatorSchema.parse(args);
+    const { deviceId } = validated;
     
     await SimulatorManager.bootSimulator(deviceId);
     
@@ -384,7 +476,8 @@ class AppleSimulatorServer {
   }
 
   private async shutdownSimulator(args: any) {
-    const { deviceId } = args;
+    const validated = shutdownSimulatorSchema.parse(args);
+    const { deviceId } = validated;
     
     await SimulatorManager.shutdownSimulator(deviceId);
     
@@ -399,9 +492,10 @@ class AppleSimulatorServer {
   }
 
   private async buildProject(args: any) {
-    const { projectPath, scheme, platform = 'iOS', deviceId, configuration = 'Debug' } = args;
+    const validated = buildProjectSchema.parse(args);
+    const { projectPath, scheme, platform, deviceId, configuration } = validated;
     
-    const platformEnum = PlatformHandler.parsePlatformFromString(platform);
+    const platformEnum = platform;
     
     const result = await XcodeBuilder.buildProject({
       projectPath,
@@ -426,9 +520,10 @@ App path: ${result.appPath || 'N/A'}`
   }
 
   private async runProject(args: any) {
-    const { projectPath, scheme, platform = 'iOS', deviceId, configuration = 'Debug' } = args;
+    const validated = runProjectSchema.parse(args);
+    const { projectPath, scheme, platform, deviceId, configuration } = validated;
     
-    const platformEnum = PlatformHandler.parsePlatformFromString(platform);
+    const platformEnum = platform;
     
     const result = await XcodeBuilder.buildProject({
       projectPath,
@@ -452,17 +547,19 @@ App installed at: ${result.appPath || 'N/A'}`
   }
 
   private async testProject(args: any) {
+    const validated = testProjectSchema.parse(args);
     const { 
       projectPath, 
       scheme, 
-      platform = 'iOS', 
+      platform, 
       testTarget,
       deviceId, 
-      configuration = 'Debug',
-      testFilter
-    } = args;
+      configuration,
+      testFilter,
+      parallelTesting
+    } = validated;
     
-    const platformEnum = PlatformHandler.parsePlatformFromString(platform);
+    const platformEnum = platform;
     
     const result = await XcodeBuilder.testProject({
       projectPath,
@@ -471,7 +568,8 @@ App installed at: ${result.appPath || 'N/A'}`
       deviceId,
       configuration,
       testTarget,
-      testFilter
+      testFilter,
+      parallelTesting
     });
     
     return {
@@ -492,9 +590,10 @@ App installed at: ${result.appPath || 'N/A'}`
   }
 
   private async testSPMModule(args: any) {
-    const { packagePath, platform = 'macOS', testFilter, osVersion } = args;
+    const validated = testSPMModuleSchema.parse(args);
+    const { packagePath, platform, testFilter, osVersion } = validated;
     
-    const platformEnum = PlatformHandler.parsePlatformFromString(platform);
+    const platformEnum = platform;
     
     const result = await XcodeBuilder.testSPMModule(
       packagePath,
@@ -519,7 +618,8 @@ App installed at: ${result.appPath || 'N/A'}`
   }
 
   private async installApp(args: any) {
-    const { appPath, deviceId } = args;
+    const validated = installAppSchema.parse(args);
+    const { appPath, deviceId } = validated;
     
     await SimulatorManager.installApp(appPath, deviceId);
     
@@ -534,7 +634,8 @@ App installed at: ${result.appPath || 'N/A'}`
   }
 
   private async uninstallApp(args: any) {
-    const { bundleId, deviceId } = args;
+    const validated = uninstallAppSchema.parse(args);
+    const { bundleId, deviceId } = validated;
     
     await SimulatorManager.uninstallApp(bundleId, deviceId);
     
@@ -549,7 +650,8 @@ App installed at: ${result.appPath || 'N/A'}`
   }
 
   private async viewSimulatorScreen(args: any) {
-    const { deviceId } = args;
+    const validated = viewSimulatorScreenSchema.parse(args);
+    const { deviceId } = validated;
     
     const { base64, mimeType } = await SimulatorManager.captureScreenshotData(deviceId);
     
@@ -565,7 +667,8 @@ App installed at: ${result.appPath || 'N/A'}`
   }
 
   private async getDeviceLogs(args: any) {
-    const { deviceId, predicate, last = '5m' } = args;
+    const validated = getDeviceLogsSchema.parse(args);
+    const { deviceId, predicate, last } = validated;
     
     const logs = await SimulatorManager.getDeviceLogs(deviceId, predicate, last);
     
@@ -579,12 +682,49 @@ App installed at: ${result.appPath || 'N/A'}`
     };
   }
 
+  private async cleanBuild(args: any) {
+    const validated = cleanBuildSchema.parse(args);
+    const { projectPath, scheme, platform, configuration, cleanTarget, derivedDataPath } = validated;
+    
+    const result = await XcodeBuilder.cleanProject({
+      projectPath,
+      scheme,
+      platform,
+      configuration,
+      cleanTarget,
+      derivedDataPath
+    });
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result.message
+        }
+      ]
+    };
+  }
+
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Apple Simulator MCP server running');
+    logger.info({ transport: 'stdio' }, 'Apple Simulator MCP server started');
   }
 }
 
 const server = new AppleSimulatorServer();
-server.run().catch(console.error);
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('Received SIGTERM, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('Received SIGINT, shutting down gracefully');
+  process.exit(0);
+});
+
+server.run().catch((error) => {
+  logger.fatal({ error }, 'Failed to start MCP server');
+  process.exit(1);
+});

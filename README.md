@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server for building, running, and testing Apple platform projects (iOS, macOS, tvOS, watchOS, visionOS).
 
-## Version: 2.1.0
+## Version: 2.2.0
 
 ## Overview
 
@@ -20,6 +20,7 @@ This MCP server enables AI assistants and development tools to interact with App
 - **Swift 6.0 Support**: Compatible with the latest Swift language features
 - **App Management**: Install and uninstall apps on simulators
 - **Device Logs**: Retrieve and filter device logs for debugging
+- **Build Maintenance**: Clean build folders, DerivedData, and test results without leaving Claude
 
 ## Installation
 
@@ -138,6 +139,20 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
   - `predicate`: Log filter predicate
   - `last`: Time interval (e.g., "1m", "5m", "1h")
 
+#### Build Maintenance
+
+- **`clean_build`**: Clean build artifacts, DerivedData, or test results
+  - `projectPath`: Path to .xcodeproj or .xcworkspace (optional for DerivedData-only cleaning)
+  - `scheme`: Xcode scheme (optional)
+  - `platform`: Target platform (default: iOS)
+  - `configuration`: Debug or Release (default: Debug)
+  - `cleanTarget`: What to clean - options:
+    - `"build"`: Run `xcodebuild clean` (default)
+    - `"derivedData"`: Remove DerivedData folder
+    - `"testResults"`: Clear only test results
+    - `"all"`: Clean everything
+  - `derivedDataPath`: Path to DerivedData (default: ./DerivedData)
+
 ## Platform Support
 
 ### iOS
@@ -228,6 +243,18 @@ The server follows SOLID principles with modular components:
   "arguments": {
     "platform": "iOS",
     "showAll": true
+  }
+}
+```
+
+### Clean Build Folder and DerivedData
+```json
+{
+  "tool": "clean_build",
+  "arguments": {
+    "projectPath": "/path/to/MyApp.xcodeproj",
+    "scheme": "MyApp",
+    "cleanTarget": "all"
   }
 }
 ```

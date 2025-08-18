@@ -10,6 +10,9 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { SimulatorDevice, Platform } from './types.js';
 import { PlatformHandler } from './platformHandler.js';
+import { createModuleLogger } from './logger.js';
+
+const logger = createModuleLogger('SimulatorManager');
 
 // Type for the exec function and promisified version
 export type ExecFunction = typeof nodeExec;
@@ -82,6 +85,7 @@ export class SimulatorManager {
 
       return devices;
     } catch (error) {
+      logger.error({ error }, 'Failed to list simulators');
       throw new Error(`Failed to list simulators: ${error}`);
     }
   }
@@ -94,9 +98,11 @@ export class SimulatorManager {
       await this.execAsync(`xcrun simctl boot "${deviceId}"`);
     } catch (error: any) {
       if (!error.message.includes('Unable to boot device in current state: Booted')) {
+        logger.error({ error, deviceId }, 'Failed to boot simulator');
         throw new Error(`Failed to boot simulator: ${error.message}`);
       }
       // Already booted, that's fine
+      logger.debug({ deviceId }, 'Simulator already in booted state')
     }
   }
 
@@ -107,6 +113,7 @@ export class SimulatorManager {
     try {
       await this.execAsync(`xcrun simctl shutdown "${deviceId}"`);
     } catch (error: any) {
+      logger.error({ error, deviceId }, 'Failed to shutdown simulator');
       throw new Error(`Failed to shutdown simulator: ${error.message}`);
     }
   }
@@ -117,7 +124,7 @@ export class SimulatorManager {
   async ensureSimulatorBootedInstance(platform: Platform, deviceId?: string): Promise<string> {
     // Check if platform needs a simulator
     if (!PlatformHandler.needsSimulator(platform)) {
-      console.error(`Platform ${platform} does not require a simulator`);
+      logger.info({ platform }, 'Platform does not require a simulator');
       return '';
     }
 
@@ -129,7 +136,7 @@ export class SimulatorManager {
       
       for (const device of devices) {
         if ((device.name === targetDevice || device.udid === targetDevice) && device.state === 'Booted') {
-          console.error(`Simulator ${device.name} is already booted, reusing it`);
+          logger.info({ device: device.name, state: device.state }, 'Simulator already booted, reusing');
           await this.ensureSimulatorAppOpen();
           return device.name;
         }
@@ -148,7 +155,7 @@ export class SimulatorManager {
       }
       
       // Boot the device
-      console.error(`Booting simulator: ${deviceToBootName}`);
+      logger.info({ deviceId: deviceToBootId, deviceName: deviceToBootName }, 'Booting simulator');
       await this.bootSimulatorInstance(deviceToBootId);
       
       // Open Simulator app
@@ -178,7 +185,7 @@ export class SimulatorManager {
       
       for (const device of devices) {
         if (device.udid === deviceId && device.state === 'Booted') {
-          console.error(`Simulator ${deviceName} is now booted`);
+          logger.info({ deviceId, deviceName }, 'Simulator successfully booted');
           return;
         }
       }
@@ -198,7 +205,7 @@ export class SimulatorManager {
       // Simulator is running
     } catch {
       // Simulator app not running, open it
-      console.error(`Opening Simulator app...`);
+      logger.debug('Opening Simulator app');
       await this.execAsync(`open -a Simulator`);
     }
   }
@@ -218,6 +225,7 @@ export class SimulatorManager {
     try {
       await this.execAsync(command);
     } catch (error: any) {
+      logger.error({ error, appPath, deviceId }, 'Failed to install app');
       throw new Error(`Failed to install app: ${error.message}`);
     }
   }
@@ -237,6 +245,7 @@ export class SimulatorManager {
     try {
       await this.execAsync(command);
     } catch (error: any) {
+      logger.error({ error, bundleId, deviceId }, 'Failed to uninstall app');
       throw new Error(`Failed to uninstall app: ${error.message}`);
     }
   }
@@ -256,6 +265,7 @@ export class SimulatorManager {
     try {
       await this.execAsync(command);
     } catch (error: any) {
+      logger.error({ error, outputPath, deviceId }, 'Failed to capture screenshot');
       throw new Error(`Failed to capture screenshot: ${error.message}`);
     }
   }
@@ -308,6 +318,7 @@ export class SimulatorManager {
       const lines = stdout.split('\n').slice(-100);
       return lines.join('\n');
     } catch (error: any) {
+      logger.error({ error, deviceId, predicate }, 'Failed to get device logs');
       throw new Error(`Failed to get device logs: ${error.message}`);
     }
   }
