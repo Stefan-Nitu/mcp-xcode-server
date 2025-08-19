@@ -121,12 +121,12 @@ class MCPXcodeSetup {
     // Determine the command based on installation type
     const isGlobalInstall = await this.checkGlobalInstall();
     const serverPath = isGlobalInstall 
-      ? 'mcp-xcode'
+      ? 'mcp-xcode-server'
       : resolve(PACKAGE_ROOT, 'dist', 'index.js');
     
     const serverConfig = {
       type: 'stdio',
-      command: isGlobalInstall ? 'mcp-xcode' : 'node',
+      command: isGlobalInstall ? 'mcp-xcode-server' : 'node',
       args: isGlobalInstall ? [] : [serverPath],
       env: {}
     };
@@ -136,7 +136,7 @@ class MCPXcodeSetup {
       config.mcpServers = {};
     }
     
-    if (config.mcpServers['mcp-xcode']) {
+    if (config.mcpServers['mcp-xcode-server']) {
       const overwrite = await this.askYesNo('MCP Xcode server already configured. Overwrite?');
       if (!overwrite) {
         console.log('Skipping MCP server configuration.');
@@ -144,7 +144,7 @@ class MCPXcodeSetup {
       }
     }
     
-    config.mcpServers['mcp-xcode'] = serverConfig;
+    config.mcpServers['mcp-xcode-server'] = serverConfig;
     
     this.saveConfig(configPath, config);
     console.log(`✅ MCP server configured in ${configPath}`);
@@ -190,7 +190,7 @@ class MCPXcodeSetup {
 
   private async checkGlobalInstall(): Promise<boolean> {
     try {
-      execSync('which mcp-xcode', { stdio: 'ignore' });
+      execSync('which mcp-xcode-server', { stdio: 'ignore' });
       return true;
     } catch {
       return false;
@@ -218,7 +218,7 @@ class MCPXcodeSetup {
 
 // CLI Commands
 program
-  .name('mcp-xcode')
+  .name('mcp-xcode-server')
   .description('MCP Xcode Server - Setup and management')
   .version('2.4.0');
 

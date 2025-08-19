@@ -42,10 +42,10 @@ This MCP server enables AI assistants and development tools to interact with App
 
 ```bash
 # Install globally
-npm install -g mcp-xcode
+npm install -g mcp-xcode-server
 
 # Run interactive setup
-mcp-xcode setup
+mcp-xcode-server setup
 ```
 
 The setup wizard will:
@@ -57,8 +57,8 @@ The setup wizard will:
 
 ```bash
 # In your Xcode project directory
-npm install mcp-xcode
-npx mcp-xcode setup
+npm install mcp-xcode-server
+npx mcp-xcode-server setup
 ```
 
 ### Manual Configuration
@@ -70,9 +70,9 @@ If you prefer manual setup, add to your Claude configuration:
 ```json
 {
   "mcpServers": {
-    "mcp-xcode": {
+    "mcp-xcode-server": {
       "type": "stdio",
-      "command": "mcp-xcode",
+      "command": "mcp-xcode-server",
       "args": ["serve"],
       "env": {}
     }
@@ -85,10 +85,10 @@ If you prefer manual setup, add to your Claude configuration:
 ```json
 {
   "mcpServers": {
-    "mcp-xcode": {
+    "mcp-xcode-server": {
       "type": "stdio",
       "command": "npx",
-      "args": ["mcp-xcode", "serve"],
+      "args": ["mcp-xcode-server", "serve"],
       "env": {}
     }
   }

@@ -1,11 +1,11 @@
 {
-  "name": "mcp-xcode",
+  "name": "mcp-xcode-server",
   "version": "2.4.0",
   "description": "MCP server for Xcode - build, test, run, and manage Apple platform projects (iOS, macOS, tvOS, watchOS, visionOS)",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "mcp-xcode": "dist/cli.js"
+    "mcp-xcode-server": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
