@@ -6,20 +6,77 @@
 import Foundation
 
 // Get environment variables from Claude Code
+let toolName = ProcessInfo.processInfo.environment["CLAUDE_TOOL_NAME"] ?? ""
 let toolOutput = ProcessInfo.processInfo.environment["CLAUDE_TOOL_OUTPUT"] ?? ""
+let toolParams = ProcessInfo.processInfo.environment["CLAUDE_TOOL_PARAMS"] ?? ""
 let projectDir = ProcessInfo.processInfo.environment["CLAUDE_PROJECT_DIR"] ?? FileManager.default.currentDirectoryPath
 
-// Determine action type from tool output
-func extractAction(from output: String) -> String? {
-    if output.contains("deleted successfully") || output.contains("removed successfully") {
-        return "remove"
-    } else if output.contains("created successfully") || output.contains("updated successfully") {
-        return "add"
+// Determine action and file path from tool invocation
+func extractFileOperation() -> (action: String, filePath: String)? {
+    // Parse tool parameters to get file path
+    if toolName == "Write" || toolName == "Edit" || toolName == "MultiEdit" {
+        // These tools have file_path parameter
+        if let data = toolParams.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let filePath = json["file_path"] as? String {
+            // Check if file exists to determine add vs update
+            let exists = FileManager.default.fileExists(atPath: filePath)
+            return (action: "add", filePath: filePath)
+        }
+    } else if toolName == "Bash" {
+        // Check for rm/delete commands in bash
+        if let data = toolParams.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let command = json["command"] as? String {
+            
+            // Check for file removal commands
+            if command.contains("rm ") || command.contains("rm -f") || command.contains("rm -rf") {
+                // Extract file path from rm command
+                let patterns = [
+                    "rm\\s+(-[rf]+\\s+)?([^\\s]+\\.swift)",
+                    "rm\\s+(-[rf]+\\s+)?\"([^\"]+\\.swift)\""
+                ]
+                
+                for pattern in patterns {
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                       let match = regex.firstMatch(in: command, options: [], range: NSRange(command.startIndex..., in: command)) {
+                        let lastRange = match.range(at: match.numberOfRanges - 1)
+                        if let range = Range(lastRange, in: command) {
+                            let filePath = String(command[range])
+                            // Convert relative to absolute path if needed
+                            let absolutePath = filePath.hasPrefix("/") ? filePath : "\(projectDir)/\(filePath)"
+                            return (action: "remove", filePath: absolutePath)
+                        }
+                    }
+                }
+            }
+            // Check for file creation commands (touch, echo >, etc)
+            else if command.contains("touch ") || command.contains(" > ") {
+                let patterns = [
+                    "touch\\s+([^\\s]+\\.swift)",
+                    "touch\\s+\"([^\"]+\\.swift)\"",
+                    ">\\s*([^\\s]+\\.swift)",
+                    ">\\s*\"([^\"]+\\.swift)\""
+                ]
+                
+                for pattern in patterns {
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                       let match = regex.firstMatch(in: command, options: [], range: NSRange(command.startIndex..., in: command)) {
+                        if let range = Range(match.range(at: 1), in: command) {
+                            let filePath = String(command[range])
+                            let absolutePath = filePath.hasPrefix("/") ? filePath : "\(projectDir)/\(filePath)"
+                            return (action: "add", filePath: absolutePath)
+                        }
+                    }
+                }
+            }
+        }
     }
+    
     return nil
 }
 
-// Extract file path from tool output
+// Legacy: Extract file path from tool output (kept for fallback)
 func extractFilePath(from output: String) -> String? {
     // Look for patterns like "File created successfully at: /path/to/file.swift"
     // or "File deleted successfully: /path/to/file.swift"
@@ -145,20 +202,20 @@ func determineGroupPath(filePath: String, projectDir: String, targetName: String
 }
 
 // Main logic
-guard let filePath = extractFilePath(from: toolOutput) else {
-    // No file path found in output
+guard let operation = extractFileOperation() else {
+    // No file operation detected
     exit(0)
 }
+
+let filePath = operation.filePath
+let action = operation.action
 
 // Only process Swift files
 guard filePath.hasSuffix(".swift") else {
     exit(0)
 }
 
-// Determine action (add or remove)
-let action = extractAction(from: toolOutput) ?? "add"
-
-print("Checking if \(filePath) should be \(action == "add" ? "added to" : "removed from") Xcode project...")
+print("Detected \(action) operation for \(filePath)")
 
 // Find nearest Xcode project
 guard let projectInfo = findXcodeProject(from: filePath) else {
