@@ -25,9 +25,18 @@ import {
   TestProjectTool,
   TestSPMModuleTool,
   CleanBuildTool,
+  ArchiveProjectTool,
+  ExportIPATool,
+  ListSchemesTool,
+  GetBuildSettingsTool,
+  GetProjectInfoTool,
+  ListTargetsTool,
   InstallAppTool,
   UninstallAppTool,
-  GetDeviceLogsTool
+  GetDeviceLogsTool,
+  ModifyProjectTool,
+  ManageDependenciesTool,
+  SwiftUIPreviewTool
 } from './tools/index.js';
 
 type Tool = {
@@ -43,7 +52,7 @@ class XcodeServer {
     this.server = new Server(
       {
         name: 'mcp-xcode',
-        version: '2.2.0',
+        version: '2.4.0',
       },
       {
         capabilities: {
@@ -72,11 +81,23 @@ class XcodeServer {
       new TestProjectTool(),
       new TestSPMModuleTool(),
       new CleanBuildTool(),
+      // Archive and export
+      new ArchiveProjectTool(),
+      new ExportIPATool(),
+      // Project info and schemes
+      new ListSchemesTool(),
+      new GetBuildSettingsTool(),
+      new GetProjectInfoTool(),
+      new ListTargetsTool(),
       // App management
       new InstallAppTool(),
       new UninstallAppTool(),
       // Device logs
-      new GetDeviceLogsTool()
+      new GetDeviceLogsTool(),
+      // Advanced project management
+      new ModifyProjectTool(),
+      new ManageDependenciesTool(),
+      new SwiftUIPreviewTool()
     ];
 
     // Register each tool by its name

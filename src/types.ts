@@ -47,3 +47,8 @@ export interface PlatformConfig {
   defaultDevice?: string;
   destinationString: (deviceName?: string) => string;
 }
+
+export interface Tool {
+  execute(args: any): Promise<any>;
+  getToolDefinition(): any;
+}

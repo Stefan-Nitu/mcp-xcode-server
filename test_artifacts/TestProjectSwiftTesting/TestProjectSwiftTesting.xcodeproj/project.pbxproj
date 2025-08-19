@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		70CBBA863372B9AD3DB6762E /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0892F4CA4B9DA1FA7544496 /* ProfileView.swift */; };
+		F86986962E53D01A00123C68 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F869868E2E53D01A00123C68 /* Assets.xcassets */; };
+		F86986972E53D01A00123C68 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F869868F2E53D01A00123C68 /* ContentView.swift */; };
+		F86986982E53D01A00123C68 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86986902E53D01A00123C68 /* Item.swift */; };
+		F869869A2E53D01A00123C68 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86986922E53D01A00123C68 /* SettingsView.swift */; };
+		F869869B2E53D01A00123C68 /* TestProjectSwiftTestingApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86986942E53D01A00123C68 /* TestProjectSwiftTestingApp.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		F86985D82E52507900123C68 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,17 +33,19 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C0892F4CA4B9DA1FA7544496 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		F86985C72E52507700123C68 /* TestProjectSwiftTesting.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TestProjectSwiftTesting.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F86985D72E52507900123C68 /* TestProjectSwiftTestingTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestProjectSwiftTestingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F86985E12E52507900123C68 /* TestProjectSwiftTestingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestProjectSwiftTestingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F869868E2E53D01A00123C68 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F869868F2E53D01A00123C68 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		F86986902E53D01A00123C68 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
+		F86986922E53D01A00123C68 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F86986932E53D01A00123C68 /* TestProjectSwiftTesting.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TestProjectSwiftTesting.entitlements; sourceTree = "<group>"; };
+		F86986942E53D01A00123C68 /* TestProjectSwiftTestingApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestProjectSwiftTestingApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		F86985C92E52507700123C68 /* TestProjectSwiftTesting */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = TestProjectSwiftTesting;
-			sourceTree = "<group>";
-		};
 		F86985DA2E52507900123C68 /* TestProjectSwiftTestingTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = TestProjectSwiftTestingTests;
@@ -72,13 +83,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		EE253FD3D28F8850D215B3B6 /* TestProjectSwiftTesting */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = TestProjectSwiftTesting;
+			sourceTree = "<group>";
+		};
 		F86985BE2E52507700123C68 = {
 			isa = PBXGroup;
 			children = (
-				F86985C92E52507700123C68 /* TestProjectSwiftTesting */,
+				F86986952E53D01A00123C68 /* TestProjectSwiftTesting */,
 				F86985DA2E52507900123C68 /* TestProjectSwiftTestingTests */,
 				F86985E42E52507900123C68 /* TestProjectSwiftTestingUITests */,
 				F86985C82E52507700123C68 /* Products */,
+				EE253FD3D28F8850D215B3B6 /* TestProjectSwiftTesting */,
 			);
 			sourceTree = "<group>";
 		};
@@ -90,6 +109,20 @@
 				F86985E12E52507900123C68 /* TestProjectSwiftTestingUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		F86986952E53D01A00123C68 /* TestProjectSwiftTesting */ = {
+			isa = PBXGroup;
+			children = (
+				F869868E2E53D01A00123C68 /* Assets.xcassets */,
+				F869868F2E53D01A00123C68 /* ContentView.swift */,
+				F86986902E53D01A00123C68 /* Item.swift */,
+				F86986922E53D01A00123C68 /* SettingsView.swift */,
+				F86986932E53D01A00123C68 /* TestProjectSwiftTesting.entitlements */,
+				F86986942E53D01A00123C68 /* TestProjectSwiftTestingApp.swift */,
+				C0892F4CA4B9DA1FA7544496 /* ProfileView.swift */,
+			);
+			path = TestProjectSwiftTesting;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -106,9 +139,6 @@
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				F86985C92E52507700123C68 /* TestProjectSwiftTesting */,
 			);
 			name = TestProjectSwiftTesting;
 			packageProductDependencies = (
@@ -212,6 +242,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F86986962E53D01A00123C68 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,6 +267,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F86986972E53D01A00123C68 /* ContentView.swift in Sources */,
+				F86986982E53D01A00123C68 /* Item.swift in Sources */,
+				F869869A2E53D01A00123C68 /* SettingsView.swift in Sources */,
+				F869869B2E53D01A00123C68 /* TestProjectSwiftTestingApp.swift in Sources */,
+				70CBBA863372B9AD3DB6762E /* ProfileView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

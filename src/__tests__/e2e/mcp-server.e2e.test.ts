@@ -155,21 +155,44 @@ import Testing
       expect(response.tools).toBeInstanceOf(Array);
       
       const toolNames = response.tools.map((t: any) => t.name);
+      
+      // Simulator management tools
       expect(toolNames).toContain('list_simulators');
       expect(toolNames).toContain('boot_simulator');
       expect(toolNames).toContain('shutdown_simulator');
+      expect(toolNames).toContain('view_simulator_screen');
+      
+      // Build and test tools
       expect(toolNames).toContain('build_project');
       expect(toolNames).toContain('run_project');
       expect(toolNames).toContain('test_project');
       expect(toolNames).toContain('test_spm_module');
-      expect(toolNames).toContain('install_app');
-      expect(toolNames).toContain('uninstall_app');
-      expect(toolNames).toContain('view_simulator_screen');
-      expect(toolNames).toContain('get_device_logs');
       expect(toolNames).toContain('clean_build');
       
-      // Should have exactly 12 tools
-      expect(response.tools.length).toBe(12);
+      // Archive and export tools
+      expect(toolNames).toContain('archive_project');
+      expect(toolNames).toContain('export_ipa');
+      
+      // Project info and scheme tools
+      expect(toolNames).toContain('list_schemes');
+      expect(toolNames).toContain('get_build_settings');
+      expect(toolNames).toContain('get_project_info');
+      expect(toolNames).toContain('list_targets');
+      
+      // App management tools
+      expect(toolNames).toContain('install_app');
+      expect(toolNames).toContain('uninstall_app');
+      
+      // Device logs
+      expect(toolNames).toContain('get_device_logs');
+      
+      // Advanced project management tools
+      expect(toolNames).toContain('modify_project');
+      expect(toolNames).toContain('manage_dependencies');
+      expect(toolNames).toContain('swiftui_preview');
+      
+      // Should have exactly 21 tools
+      expect(response.tools.length).toBe(21);
     });
   });
   
