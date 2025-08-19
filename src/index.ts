@@ -34,7 +34,6 @@ import {
   InstallAppTool,
   UninstallAppTool,
   GetDeviceLogsTool,
-  ModifyProjectTool,
   ManageDependenciesTool,
   SwiftUIPreviewTool
 } from './tools/index.js';
@@ -51,7 +50,7 @@ class XcodeServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'mcp-xcode',
+        name: 'mcp-xcode-server',
         version: '2.4.0',
       },
       {
@@ -95,7 +94,6 @@ class XcodeServer {
       // Device logs
       new GetDeviceLogsTool(),
       // Advanced project management
-      new ModifyProjectTool(),
       new ManageDependenciesTool(),
       new SwiftUIPreviewTool()
     ];

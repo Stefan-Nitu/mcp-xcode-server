@@ -173,7 +173,7 @@ export class ManageDependenciesTool implements IManageDependenciesTool {
           return {
             content: [{
               type: 'text',
-              text: 'Adding dependencies to Xcode projects requires using Xcode GUI or modifying the project file directly with the modify_project tool.'
+              text: 'Adding dependencies to Xcode projects requires using Xcode GUI or modifying the project file directly.'
             }]
           };
         }

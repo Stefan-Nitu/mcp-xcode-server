@@ -187,12 +187,11 @@ import Testing
       expect(toolNames).toContain('get_device_logs');
       
       // Advanced project management tools
-      expect(toolNames).toContain('modify_project');
       expect(toolNames).toContain('manage_dependencies');
       expect(toolNames).toContain('swiftui_preview');
       
-      // Should have exactly 21 tools
-      expect(response.tools.length).toBe(21);
+      // Should have exactly 20 tools
+      expect(response.tools.length).toBe(20);
     });
   });
   

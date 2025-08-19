@@ -22,7 +22,7 @@ This MCP server enables AI assistants and development tools to interact with App
 - **App Management**: Install and uninstall apps on simulators
 - **Device Logs**: Retrieve and filter device logs for debugging
 - **Build Maintenance**: Clean build folders, DerivedData, and test results without leaving Claude
-- **Project Modification**: Add or remove files from Xcode projects programmatically
+- **Xcode Sync Hook**: Automatically sync file operations (add/remove/move) with Xcode projects
 - **Dependency Management**: Manage Swift Package Manager dependencies
 - **SwiftUI Previews**: Generate previews of SwiftUI views by rendering them in simulators
 
@@ -50,7 +50,7 @@ mcp-xcode-server setup
 
 The setup wizard will:
 - Configure the MCP server (globally or per-project)
-- Optionally set up auto-add hooks for Swift files
+- Optionally set up Xcode sync hooks for file operations
 - Build necessary helper tools
 
 #### Project-specific Installation
@@ -96,6 +96,60 @@ If you prefer manual setup, add to your Claude configuration:
 ```
 
 After updating the configuration, restart Claude Code for changes to take effect.
+
+## Xcode Sync Hook
+
+The MCP Xcode server includes an automatic file synchronization hook that keeps your Xcode projects in sync with file system changes made by Claude Code.
+
+### Features
+
+- **Automatic Detection**: Detects when files are created, modified, deleted, or moved via Claude Code tools (Write, Edit, MultiEdit, Bash)
+- **File Operations Support**:
+  - File creation (Write tool, `touch`, `echo >` commands)
+  - File deletion (`rm` commands)
+  - File moves/renames (`mv` commands)
+- **Smart File Type Handling**:
+  - Source files (.swift, .m, .mm, .c, .cpp) → Added to sources build phase
+  - Resources (.png, .json, .plist, .xib, .storyboard) → Added to resources build phase
+  - Documentation (.md, .txt) → Added to project only (visible but not compiled)
+  - Frameworks (.framework, .a, .dylib) → Added to frameworks build phase
+- **Group Management**: Automatically creates groups to match your folder structure
+- **Opt-out Support**: 
+  - Create `.no-xcode-sync` or `.no-xcode-autoadd` file in project root to disable
+  - Or set `"xcodeSync": false` (or `"xcodeAutoadd": false` for legacy) in `.claude/settings.json`
+
+### Setup
+
+The hook is configured automatically when you run `mcp-xcode-server setup`. To manually configure:
+
+```json
+// In ~/.claude/settings.json or .claude/settings.json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/path/to/node_modules/mcp-xcode-server/scripts/xcode-sync.swift"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Supported File Types
+
+- **Source Files**: .swift, .m, .mm, .c, .cpp, .cc, .cxx
+- **Headers**: .h, .hpp, .hxx
+- **Resources**: .png, .jpg, .jpeg, .gif, .pdf, .svg, .json, .plist, .xcassets, .storyboard, .xib, .strings
+- **Documentation**: .md, .txt, .rtf
+- **Configuration**: .xcconfig, .entitlements
+- **Web**: .html, .css, .js, .ts, .tsx, .jsx
+- **Data**: .xml, .yaml, .yml, .toml
 
 ## Running Tests
 
@@ -161,13 +215,6 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
   - Returns: Array of target names
 
 #### Advanced Project Management
-
-- **`modify_project`**: Add or remove files from an Xcode project
-  - `projectPath`: Path to .xcodeproj file
-  - `action`: "add" or "remove"
-  - `filePath`: Path to the file to add/remove
-  - `targetName`: Name of the target to modify
-  - `groupPath`: Group path for organizing files (optional, e.g., "Sources/Models")
   - Note: Uses Swift XcodeProj package internally for safe project modifications
 
 - **`manage_dependencies`**: Manage Swift Package Manager dependencies
@@ -380,11 +427,11 @@ Both frameworks are fully supported with accurate test counting and failure dete
 - Xcode Command Line Tools
 - Simulators for target platforms (iOS, tvOS, watchOS, visionOS)
 
-## Claude Code Hooks for Auto-Adding Swift Files
+## Claude Code Hooks for Xcode File Sync
 
 ### Automatic Xcode Project Updates
 
-You can configure Claude Code to automatically add new Swift files to your Xcode project whenever they're created. This eliminates the manual step of adding files to targets after Claude creates them.
+You can configure Claude Code to automatically sync file operations with your Xcode project. This includes adding new files, removing deleted files, and handling file moves/renames, eliminating manual project maintenance.
 
 ### Setup
 
@@ -398,19 +445,20 @@ This will configure the hook automatically. Choose whether to install globally (
 
 ### How It Works
 
-- When Claude creates or edits a file using the Write or Edit tools
-- If the file is a `.swift` file
+- When Claude creates, edits, deletes, or moves files using Write, Edit, MultiEdit, or Bash tools
+- If the file has a supported extension (Swift, Objective-C, resources, etc.)
 - The hook searches for the nearest `.xcodeproj` file (up to 10 directories up)
-- If found, it automatically adds the Swift file to the appropriate target
-- The file is placed in a group structure matching its directory location
-- Projects can opt-out by creating a `.no-xcode-autoadd` file in the project root
+- If found, it automatically syncs the file operation with the Xcode project
+- Files are placed in groups matching their directory structure
+- Projects can opt-out by creating a `.no-xcode-sync` file in the project root
 
 ### Features
 
 - **Smart Target Detection**: Automatically determines the target name from the project
 - **Intelligent Grouping**: Places files in groups matching their directory structure
-- **Non-intrusive**: Failures don't affect the file creation process
-- **Swift-only**: Only processes `.swift` files to avoid cluttering projects
+- **Non-intrusive**: Failures don't affect file operations
+- **Multi-format Support**: Handles source files, resources, documentation, and more
+- **Operation Tracking**: Syncs additions, deletions, and moves/renames
 
 ### Requirements
 
@@ -419,14 +467,26 @@ This will configure the hook automatically. Choose whether to install globally (
 
 ### Opting Out
 
-Projects can disable auto-add in two ways:
+Projects can disable Xcode sync in several ways:
 
-1. Create a `.no-xcode-autoadd` file in the project root:
+1. Create a `.no-xcode-sync` file in the project root:
+   ```bash
+   touch .no-xcode-sync
+   ```
+
+2. Create a `.no-xcode-autoadd` file (legacy, still supported):
    ```bash
    touch .no-xcode-autoadd
    ```
 
-2. Set `xcodeAutoadd: false` in `.claude/settings.json`:
+3. Set `xcodeSync: false` in `.claude/settings.json`:
+   ```json
+   {
+     "xcodeSync": false
+   }
+   ```
+
+4. Set `xcodeAutoadd: false` (legacy, still supported):
    ```json
    {
      "xcodeAutoadd": false

@@ -33,7 +33,6 @@ export { UninstallAppTool } from './UninstallAppTool.js';
 export { GetDeviceLogsTool } from './GetDeviceLogsTool.js';
 
 // Advanced project management tools
-export { ModifyProjectTool } from './ModifyProjectTool.js';
 export { ManageDependenciesTool } from './ManageDependenciesTool.js';
 export { SwiftUIPreviewTool } from './SwiftUIPreviewTool.js';
 
