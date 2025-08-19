@@ -9,15 +9,29 @@ import Foundation
 let toolOutput = ProcessInfo.processInfo.environment["CLAUDE_TOOL_OUTPUT"] ?? ""
 let projectDir = ProcessInfo.processInfo.environment["CLAUDE_PROJECT_DIR"] ?? FileManager.default.currentDirectoryPath
 
+// Determine action type from tool output
+func extractAction(from output: String) -> String? {
+    if output.contains("deleted successfully") || output.contains("removed successfully") {
+        return "remove"
+    } else if output.contains("created successfully") || output.contains("updated successfully") {
+        return "add"
+    }
+    return nil
+}
+
 // Extract file path from tool output
 func extractFilePath(from output: String) -> String? {
     // Look for patterns like "File created successfully at: /path/to/file.swift"
-    // or "File updated successfully at: /path/to/file.swift"
+    // or "File deleted successfully: /path/to/file.swift"
     let patterns = [
         "File created successfully at: ([^\\n]+)",
         "File updated successfully at: ([^\\n]+)",
+        "File deleted successfully: ([^\\n]+)",
+        "File removed successfully: ([^\\n]+)",
         "created successfully at: ([^\\n]+)",
-        "updated successfully at: ([^\\n]+)"
+        "updated successfully at: ([^\\n]+)",
+        "deleted successfully: ([^\\n]+)",
+        "removed successfully: ([^\\n]+)"
     ]
     
     for pattern in patterns {
@@ -141,7 +155,10 @@ guard filePath.hasSuffix(".swift") else {
     exit(0)
 }
 
-print("Checking if \(filePath) should be added to Xcode project...")
+// Determine action (add or remove)
+let action = extractAction(from: toolOutput) ?? "add"
+
+print("Checking if \(filePath) should be \(action == "add" ? "added to" : "removed from") Xcode project...")
 
 // Find nearest Xcode project
 guard let projectInfo = findXcodeProject(from: filePath) else {
@@ -174,7 +191,7 @@ let process = Process()
 process.executableURL = URL(fileURLWithPath: modifierPath)
 process.arguments = [
     projectInfo.projectPath,
-    "add",
+    action,  // "add" or "remove"
     filePath,
     projectInfo.targetName,
     "--group-path", groupPath
@@ -185,9 +202,9 @@ do {
     process.waitUntilExit()
     
     if process.terminationStatus == 0 {
-        print("✅ Successfully added \(filePath) to Xcode project")
+        print("✅ Successfully \(action == "add" ? "added" : "removed") \(filePath) \(action == "add" ? "to" : "from") Xcode project")
     } else {
-        print("Failed to add file to project (exit code: \(process.terminationStatus))")
+        print("Failed to \(action) file \(action == "add" ? "to" : "from") project (exit code: \(process.terminationStatus))")
     }
 } catch {
     print("Error running XcodeProjectModifier: \(error)")
