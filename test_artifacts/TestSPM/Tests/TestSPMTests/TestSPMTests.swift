@@ -2,5 +2,7 @@ import Testing
 @testable import TestSPM
 
 @Test func example() async throws {
-    // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    // Simple test to verify the module can be imported and tested
+    let spm = TestSPM()
+    #expect(spm.text == "Hello, TestSPM!")
 }
