@@ -15,3 +15,22 @@ build/
 *.ipa
 *.dSYM.zip
 *.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# XcodeProjectModifier build artifacts
+XcodeProjectModifier/.build/
+XcodeProjectModifier/.swiftpm/
+
+# Test artifacts
+test-results*.log
+test_artifacts/**/*.xcuserstate
+test_artifacts/**/*.xcuserdatad/
+test_artifacts/**/xcuserdata/
+
+# Temporary files
+*.tmp
+.tmp/
+/tmp/
