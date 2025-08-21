@@ -126,7 +126,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -144,13 +144,13 @@ describe('BuildProjectTool E2E Tests', () => {
       if (text.toLowerCase().includes('success')) {
         expect(existsSync(derivedDataPath) || existsSync(join(process.cwd(), 'DerivedData'))).toBe(true);
       }
-    });
+    }, 30000);
 
     test('should build with specific device', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -170,7 +170,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -186,6 +186,50 @@ describe('BuildProjectTool E2E Tests', () => {
       if (text.toLowerCase().includes('success')) {
         expect(text.toLowerCase()).toContain('release');
       }
+    }, 30000);
+  });
+
+  describe('Swift Package Manager (SPM) Builds', () => {
+    test('should build SPM package for iOS', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build',
+          arguments: {
+            projectPath: join(swiftPackageDir, 'Package.swift'),
+            scheme: testProjectManager.schemes.swiftPackage,
+            platform: 'iOS'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      
+      // SPM build for iOS should succeed
+      expect(text).toMatch(/Build succeeded:/);
+      expect(text).toContain('Platform: iOS');
+      expect(text).toContain('TestSPM');
+    });
+
+    test('should handle non-existent SPM package', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build',
+          arguments: {
+            projectPath: '/non/existent/Package.swift',
+            scheme: 'TestSPM',
+            platform: 'iOS'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      
+      // Should report error for non-existent package
+      expect(text.toLowerCase()).toContain('no package.swift found');
     });
   });
 
@@ -194,7 +238,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(swiftPackageDir, 'Package.swift'),
             scheme: 'TestPackage',
@@ -214,7 +258,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(swiftPackageDir, 'Package.swift'),
             scheme: 'TestPackage',
@@ -240,7 +284,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -261,7 +305,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -279,7 +323,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -299,7 +343,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.workspacePath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -321,7 +365,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.workspacePath,
             scheme: 'NonExistentScheme',
@@ -346,7 +390,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: '/non/existent/project.xcodeproj',
             scheme: 'NonExistent',
@@ -357,14 +401,14 @@ describe('BuildProjectTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      expect(text.toLowerCase()).toContain('does not exist');
     });
 
     test('should handle invalid scheme', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(xcodeProjectDir, 'TestApp.xcodeproj'),
             scheme: 'InvalidScheme',
@@ -383,7 +427,7 @@ describe('BuildProjectTool E2E Tests', () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -423,7 +467,7 @@ func broken() {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(errorProjectDir, 'Package.swift'),
             scheme: 'ErrorPackage',
@@ -446,7 +490,7 @@ func broken() {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -468,7 +512,7 @@ func broken() {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(swiftPackageDir, 'Package.swift'),
             scheme: 'TestPackage',
@@ -496,7 +540,7 @@ func broken() {
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -512,6 +556,6 @@ func broken() {
       if (text.toLowerCase().includes('success') && text.toLowerCase().includes('app')) {
         expect(text).toMatch(/\.app|app path/i);
       }
-    });
+    }, 30000);
   });
 });

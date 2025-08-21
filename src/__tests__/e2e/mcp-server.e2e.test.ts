@@ -207,7 +207,7 @@ import Testing
       expect(toolNames).toContain('view_simulator_screen');
       
       // Build and test tools
-      expect(toolNames).toContain('build_project');
+      expect(toolNames).toContain('build');
       expect(toolNames).toContain('run_project');
       expect(toolNames).toContain('test_project');
       expect(toolNames).toContain('test_spm_module');
@@ -329,7 +329,7 @@ import Testing
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(testArtifactsPath, 'TestProjectXCTest/TestProjectXCTest.xcodeproj'),
             scheme: 'TestProjectXCTest',
@@ -351,7 +351,7 @@ import Testing
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(testArtifactsPath, 'TestProjectSwiftTesting/TestProjectSwiftTesting.xcodeproj'),
             scheme: 'TestProjectSwiftTesting',
@@ -372,7 +372,7 @@ import Testing
       const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(testArtifactsPath, 'Test.xcworkspace'),
             scheme: 'TestSPM',
@@ -481,7 +481,7 @@ import Testing
       const buildResponse = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(testArtifactsPath, 'TestProjectXCTest/TestProjectXCTest.xcodeproj'),
             scheme: 'TestProjectXCTest',
@@ -601,7 +601,7 @@ import Testing
       await client.request({
         method: 'tools/call',
         params: {
-          name: 'build_project',
+          name: 'build',
           arguments: {
             projectPath: join(testArtifactsPath, 'TestProjectXCTest/TestProjectXCTest.xcodeproj'),
             scheme: 'TestProjectXCTest',

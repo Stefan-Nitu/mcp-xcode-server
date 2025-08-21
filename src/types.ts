@@ -32,7 +32,7 @@ export interface BuildConfiguration {
   scheme?: string;
   platform?: Platform;
   deviceId?: string;
-  configuration?: 'Debug' | 'Release';
+  configuration?: string;
 }
 
 export interface TestConfiguration extends BuildConfiguration {

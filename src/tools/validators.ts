@@ -21,8 +21,9 @@ export const platformSchema = z.nativeEnum(Platform);
 
 /**
  * Build configuration schema
+ * Allows any string configuration (Debug, Release, Beta, Staging, etc.)
  */
-export const configurationSchema = z.enum(['Debug', 'Release']).optional().default('Debug');
+export const configurationSchema = z.string().optional().default('Debug');
 
 /**
  * Time interval schema for log filtering

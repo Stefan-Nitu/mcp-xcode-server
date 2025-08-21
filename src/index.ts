@@ -20,7 +20,7 @@ import {
   BootSimulatorTool,
   ShutdownSimulatorTool,
   ViewSimulatorScreenTool,
-  BuildProjectTool,
+  BuildTool,
   RunProjectTool,
   TestProjectTool,
   TestSPMModuleTool,
@@ -74,7 +74,7 @@ class XcodeServer {
       new ShutdownSimulatorTool(),
       new ViewSimulatorScreenTool(),
       // Build and test
-      new BuildProjectTool(),
+      new BuildTool(),
       new RunProjectTool(),
       new TestProjectTool(),
       new TestSPMModuleTool(),
