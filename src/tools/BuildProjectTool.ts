@@ -76,25 +76,52 @@ export class BuildProjectTool implements IBuildProjectTool {
     
     logger.info({ projectPath, scheme, platform, configuration }, 'Building project');
     
-    const result = await this.adapter.buildProject({
-      projectPath,
-      scheme,
-      platform,
-      deviceId,
-      configuration,
-      installApp: false  // Build only, don't install
-    });
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Successfully built project: ${scheme || path.basename(projectPath)}
+    try {
+      const result = await this.adapter.buildProject({
+        projectPath,
+        scheme,
+        platform,
+        deviceId,
+        configuration,
+        installApp: false  // Build only, don't install
+      });
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Build succeeded: ${scheme || path.basename(projectPath)}
 Platform: ${platform}
 Configuration: ${configuration}
 App path: ${result.appPath || 'N/A'}`
-        }
-      ]
-    };
+          }
+        ]
+      };
+    } catch (error: any) {
+      logger.error({ error, projectPath, scheme, platform }, 'Build failed');
+      
+      // If it's a BuildError with build output, return the full output
+      // Otherwise just return the error message
+      const buildOutput = error.buildOutput || error.stderr || '';
+      const errorMessage = error.message || 'Unknown build error';
+      
+      let responseText: string;
+      if (buildOutput) {
+        // Return the actual build output - it has all the context developers need
+        responseText = buildOutput;
+      } else {
+        // Fallback to just the error message if no build output available
+        responseText = `Build failed: ${errorMessage}`;
+      }
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: responseText
+          }
+        ]
+      };
+    }
   }
 }

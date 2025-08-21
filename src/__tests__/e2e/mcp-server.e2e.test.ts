@@ -20,8 +20,11 @@ describe('Apple Simulator MCP Server E2E', () => {
   let serverProcess: ChildProcess;
   let client: Client;
   let transport: StdioClientTransport;
-  const testProjectPath = '/tmp/test-mcp-project';
+  const timestamp = Date.now();
+  const testProjectPath = `/tmp/test-mcp-project-${timestamp}`;
   const testArtifactsPath = join(process.cwd(), 'test_artifacts');
+  const bootedSimulators: string[] = [];
+  const installedApps: Map<string, string> = new Map(); // deviceId -> bundleId
   
   beforeAll(async () => {
     // Clean up any leftover artifacts
@@ -92,7 +95,20 @@ import Testing
     execSync('npm run build', { cwd: process.cwd() });
   }, 60000); // 1 minute timeout for setup
   
-  afterAll(() => {
+  afterAll(async () => {
+    // Shutdown any remaining booted simulators
+    for (const deviceId of bootedSimulators) {
+      try {
+        const { execSync } = await import('child_process');
+        execSync(`xcrun simctl shutdown "${deviceId}"`, {
+          encoding: 'utf8',
+          stdio: 'pipe'
+        });
+      } catch (error) {
+        // Ignore errors, simulator might already be shutdown
+      }
+    }
+    
     // Clean up all test artifacts
     if (existsSync(testProjectPath)) {
       rmSync(testProjectPath, { recursive: true });
@@ -130,6 +146,34 @@ import Testing
   }, 30000);
   
   afterEach(async () => {
+    // Clean up installed apps
+    for (const [deviceId, bundleId] of installedApps.entries()) {
+      try {
+        const { execSync } = await import('child_process');
+        execSync(`xcrun simctl uninstall "${deviceId}" "${bundleId}"`, {
+          encoding: 'utf8',
+          stdio: 'pipe'
+        });
+      } catch (error) {
+        // App might already be uninstalled
+      }
+    }
+    installedApps.clear();
+    
+    // Shutdown booted simulators
+    for (const deviceId of bootedSimulators) {
+      try {
+        const { execSync } = await import('child_process');
+        execSync(`xcrun simctl shutdown "${deviceId}"`, {
+          encoding: 'utf8',
+          stdio: 'pipe'
+        });
+      } catch (error) {
+        // Simulator might already be shutdown
+      }
+    }
+    bootedSimulators.length = 0;
+    
     // Disconnect client
     if (client) {
       await client.close();
@@ -252,6 +296,9 @@ import Testing
         
         expect((bootResponse.content[0] as any).text).toContain('Successfully booted');
         
+        // Track booted simulator for cleanup
+        bootedSimulators.push(shutdownDevice.udid);
+        
         // Give it a moment to fully boot
         await new Promise(resolve => setTimeout(resolve, 3000));
         
@@ -267,6 +314,12 @@ import Testing
         }, CallToolResultSchema);
         
         expect((shutdownResponse.content[0] as any).text).toContain('Successfully shutdown');
+        
+        // Remove from booted list since we shut it down
+        const index = bootedSimulators.indexOf(shutdownDevice.udid);
+        if (index > -1) {
+          bootedSimulators.splice(index, 1);
+        }
       }
     }, 60000); // 1 minute timeout
   });
@@ -474,6 +527,7 @@ import Testing
             }, CallToolResultSchema);
             await new Promise(resolve => setTimeout(resolve, 5000));
             bootedDevice = availableDevice;
+            bootedSimulators.push(availableDevice.udid);
           }
         }
         
@@ -492,6 +546,9 @@ import Testing
           
           expect((installResponse.content[0] as any).text).toContain('Successfully installed app');
           
+          // Track installed app for cleanup
+          installedApps.set(bootedDevice.udid, 'com.stefannitu.TestProjectXCTest');
+          
           // Uninstall the app
           const uninstallResponse = await client.request({
             method: 'tools/call',
@@ -505,6 +562,9 @@ import Testing
           }, CallToolResultSchema);
           
           expect((uninstallResponse.content[0] as any).text).toContain('Successfully uninstalled app');
+          
+          // Remove from tracking since we uninstalled it
+          installedApps.delete(bootedDevice.udid);
         }
       }
     }, 120000); // 2 minute timeout
@@ -716,6 +776,7 @@ import Testing
           }, CallToolResultSchema);
           await new Promise(resolve => setTimeout(resolve, 5000));
           bootedDevice = availableDevice;
+          bootedSimulators.push(availableDevice.udid);
         }
       }
       

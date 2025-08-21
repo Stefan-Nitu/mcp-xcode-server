@@ -134,10 +134,10 @@ export class SimulatorManager {
     const targetDevice = deviceId || PlatformHandler.getDefaultDevice(platform) || '';
     
     try {
-      // Check if the device is already booted
-      const devices = await this.listSimulatorsInstance(true, platform);
+      // Check if the device is already booted (include unavailable for checking booted state)
+      const allDevices = await this.listSimulatorsInstance(true, platform);
       
-      for (const device of devices) {
+      for (const device of allDevices) {
         if ((device.name === targetDevice || device.udid === targetDevice) && device.state === 'Booted') {
           logger.info({ device: device.name, state: device.state }, 'Simulator already booted, reusing');
           await this.ensureSimulatorAppOpen();
@@ -145,16 +145,23 @@ export class SimulatorManager {
         }
       }
       
-      // Find the device to boot
-      let deviceToBootId = targetDevice;
+      // Find an available device to boot (exclude unavailable devices)
+      const availableDevices = await this.listSimulatorsInstance(false, platform);
+      let deviceToBootId: string | null = null;
       let deviceToBootName = targetDevice;
       
-      for (const device of devices) {
+      for (const device of availableDevices) {
         if (device.name === targetDevice || device.udid === targetDevice) {
           deviceToBootId = device.udid;
           deviceToBootName = device.name;
           break;
         }
+      }
+      
+      // If no matching device found, throw an error
+      if (!deviceToBootId) {
+        const availableNames = availableDevices.map(d => d.name).join(', ');
+        throw new Error(`No available simulator found with name or ID "${targetDevice}". Available devices: ${availableNames || 'none'}`);
       }
       
       // Boot the device

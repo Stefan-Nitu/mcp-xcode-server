@@ -14,6 +14,28 @@ import { createModuleLogger } from './logger.js';
 
 const logger = createModuleLogger('XcodeBuilder');
 
+/**
+ * Custom error class for build failures with detailed output
+ */
+export class BuildError extends Error {
+  public readonly buildOutput: string;
+  public readonly stderr: string;
+  public readonly originalError: any;
+  
+  constructor(message: string, buildOutput: string = '', stderr: string = '', originalError?: any) {
+    super(message);
+    this.name = 'BuildError';
+    this.buildOutput = buildOutput;
+    this.stderr = stderr;
+    this.originalError = originalError;
+    
+    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, BuildError);
+    }
+  }
+}
+
 // Type for the exec function and promisified version
 export type ExecFunction = typeof nodeExec;
 export type ExecAsyncFunction = (command: string, options?: any) => Promise<{ stdout: string; stderr: string }>;
@@ -101,7 +123,19 @@ export class XcodeBuilder {
       };
     } catch (error: any) {
       logger.error({ error, projectPath, scheme }, 'Failed to build project');
-      throw new Error(`Failed to build project: ${error.message}`);
+      
+      // Extract build output from the exec error
+      const errorMessage = error.message || 'Unknown build error';
+      const stdout = error.stdout || '';
+      const stderr = error.stderr || '';
+      
+      // Throw a proper BuildError with all the details
+      throw new BuildError(
+        `Failed to build project: ${errorMessage}`,
+        stdout,
+        stderr,
+        error
+      );
     }
   }
 
