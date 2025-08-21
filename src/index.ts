@@ -34,8 +34,7 @@ import {
   InstallAppTool,
   UninstallAppTool,
   GetDeviceLogsTool,
-  ManageDependenciesTool,
-  SwiftUIPreviewTool
+  ManageDependenciesTool
 } from './tools/index.js';
 
 type Tool = {
@@ -94,8 +93,7 @@ class XcodeServer {
       // Device logs
       new GetDeviceLogsTool(),
       // Advanced project management
-      new ManageDependenciesTool(),
-      new SwiftUIPreviewTool()
+      new ManageDependenciesTool()
     ];
 
     // Register each tool by its name

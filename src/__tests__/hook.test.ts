@@ -253,8 +253,9 @@ exit(0)
         env: { ...process.env }
       });
       
-      expect(result).toContain('Detected update operation');
+      expect(result).toContain('Detected update operation for');
       expect(result).toContain('ExistingView.swift');
+      expect(result).toContain('skipping Xcode sync');
     });
     
     test('should parse Bash rm command correctly', () => {

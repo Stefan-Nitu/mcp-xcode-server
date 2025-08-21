@@ -60,7 +60,14 @@ enum Configuration {
         }
     }
     
-    static let modifierPath = "/tmp/XcodeProjectModifier/.build/release/XcodeProjectModifier"
+    static var modifierPath: String {
+        // Get the path to this script
+        let scriptPath = CommandLine.arguments[0]
+        let scriptURL = URL(fileURLWithPath: scriptPath)
+        // Go up to the mcp-xcode directory
+        let projectRoot = scriptURL.deletingLastPathComponent().deletingLastPathComponent()
+        return projectRoot.appendingPathComponent("XcodeProjectModifier/.build/release/XcodeProjectModifier").path
+    }
     static let debugLogPath = "/tmp/xcode-hook-debug.log"
     static let maxProjectSearchDepth = 10
 }
@@ -108,20 +115,76 @@ class FileOperationExtractor {
         guard let filePath = hookData.toolInput["file_path"] as? String else { return nil }
         
         let responseType = hookData.toolResponse["type"] as? String
-        let action: FileAction = (responseType == "create") ? .add : .update
         
-        return FileOperation(action: action, filePath: filePath)
+        // Only handle create operations - ignore updates
+        guard responseType == "create" else {
+            if responseType == "update" {
+                print("Detected update operation for \(filePath) - skipping Xcode sync")
+            }
+            return nil
+        }
+        
+        return FileOperation(action: .add, filePath: filePath)
     }
     
     private func extractFromBashCommand() -> FileOperation? {
         guard let command = hookData.toolInput["command"] as? String else { return nil }
         
-        if let operation = extractRemoveOperation(from: command) {
-            return operation
-        } else if let operation = extractMoveOperation(from: command) {
-            return operation
-        } else if let operation = extractCreateOperation(from: command) {
-            return operation
+        // Smart detection: Look for any file paths in the command and check what happened to them
+        let extensionPattern = Configuration.FileType.allExtensions.joined(separator: "|")
+        
+        // Find all file paths with supported extensions mentioned in the command
+        let filePathPatterns = [
+            "([^\\s\"']+\\.(?:\(extensionPattern)))",           // Unquoted paths
+            "\"([^\"]+\\.(?:\(extensionPattern)))\"",          // Double-quoted paths
+            "'([^']+\\.(?:\(extensionPattern)))'"              // Single-quoted paths
+        ]
+        
+        var detectedFiles: [(path: String, exists: Bool)] = []
+        
+        for pattern in filePathPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+                let matches = regex.matches(in: command, options: [], range: NSRange(command.startIndex..., in: command))
+                for match in matches {
+                    if let range = Range(match.range(at: 1), in: command) {
+                        let filePath = String(command[range])
+                        let absolutePath = makeAbsolute(filePath)
+                        let exists = FileManager.default.fileExists(atPath: absolutePath)
+                        detectedFiles.append((path: absolutePath, exists: exists))
+                    }
+                }
+            }
+        }
+        
+        // Now determine what happened based on file existence and command context
+        for (filePath, exists) in detectedFiles {
+            // File exists - likely created or modified
+            if exists {
+                // Check if command suggests creation (not just reading/checking)
+                let creationKeywords = ["touch", ">", ">>", "create", "new", "add", "generate", "echo", "cat", "cp", "install"]
+                for keyword in creationKeywords {
+                    if command.contains(keyword) {
+                        return FileOperation(action: .add, filePath: filePath)
+                    }
+                }
+            } else {
+                // File doesn't exist - might have been removed
+                let removalKeywords = ["rm", "remove", "delete", "unlink", "clean"]
+                for keyword in removalKeywords {
+                    if command.contains(keyword) {
+                        return FileOperation(action: .remove, filePath: filePath)
+                    }
+                }
+            }
+        }
+        
+        // Check for move operations (two files mentioned, one exists, one doesn't)
+        if detectedFiles.count == 2 {
+            let first = detectedFiles[0]
+            let second = detectedFiles[1]
+            if !first.exists && second.exists && command.contains("mv") {
+                return FileOperation(action: .move, filePath: second.path)
+            }
         }
         
         return nil
@@ -172,20 +235,37 @@ class FileOperationExtractor {
     }
     
     private func extractCreateOperation(from command: String) -> FileOperation? {
-        guard command.contains("touch ") || command.contains(" > ") else { return nil }
-        
         let extensionPattern = Configuration.FileType.allExtensions.joined(separator: "|")
+        
+        // Look for any file path with our supported extensions in the command
+        // This catches touch, echo >, custom commands, aliases, etc.
         let patterns = [
+            // Standard touch command
             "touch\\s+([^\\s]+\\.(?:\(extensionPattern)))",
             "touch\\s+\"([^\"]+\\.(?:\(extensionPattern)))\"",
+            "touch\\s+'([^']+\\.(?:\(extensionPattern)))'",
+            
+            // Output redirection
             ">\\s*([^\\s]+\\.(?:\(extensionPattern)))",
-            ">\\s*\"([^\"]+\\.(?:\(extensionPattern)))\""
+            ">\\s*\"([^\"]+\\.(?:\(extensionPattern)))\"",
+            ">\\s*'([^']+\\.(?:\(extensionPattern)))'",
+            
+            // Any file path in the command (catches custom commands/aliases)
+            "\\s([^\\s]+\\.(?:\(extensionPattern)))(?:\\s|$)",
+            "\"([^\"]+\\.(?:\(extensionPattern)))\"",
+            "'([^']+\\.(?:\(extensionPattern)))'"
         ]
         
         for pattern in patterns {
             if let filePath = matchPattern(pattern, in: command, captureGroup: 1) {
                 let absolutePath = makeAbsolute(filePath)
-                return FileOperation(action: .add, filePath: absolutePath)
+                // Only return if this looks like a file creation (not just mentioning a file)
+                // Check for creation indicators or if file is new
+                if command.contains("touch") || command.contains(">") || 
+                   command.contains("create") || command.contains("new") ||
+                   command.contains("add") || command.contains("generate") {
+                    return FileOperation(action: .add, filePath: absolutePath)
+                }
             }
         }
         
@@ -405,6 +485,78 @@ class DebugLogger {
     }
 }
 
+// MARK: - Helper Functions
+
+func isPartOfSwiftPackage(filePath: String) -> Bool {
+    var currentDir = URL(fileURLWithPath: filePath).deletingLastPathComponent()
+    let fileManager = FileManager.default
+    
+    // Check up to 10 directories up
+    for _ in 0..<10 {
+        let packageSwiftPath = currentDir.appendingPathComponent("Package.swift").path
+        if fileManager.fileExists(atPath: packageSwiftPath) {
+            return true
+        }
+        
+        // Stop at root
+        let parent = currentDir.deletingLastPathComponent()
+        if parent.path == currentDir.path {
+            break
+        }
+        currentDir = parent
+    }
+    
+    return false
+}
+
+func isInFolderReference(filePath: String, projectPath: String) -> Bool {
+    // Check if the file is in a folder that's added as a folder reference (blue folder in Xcode)
+    // These folders are synced automatically by Xcode
+    
+    // Read the pbxproj file to check for folder references
+    let pbxprojPath = "\(projectPath)/project.pbxproj"
+    guard let pbxprojContent = try? String(contentsOfFile: pbxprojPath, encoding: .utf8) else {
+        return false
+    }
+    
+    // Check if any parent directory of the file is a folder reference
+    let fileURL = URL(fileURLWithPath: filePath)
+    var currentDir = fileURL.deletingLastPathComponent()
+    let projectURL = URL(fileURLWithPath: projectPath).deletingLastPathComponent()
+    
+    while currentDir.path != projectURL.path && currentDir.path != "/" {
+        let dirName = currentDir.lastPathComponent
+        
+        // Check if this specific directory is a folder reference
+        // Look for pattern: path = "dirName"; ... lastKnownFileType = folder
+        // This ensures we're matching the actual folder reference, not just any folder name
+        let pattern = "path = \"\(dirName)\".*?lastKnownFileType = folder"
+        if let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]),
+           regex.firstMatch(in: pbxprojContent, options: [], range: NSRange(pbxprojContent.startIndex..., in: pbxprojContent)) != nil {
+            return true
+        }
+        
+        currentDir = currentDir.deletingLastPathComponent()
+    }
+    
+    return false
+}
+
+func isFileAlreadyInProject(filePath: String, projectPath: String) -> Bool {
+    // Check if the file is already referenced in the project
+    let pbxprojPath = "\(projectPath)/project.pbxproj"
+    guard let pbxprojContent = try? String(contentsOfFile: pbxprojPath, encoding: .utf8) else {
+        return false
+    }
+    
+    let fileName = URL(fileURLWithPath: filePath).lastPathComponent
+    
+    // Check if file is already in the project
+    // Look for the file name in PBXFileReference section
+    return pbxprojContent.contains("/* \(fileName) */") || 
+           pbxprojContent.contains("\"\(fileName)\"")
+}
+
 // MARK: - Main Application
 
 class XcodeSyncApp {
@@ -432,6 +584,12 @@ class XcodeSyncApp {
         
         print("Detected \(operation.action.rawValue) operation for \(operation.filePath)")
         
+        // Check if file is part of a Swift Package
+        if isPartOfSwiftPackage(filePath: operation.filePath) {
+            print("File is part of a Swift Package - skipping Xcode project sync")
+            exit(0)
+        }
+        
         // Find nearest Xcode project
         guard let projectInfo = ProjectFinder.findNearestProject(from: operation.filePath) else {
             print("No Xcode project found")
@@ -448,6 +606,18 @@ class XcodeSyncApp {
         // Check if auto-sync is disabled
         if ProjectSettingsManager.isAutoSyncDisabled(projectDir: projectDir) {
             print("Xcode sync is disabled for this project")
+            exit(0)
+        }
+        
+        // Check if file is in a folder reference (Xcode auto-syncs these)
+        if isInFolderReference(filePath: operation.filePath, projectPath: projectInfo.projectPath) {
+            print("File is in a folder reference - Xcode will sync automatically")
+            exit(0)
+        }
+        
+        // For add operations, check if file is already in project
+        if operation.action == .add && isFileAlreadyInProject(filePath: operation.filePath, projectPath: projectInfo.projectPath) {
+            print("File is already in the project - skipping")
             exit(0)
         }
         

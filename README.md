@@ -24,7 +24,6 @@ This MCP server enables AI assistants and development tools to interact with App
 - **Build Maintenance**: Clean build folders, DerivedData, and test results without leaving Claude
 - **Xcode Sync Hook**: Automatically sync file operations (add/remove/move) with Xcode projects
 - **Dependency Management**: Manage Swift Package Manager dependencies
-- **SwiftUI Previews**: Generate previews of SwiftUI views by rendering them in simulators
 
 ### Production Ready
 - **Input Validation**: All tool arguments are validated using Zod schemas for type safety and clear error messages
@@ -65,7 +64,7 @@ npx mcp-xcode-server setup
 
 If you prefer manual setup, add to your Claude configuration:
 
-#### Global (~/.claude/claude_desktop_config.json)
+#### Global (~/.claude.json)
 
 ```json
 {
@@ -223,13 +222,6 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
   - `packageURL`: URL of the Swift package (for add action)
   - `packageName`: Name of the package (for remove action)
   - `version`: Version requirement (optional, e.g., "1.0.0", "from: 1.0.0")
-
-- **`swiftui_preview`**: Generate a preview of a SwiftUI view
-  - `swiftFilePath`: Path to the SwiftUI view file
-  - `previewName`: Name of the preview to render (optional, if multiple)
-  - `deviceName`: Device to preview on (optional, default: "iPhone 15 Pro")
-  - `colorScheme`: "light" or "dark" (optional)
-  - Returns: Screenshot of the rendered SwiftUI view as base64 image data
 
 #### Archive & Export
 

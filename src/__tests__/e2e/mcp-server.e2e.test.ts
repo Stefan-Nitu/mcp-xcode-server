@@ -188,10 +188,9 @@ import Testing
       
       // Advanced project management tools
       expect(toolNames).toContain('manage_dependencies');
-      expect(toolNames).toContain('swiftui_preview');
       
-      // Should have exactly 20 tools
-      expect(response.tools.length).toBe(20);
+      // Should have exactly 19 tools (removed swiftui_preview)
+      expect(response.tools.length).toBe(19);
     });
   });
   

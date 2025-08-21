@@ -12,7 +12,8 @@
       "Bash(npx jest:*)",
       "Bash(timeout 60 npx jest:*)",
       "Bash(grep:*)",
-      "WebFetch(domain:docs.anthropic.com)"
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []

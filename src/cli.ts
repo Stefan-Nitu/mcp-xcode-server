@@ -14,7 +14,13 @@ const PACKAGE_ROOT = resolve(__dirname, '..');
 
 interface ClaudeConfig {
   mcpServers?: Record<string, any>;
+  [key: string]: any;
+}
+
+interface ClaudeSettings {
   hooks?: any;
+  model?: string;
+  [key: string]: any;
 }
 
 class MCPXcodeSetup {
@@ -26,45 +32,64 @@ class MCPXcodeSetup {
   async setup() {
     console.log('🔧 MCP Xcode Setup\n');
     
-    // 1. Determine installation scope
-    const scope = await this.askScope();
-    
-    // 2. Set up MCP server
-    await this.setupMCPServer(scope);
-    
-    // 3. Ask about hooks
-    if (scope === 'global') {
-      console.log('\n📝 Xcode Sync Hook Information:');
-      console.log('The global hook will automatically sync file operations with Xcode projects.');
-      console.log('It syncs when:');
-      console.log('  - Files are created, modified, deleted, or moved');
-      console.log('  - An .xcodeproj file exists in the parent directories');
-      console.log('  - The project hasn\'t opted out (via .no-xcode-sync or .no-xcode-autoadd file)');
+    // 1. Ask about MCP server
+    console.log('📡 MCP Server Configuration');
+    const setupMCP = await this.askYesNo('Would you like to install the MCP Xcode server?');
+    let mcpScope: 'global' | 'project' | null = null;
+    if (setupMCP) {
+      mcpScope = await this.askMCPScope();
+      await this.setupMCPServer(mcpScope);
     }
     
-    const setupHooks = await this.askYesNo('Would you like to enable Xcode file sync? (recommended)');
+    // 2. Ask about hooks (independent of MCP choice)
+    console.log('\n📝 Xcode Sync Hook Configuration');
+    console.log('The hook will automatically sync file operations with Xcode projects.');
+    console.log('It syncs when:');
+    console.log('  - Files are created, modified, deleted, or moved');
+    console.log('  - An .xcodeproj file exists in the parent directories');
+    console.log('  - The project hasn\'t opted out (via .no-xcode-sync or .no-xcode-autoadd file)');
+    
+    const setupHooks = await this.askYesNo('\nWould you like to enable Xcode file sync?');
+    let hookScope: 'global' | 'project' | null = null;
     if (setupHooks) {
-      await this.setupHooks(scope);
+      hookScope = await this.askHookScope();
+      await this.setupHooks(hookScope);
     }
     
-    // 4. Build helper tools
-    console.log('\n📦 Building helper tools...');
-    await this.buildHelperTools();
+    // 3. Build helper tools if anything was installed
+    if (setupMCP || setupHooks) {
+      console.log('\n📦 Building helper tools...');
+      await this.buildHelperTools();
+    }
     
+    // 4. Show completion message
     console.log('\n✅ Setup complete!');
     console.log('\nNext steps:');
     console.log('1. Restart Claude Code for changes to take effect');
-    if (scope === 'project') {
+    
+    const hasProjectConfig = (mcpScope === 'project' || hookScope === 'project');
+    if (hasProjectConfig) {
       console.log('2. Commit .claude/settings.json to share with your team');
     }
     
     this.rl.close();
   }
 
-  private async askScope(): Promise<'global' | 'project'> {
+  private async askMCPScope(): Promise<'global' | 'project'> {
     const answer = await this.rl.question(
-      'Install MCP server globally or for this project only?\n' +
-      '1) Global (~/Library/Application Support/Claude/claude_desktop_config.json)\n' +
+      'Where should the MCP server be installed?\n' +
+      '1) Global (~/.claude.json)\n' +
+      '2) Project (.claude/settings.json)\n' +
+      'Choice (1 or 2): '
+    );
+    
+    return answer === '2' ? 'project' : 'global';
+  }
+
+  private async askHookScope(): Promise<'global' | 'project'> {
+    const answer = await this.rl.question(
+      'Where should the Xcode sync hook be installed?\n' +
+      '1) Global (~/.claude/settings.json)\n' +
       '2) Project (.claude/settings.json)\n' +
       'Choice (1 or 2): '
     );
@@ -77,24 +102,27 @@ class MCPXcodeSetup {
     return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
   }
 
-  private getConfigPath(scope: 'global' | 'project'): string {
+  private getMCPConfigPath(scope: 'global' | 'project'): string {
     if (scope === 'global') {
-      // Platform-specific paths
-      if (process.platform === 'darwin') {
-        return join(homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
-      } else if (process.platform === 'win32') {
-        return join(process.env.APPDATA || homedir(), 'Claude', 'claude_desktop_config.json');
-      } else {
-        // Linux fallback
-        return join(homedir(), '.claude', 'claude_desktop_config.json');
-      }
+      // MCP servers go in ~/.claude.json for global
+      return join(homedir(), '.claude.json');
     } else {
-      // Project scope
+      // Project scope - everything in .claude/settings.json
       return join(process.cwd(), '.claude', 'settings.json');
     }
   }
 
-  private loadConfig(path: string): ClaudeConfig {
+  private getHooksConfigPath(scope: 'global' | 'project'): string {
+    if (scope === 'global') {
+      // Hooks go in ~/.claude/settings.json for global
+      return join(homedir(), '.claude', 'settings.json');
+    } else {
+      // Project scope - everything in .claude/settings.json
+      return join(process.cwd(), '.claude', 'settings.json');
+    }
+  }
+
+  private loadConfig(path: string): any {
     if (existsSync(path)) {
       try {
         return JSON.parse(readFileSync(path, 'utf8'));
@@ -106,8 +134,8 @@ class MCPXcodeSetup {
     return {};
   }
 
-  private saveConfig(path: string, config: ClaudeConfig) {
-    const dir = join(path, '..');
+  private saveConfig(path: string, config: any) {
+    const dir = dirname(path);
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
@@ -115,7 +143,7 @@ class MCPXcodeSetup {
   }
 
   private async setupMCPServer(scope: 'global' | 'project') {
-    const configPath = this.getConfigPath(scope);
+    const configPath = this.getMCPConfigPath(scope);
     const config = this.loadConfig(configPath);
     
     // Determine the command based on installation type
@@ -127,7 +155,7 @@ class MCPXcodeSetup {
     const serverConfig = {
       type: 'stdio',
       command: isGlobalInstall ? 'mcp-xcode-server' : 'node',
-      args: isGlobalInstall ? [] : [serverPath],
+      args: isGlobalInstall ? ['serve'] : [serverPath],
       env: {}
     };
     
@@ -151,17 +179,10 @@ class MCPXcodeSetup {
   }
 
   private async setupHooks(scope: 'global' | 'project') {
-    const configPath = this.getConfigPath(scope);
-    const config = this.loadConfig(configPath);
+    const configPath = this.getHooksConfigPath(scope);
+    const config = this.loadConfig(configPath) as ClaudeSettings;
     
     const hookScriptPath = resolve(PACKAGE_ROOT, 'scripts', 'xcode-sync.swift');
-    
-    // Ensure script is executable
-    try {
-      execSync(`chmod +x "${hookScriptPath}"`, { stdio: 'ignore' });
-    } catch (error) {
-      // Ignore chmod errors on Windows
-    }
     
     // Set up hooks using the correct Claude settings format
     if (!config.hooks) {
@@ -175,7 +196,7 @@ class MCPXcodeSetup {
     // Check if hook already exists
     const existingHookIndex = config.hooks.PostToolUse.findIndex((hook: any) => 
       hook.matcher === 'Write|Edit|MultiEdit|Bash' && 
-      hook.hooks?.[0]?.command?.includes('xcode-sync.swift')
+      (hook.hooks?.[0]?.command?.includes('xcode-sync.swift') || hook.hooks?.[0]?.command?.includes('xcode-sync.js'))
     );
     
     if (existingHookIndex >= 0) {
@@ -235,8 +256,21 @@ class MCPXcodeSetup {
     
     // Check if already built
     if (existsSync(modifierBinary)) {
-      console.log('    XcodeProjectModifier already built');
-      return;
+      // Check if it's the real modifier or just a mock
+      try {
+        const output = execSync(`"${modifierBinary}" --help 2>&1 || true`, { encoding: 'utf8' });
+        if (output.includes('Mock XcodeProjectModifier')) {
+          console.log('    Detected mock modifier, rebuilding with real implementation...');
+          // Remove the mock
+          execSync(`rm -rf "${modifierDir}"`, { stdio: 'ignore' });
+        } else {
+          console.log('    XcodeProjectModifier already built');
+          return;
+        }
+      } catch {
+        // If --help fails, rebuild
+        execSync(`rm -rf "${modifierDir}"`, { stdio: 'ignore' });
+      }
     }
     
     console.log('    Creating XcodeProjectModifier...');

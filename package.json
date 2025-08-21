@@ -15,7 +15,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:unit": "jest src/__tests__/unit/",
-    "test:integration": "jest src/__tests__/integration/"
+    "test:integration": "jest src/__tests__/integration/",
+    "postinstall": "cd XcodeProjectModifier && swift build -c release",
+    "build:modifier": "cd XcodeProjectModifier && swift build -c release"
   },
   "keywords": [
     "mcp",

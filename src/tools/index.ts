@@ -34,7 +34,6 @@ export { GetDeviceLogsTool } from './GetDeviceLogsTool.js';
 
 // Advanced project management tools
 export { ManageDependenciesTool } from './ManageDependenciesTool.js';
-export { SwiftUIPreviewTool } from './SwiftUIPreviewTool.js';
 
 // Export validators and adapters for use in other tools
 export * from './validators.js';

@@ -173,7 +173,10 @@ describe('SimulatorManager', () => {
 
   describe('bootSimulatorInstance', () => {
     test('should boot simulator successfully', async () => {
-      mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
+      // First call is for boot, second is for pgrep
+      mockExecAsync
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // boot succeeds
+        .mockResolvedValueOnce({ stdout: '12345', stderr: '' }); // pgrep finds Simulator running
 
       await simulatorManager.bootSimulatorInstance('test-device');
       
@@ -183,7 +186,11 @@ describe('SimulatorManager', () => {
     test('should ignore already booted error', async () => {
       const error: any = new Error('Unable to boot device in current state: Booted');
       error.message = 'Unable to boot device in current state: Booted';
-      mockExecAsync.mockRejectedValue(error);
+      
+      // First call fails with "already booted", second call is for pgrep, third is not needed (simulator is running)
+      mockExecAsync
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce({ stdout: '12345', stderr: '' }); // pgrep returns PID, meaning Simulator is running
 
       // Should not throw
       await expect(simulatorManager.bootSimulatorInstance('test-device')).resolves.toBeUndefined();

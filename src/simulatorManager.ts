@@ -104,6 +104,9 @@ export class SimulatorManager {
       // Already booted, that's fine
       logger.debug({ deviceId }, 'Simulator already in booted state')
     }
+    
+    // Open Simulator app with GUI after booting
+    await this.ensureSimulatorAppOpen();
   }
 
   /**
