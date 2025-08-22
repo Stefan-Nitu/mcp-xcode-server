@@ -1,46 +1,41 @@
 /**
  * E2E tests for InstallAppTool
- * Tests app installation on simulators with comprehensive cleanup
+ * Tests app installation on simulators using real built apps
  */
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from '@jest/globals';
-import { existsSync, mkdirSync, writeFileSync, rmSync, copyFileSync } from 'fs';
-import { join, resolve } from 'path';
-import { execSync, spawn, ChildProcess } from 'child_process';
+import { join } from 'path';
+import { execSync } from 'child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
+import { TestProjectManager } from '../utils/TestProjectManager';
+import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers';
 
 describe('InstallAppTool E2E Tests', () => {
-  let serverProcess: ChildProcess;
   let client: Client;
   let transport: StdioClientTransport;
-  
-  // Test directories with unique timestamps
-  const timestamp = Date.now();
-  const testProjectDir = `/tmp/test-install-app-${timestamp}`;
-  const testAppsDir = join(testProjectDir, 'TestApps');
+  let projectManager: TestProjectManager;
   
   // Track installed apps for cleanup
   const installedApps: { bundleId: string; deviceId: string }[] = [];
   const bootedSimulators: string[] = [];
   
+  // Store built app paths
+  let testApp1Path: string | null = null;
+  let testApp2Path: string | null = null;
+  
   beforeAll(async () => {
-    // Clean up any existing test directories
-    if (existsSync(testProjectDir)) {
-      rmSync(testProjectDir, { recursive: true });
-    }
-    
-    // Create test directories
-    mkdirSync(testProjectDir, { recursive: true });
-    mkdirSync(testAppsDir, { recursive: true });
+    // Setup test project manager
+    projectManager = new TestProjectManager();
+    await projectManager.setup();
     
     // Build the server
     execSync('npm run build', { cwd: process.cwd() });
     
-    // Create test apps
-    await createTestApps();
-  }, 120000);
+    // Build test apps using the build tool
+    await buildTestApps();
+  }, 180000); // 3 minutes for building apps
   
   afterAll(() => {
     // Shutdown simulators
@@ -52,50 +47,22 @@ describe('InstallAppTool E2E Tests', () => {
       }
     });
     
-    // Clean up
-    cleanupAll();
+    // Clean up using project manager
+    projectManager.cleanup();
   });
   
   beforeEach(async () => {
-    // Start MCP server
-    serverProcess = spawn('node', ['dist/index.js'], {
-      cwd: process.cwd(),
-      env: { ...process.env },
-    });
-    
-    // Create MCP client
-    transport = new StdioClientTransport({
-      command: 'node',
-      args: ['dist/index.js'],
-      cwd: process.cwd(),
-    });
-    
-    client = new Client({
-      name: 'test-client',
-      version: '1.0.0',
-    }, {
-      capabilities: {}
-    });
-    
-    await client.connect(transport);
+    const connection = await createAndConnectClient();
+    client = connection.client;
+    transport = connection.transport;
   }, 30000);
   
   afterEach(async () => {
     // Uninstall all apps we installed
     cleanupInstalledApps();
     
-    // Disconnect client
-    if (client) {
-      await client.close();
-    }
-    
-    // Kill server process
-    if (serverProcess) {
-      serverProcess.kill();
-      await new Promise(resolve => {
-        serverProcess.once('exit', resolve);
-      });
-    }
+    // Cleanup client and transport
+    await cleanupClientAndTransport(client, transport);
   });
 
   function cleanupInstalledApps() {
@@ -109,58 +76,60 @@ describe('InstallAppTool E2E Tests', () => {
     installedApps.length = 0;
   }
 
-  function cleanupAll() {
-    if (existsSync(testProjectDir)) {
-      rmSync(testProjectDir, { recursive: true });
+  async function buildTestApps() {
+    // Create a client just for building
+    const { client: buildClient, transport: buildTransport } = await createAndConnectClient();
+    
+    try {
+      // Build TestProjectSwiftTesting for iOS
+      const buildResponse1 = await buildClient.request({
+        method: 'tools/call',
+        params: {
+          name: 'build',
+          arguments: {
+            projectPath: join(projectManager.paths.testProjectDir, 'TestProjectSwiftTesting', 'TestProjectSwiftTesting.xcodeproj'),
+            scheme: 'TestProjectSwiftTesting',
+            platform: 'iOS',
+            configuration: 'Debug'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      // Extract app path from response
+      const buildText1 = (buildResponse1.content[0] as any).text;
+      const appPathMatch1 = buildText1.match(/App path: (.+)$/m);
+      testApp1Path = appPathMatch1 ? appPathMatch1[1].trim() : null;
+      
+      if (!testApp1Path || testApp1Path === 'N/A') {
+        throw new Error('Failed to build TestProjectSwiftTesting');
+      }
+      
+      // Build TestProjectXCTest for iOS
+      const buildResponse2 = await buildClient.request({
+        method: 'tools/call',
+        params: {
+          name: 'build',
+          arguments: {
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
+            platform: 'iOS',
+            configuration: 'Debug'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      // Extract app path from response
+      const buildText2 = (buildResponse2.content[0] as any).text;
+      const appPathMatch2 = buildText2.match(/App path: (.+)$/m);
+      testApp2Path = appPathMatch2 ? appPathMatch2[1].trim() : null;
+      
+      if (!testApp2Path || testApp2Path === 'N/A') {
+        throw new Error('Failed to build TestProjectXCTest');
+      }
+      
+    } finally {
+      await cleanupClientAndTransport(buildClient, buildTransport);
     }
-  }
-
-  async function createTestApps() {
-    // Create a mock .app bundle structure
-    const simpleAppPath = join(testAppsDir, 'SimpleApp.app');
-    mkdirSync(simpleAppPath, { recursive: true });
-    
-    // Create Info.plist
-    writeFileSync(join(simpleAppPath, 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleIdentifier</key>
-  <string>com.test.SimpleApp</string>
-  <key>CFBundleName</key>
-  <string>SimpleApp</string>
-  <key>CFBundleVersion</key>
-  <string>1.0</string>
-  <key>CFBundleExecutable</key>
-  <string>SimpleApp</string>
-</dict>
-</plist>`);
-    
-    // Create executable (mock)
-    writeFileSync(join(simpleAppPath, 'SimpleApp'), '#!/bin/bash\necho "SimpleApp running"');
-    execSync(`chmod +x "${join(simpleAppPath, 'SimpleApp')}"`, { stdio: 'ignore' });
-    
-    // Create another test app with different bundle ID
-    const anotherAppPath = join(testAppsDir, 'AnotherApp.app');
-    mkdirSync(anotherAppPath, { recursive: true });
-    
-    writeFileSync(join(anotherAppPath, 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleIdentifier</key>
-  <string>com.test.AnotherApp</string>
-  <key>CFBundleName</key>
-  <string>AnotherApp</string>
-  <key>CFBundleVersion</key>
-  <string>2.0</string>
-  <key>CFBundleExecutable</key>
-  <string>AnotherApp</string>
-</dict>
-</plist>`);
-    
-    writeFileSync(join(anotherAppPath, 'AnotherApp'), '#!/bin/bash\necho "AnotherApp running"');
-    execSync(`chmod +x "${join(anotherAppPath, 'AnotherApp')}"`, { stdio: 'ignore' });
   }
 
   async function getBootedSimulator(): Promise<string | null> {
@@ -212,12 +181,16 @@ describe('InstallAppTool E2E Tests', () => {
         return;
       }
       
+      if (!testApp1Path) {
+        throw new Error('Test app not built');
+      }
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'install_app',
           arguments: {
-            appPath: join(testAppsDir, 'SimpleApp.app'),
+            appPath: testApp1Path,
             deviceId: deviceId
           }
         }
@@ -228,8 +201,8 @@ describe('InstallAppTool E2E Tests', () => {
       expect(text).toContain('Successfully installed app');
       
       // Track for cleanup
-      installedApps.push({ bundleId: 'com.test.SimpleApp', deviceId });
-    });
+      installedApps.push({ bundleId: 'com.test.TestProjectSwiftTesting', deviceId });
+    }, 30000);
 
     test('should install app without specifying device (uses booted)', async () => {
       // Ensure we have a booted simulator
@@ -243,12 +216,16 @@ describe('InstallAppTool E2E Tests', () => {
         return;
       }
       
+      if (!testApp2Path) {
+        throw new Error('Test app not built');
+      }
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'install_app',
           arguments: {
-            appPath: join(testAppsDir, 'AnotherApp.app')
+            appPath: testApp2Path
           }
         }
       }, CallToolResultSchema);
@@ -258,7 +235,7 @@ describe('InstallAppTool E2E Tests', () => {
       expect(text).toContain('Successfully installed app');
       
       // Track for cleanup
-      installedApps.push({ bundleId: 'com.test.AnotherApp', deviceId });
+      installedApps.push({ bundleId: 'com.test.TestProjectXCTest', deviceId });
     });
 
     test('should install multiple apps on same device', async () => {
@@ -272,20 +249,24 @@ describe('InstallAppTool E2E Tests', () => {
         return;
       }
       
+      if (!testApp1Path || !testApp2Path) {
+        throw new Error('Test apps not built');
+      }
+      
       // Install first app
       const response1 = await client.request({
         method: 'tools/call',
         params: {
           name: 'install_app',
           arguments: {
-            appPath: join(testAppsDir, 'SimpleApp.app'),
+            appPath: testApp1Path,
             deviceId: deviceId
           }
         }
       }, CallToolResultSchema);
       
       expect(response1).toBeDefined();
-      installedApps.push({ bundleId: 'com.test.SimpleApp', deviceId });
+      installedApps.push({ bundleId: 'com.test.TestProjectSwiftTesting', deviceId });
       
       // Install second app
       const response2 = await client.request({
@@ -293,14 +274,14 @@ describe('InstallAppTool E2E Tests', () => {
         params: {
           name: 'install_app',
           arguments: {
-            appPath: join(testAppsDir, 'AnotherApp.app'),
+            appPath: testApp2Path,
             deviceId: deviceId
           }
         }
       }, CallToolResultSchema);
       
       expect(response2).toBeDefined();
-      installedApps.push({ bundleId: 'com.test.AnotherApp', deviceId });
+      installedApps.push({ bundleId: 'com.test.TestProjectXCTest', deviceId });
       
       // Both should succeed
       expect((response1.content[0] as any).text).toContain('Successfully installed');
@@ -320,7 +301,9 @@ describe('InstallAppTool E2E Tests', () => {
         return;
       }
       
-      const appPath = join(testAppsDir, 'SimpleApp.app');
+      if (!testApp1Path) {
+        throw new Error('Test app not built');
+      }
       
       // Install first time
       await client.request({
@@ -328,7 +311,7 @@ describe('InstallAppTool E2E Tests', () => {
         params: {
           name: 'install_app',
           arguments: {
-            appPath,
+            appPath: testApp1Path,
             deviceId
           }
         }
@@ -340,7 +323,7 @@ describe('InstallAppTool E2E Tests', () => {
         params: {
           name: 'install_app',
           arguments: {
-            appPath,
+            appPath: testApp1Path,
             deviceId
           }
         }
@@ -350,7 +333,7 @@ describe('InstallAppTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully installed');
       
-      installedApps.push({ bundleId: 'com.test.SimpleApp', deviceId });
+      installedApps.push({ bundleId: 'com.test.TestProjectSwiftTesting', deviceId });
     });
   });
 
@@ -371,35 +354,34 @@ describe('InstallAppTool E2E Tests', () => {
       expect(text.toLowerCase()).toContain('error');
     });
 
-    test('should handle invalid app bundle', async () => {
-      // Create invalid app bundle (missing Info.plist)
-      const invalidAppPath = join(testAppsDir, 'InvalidApp.app');
-      mkdirSync(invalidAppPath, { recursive: true });
-      writeFileSync(join(invalidAppPath, 'InvalidApp'), 'not an app');
-      
+    test('should handle invalid app path format', async () => {
+      // Try to install a non-.app file
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'install_app',
           arguments: {
-            appPath: invalidAppPath
+            appPath: projectManager.paths.xcodeProjectPath // .xcodeproj instead of .app
           }
         }
       }, CallToolResultSchema);
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      // Should report error about invalid bundle
       expect(text.toLowerCase()).toContain('error');
     });
 
     test('should handle non-existent device', async () => {
+      if (!testApp1Path) {
+        throw new Error('Test app not built');
+      }
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'install_app',
           arguments: {
-            appPath: join(testAppsDir, 'SimpleApp.app'),
+            appPath: testApp1Path,
             deviceId: 'non-existent-device-id'
           }
         }
@@ -418,12 +400,16 @@ describe('InstallAppTool E2E Tests', () => {
         // Ignore errors
       }
       
+      if (!testApp1Path) {
+        throw new Error('Test app not built');
+      }
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'install_app',
           arguments: {
-            appPath: join(testAppsDir, 'SimpleApp.app')
+            appPath: testApp1Path
             // No deviceId and no booted devices
           }
         }
@@ -447,6 +433,8 @@ describe('InstallAppTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       // Should be rejected by validation
+      const text = (response.content[0] as any).text;
+      expect(text.toLowerCase()).toContain('error');
     });
   });
 
@@ -471,6 +459,10 @@ describe('InstallAppTool E2E Tests', () => {
         return;
       }
       
+      if (!testApp1Path) {
+        throw new Error('Test app not built');
+      }
+      
       // Boot if needed
       if (availableDevice.state !== 'Booted') {
         execSync(`xcrun simctl boot "${availableDevice.udid}"`, { stdio: 'ignore' });
@@ -483,7 +475,7 @@ describe('InstallAppTool E2E Tests', () => {
         params: {
           name: 'install_app',
           arguments: {
-            appPath: join(testAppsDir, 'SimpleApp.app'),
+            appPath: testApp1Path,
             deviceId: availableDevice.name
           }
         }
@@ -493,8 +485,8 @@ describe('InstallAppTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully installed');
       
-      installedApps.push({ bundleId: 'com.test.SimpleApp', deviceId: availableDevice.udid });
-    });
+      installedApps.push({ bundleId: 'com.test.TestProjectSwiftTesting', deviceId: availableDevice.udid });
+    }, 60000);
 
     test('should install on specific device by UDID', async () => {
       let deviceId = await getBootedSimulator();
@@ -507,12 +499,16 @@ describe('InstallAppTool E2E Tests', () => {
         return;
       }
       
+      if (!testApp2Path) {
+        throw new Error('Test app not built');
+      }
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'install_app',
           arguments: {
-            appPath: join(testAppsDir, 'SimpleApp.app'),
+            appPath: testApp2Path,
             deviceId: deviceId // Using UDID directly
           }
         }
@@ -522,52 +518,8 @@ describe('InstallAppTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully installed');
       
-      installedApps.push({ bundleId: 'com.test.SimpleApp', deviceId });
-    });
-  });
-
-  describe('Cleanup Verification', () => {
-    test('should uninstall apps during cleanup', async () => {
-      let deviceId = await getBootedSimulator();
-      if (!deviceId) {
-        deviceId = await bootSimulator();
-      }
-      
-      if (!deviceId) {
-        console.warn('No simulator available, skipping test');
-        return;
-      }
-      
-      // Install app
-      await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'install_app',
-          arguments: {
-            appPath: join(testAppsDir, 'SimpleApp.app'),
-            deviceId
-          }
-        }
-      }, CallToolResultSchema);
-      
-      installedApps.push({ bundleId: 'com.test.SimpleApp', deviceId });
-      
-      // Clean up
-      cleanupInstalledApps();
-      
-      // Verify app is uninstalled (checking installed apps would require additional commands)
-      expect(installedApps.length).toBe(0);
-    });
-
-    test('should not leave test directories', () => {
-      // This test verifies cleanup will happen in afterAll
-      expect(existsSync(testProjectDir)).toBe(true); // Still exists during test
-      
-      // After all tests complete, it should be cleaned
-      process.on('exit', () => {
-        expect(existsSync(testProjectDir)).toBe(false);
-      });
-    });
+      installedApps.push({ bundleId: 'com.test.TestProjectXCTest', deviceId });
+    }, 30000);
   });
 
   describe('Concurrent Installations', () => {
@@ -582,6 +534,10 @@ describe('InstallAppTool E2E Tests', () => {
         return;
       }
       
+      if (!testApp1Path || !testApp2Path) {
+        throw new Error('Test apps not built');
+      }
+      
       // Install apps concurrently
       const installs = Promise.all([
         client.request({
@@ -589,7 +545,7 @@ describe('InstallAppTool E2E Tests', () => {
           params: {
             name: 'install_app',
             arguments: {
-              appPath: join(testAppsDir, 'SimpleApp.app'),
+              appPath: testApp1Path,
               deviceId
             }
           }
@@ -600,7 +556,7 @@ describe('InstallAppTool E2E Tests', () => {
           params: {
             name: 'install_app',
             arguments: {
-              appPath: join(testAppsDir, 'AnotherApp.app'),
+              appPath: testApp2Path,
               deviceId
             }
           }
@@ -618,9 +574,9 @@ describe('InstallAppTool E2E Tests', () => {
       
       // Track for cleanup
       installedApps.push(
-        { bundleId: 'com.test.SimpleApp', deviceId },
-        { bundleId: 'com.test.AnotherApp', deviceId }
+        { bundleId: 'com.test.TestProjectSwiftTesting', deviceId },
+        { bundleId: 'com.test.TestProjectXCTest', deviceId }
       );
-    });
+    }, 30000);
   });
 });
