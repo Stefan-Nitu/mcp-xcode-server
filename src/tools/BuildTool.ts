@@ -61,7 +61,7 @@ export class BuildTool implements IBuildTool {
           },
           deviceId: {
             type: 'string',
-            description: 'Device UDID or name (for simulator platforms)'
+            description: 'Device UDID or name (optional - will use first available device if not specified)'
           },
           configuration: {
             type: 'string',

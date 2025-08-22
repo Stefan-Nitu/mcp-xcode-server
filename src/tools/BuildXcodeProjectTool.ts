@@ -20,49 +20,7 @@ export const buildXcodeProjectSchema = z.object({
 
 export type BuildXcodeProjectArgs = z.infer<typeof buildXcodeProjectSchema>;
 
-export interface IBuildXcodeProjectTool {
-  execute(args: any): Promise<any>;
-  getToolDefinition(): any;
-}
-
-export class BuildXcodeProjectTool implements IBuildXcodeProjectTool {
-
-  getToolDefinition() {
-    return {
-      name: 'build_xcode_project',
-      description: 'Build an Xcode project or workspace',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          projectPath: {
-            type: 'string',
-            description: 'Path to the Xcode project (.xcodeproj) or workspace (.xcworkspace)'
-          },
-          scheme: {
-            type: 'string',
-            description: 'Xcode scheme to build'
-          },
-          platform: {
-            type: 'string',
-            description: 'Target platform (iOS, macOS, tvOS, watchOS, visionOS)',
-            default: 'iOS',
-            enum: ['iOS', 'macOS', 'tvOS', 'watchOS', 'visionOS']
-          },
-          deviceId: {
-            type: 'string',
-            description: 'Device UDID or name (for simulator platforms)'
-          },
-          configuration: {
-            type: 'string',
-            description: 'Build configuration (Debug/Release)',
-            default: 'Debug',
-            enum: ['Debug', 'Release']
-          }
-        },
-        required: ['projectPath']
-      }
-    };
-  }
+export class BuildXcodeProjectTool {
 
   async execute(args: any) {
     const validated = buildXcodeProjectSchema.parse(args);
@@ -108,7 +66,7 @@ export class BuildXcodeProjectTool implements IBuildXcodeProjectTool {
       
       logger.debug({ command }, 'Build command');
       
-      const { stdout } = await execAsync(command, { 
+      await execAsync(command, { 
         maxBuffer: 10 * 1024 * 1024 // 10MB buffer
       });
       

@@ -164,7 +164,7 @@ describe('Other Platform Build Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.swiftPackageDir,
+            projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
             scheme: testProjectManager.schemes.swiftPackage,
             platform: 'watchOS'
           }
@@ -221,7 +221,7 @@ describe('Other Platform Build Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.swiftPackageDir,
+            projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
             scheme: testProjectManager.schemes.swiftPackage,
             platform: 'visionOS',
             configuration: 'Debug'
