@@ -233,7 +233,7 @@ describe('iOS Build Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.swiftPackageDir,
+            projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
             scheme: testProjectManager.schemes.swiftPackage,
             platform: 'iOS',
             configuration: 'Release'
@@ -252,7 +252,7 @@ describe('iOS Build Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.swiftPackageDir,
+            projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
             scheme: testProjectManager.schemes.swiftPackage,
             platform: 'iOS',
             deviceId: 'iPhone 15',
@@ -320,7 +320,7 @@ describe('iOS Build Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toBeDefined();
       // Should report device not found
-    });
+    }, 30000);
   });
 
   describe('Build Output Validation', () => {

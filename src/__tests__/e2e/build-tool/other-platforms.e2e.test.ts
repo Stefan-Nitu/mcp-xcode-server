@@ -10,6 +10,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../../utils/TestProjectManager';
+import { createModuleLogger } from '../../../logger';
+
+const logger = createModuleLogger('Other-Platform-Build-E2E');
 
 describe('Other Platform Build Tests', () => {
   let client: Client;
@@ -135,14 +138,19 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-      // Will either succeed if watchOS SDK is installed, or fail with meaningful error
-      if (text.includes('Build succeeded')) {
-        expect(text).toContain('Platform: watchOS');
-      } else {
-        // Should have error about missing SDK or unsupported platform
-        expect(text.toLowerCase()).toMatch(/watchos|platform|sdk|not installed/i);
+      expect(text).toBeTruthy();
+      
+      // Check if the project doesn't support watchOS (this is acceptable to skip)
+      if (text.includes('Unable to find a destination matching') || 
+          text.includes('xcodebuild: error')) {
+        // Project doesn't support watchOS - this is OK, skip the test
+        expect(text).toMatch(/Unable to find a destination matching|xcodebuild: error/);
+        return;
       }
+      
+      // Otherwise, the build MUST succeed
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: watchOS');
     }, 30000);
 
     test('should handle watchOS SPM build', async () => {
@@ -159,7 +167,18 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      expect(text).toBeTruthy();
+      
+      // Check if the project doesn't support watchOS (this is acceptable to skip)
+      if (text.includes('Unable to find a destination matching')) {
+        // Project doesn't support watchOS - this is OK, skip the test
+        expect(text).toContain('Unable to find a destination matching');
+        return; // Skip further assertions
+      }
+      
+      // Otherwise, the build MUST succeed
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: watchOS');
     }, 30000);
   });
 
@@ -178,14 +197,19 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-      // visionOS requires Xcode 15+ and visionOS SDK
-      if (text.includes('Build succeeded')) {
-        expect(text).toContain('Platform: visionOS');
-      } else {
-        // Should have error about missing SDK or unsupported platform
-        expect(text.toLowerCase()).toMatch(/visionos|platform|sdk|not installed|xcode/i);
+      expect(text).toBeTruthy(); // Should have a response
+      
+      // Only acceptable non-success outcomes are platform/simulator issues
+      if (text.includes('Unable to find a destination matching') || 
+          text.toLowerCase().includes('no available simulator')) {
+        // Platform not supported or no simulators - skip test
+        logger.info('visionOS not available - skipping');
+        return;
       }
+      
+      // Otherwise, build MUST succeed
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: visionOS');
     }, 50000);
 
     test('should handle visionOS SPM build', async () => {

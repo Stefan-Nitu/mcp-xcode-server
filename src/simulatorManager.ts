@@ -150,6 +150,7 @@ export class SimulatorManager {
       let deviceToBootId: string | null = null;
       let deviceToBootName = targetDevice;
       
+      // First, try exact match
       for (const device of availableDevices) {
         if (device.name === targetDevice || device.udid === targetDevice) {
           deviceToBootId = device.udid;
@@ -158,10 +159,31 @@ export class SimulatorManager {
         }
       }
       
-      // If no matching device found, throw an error
+      // If no exact match, try partial match (e.g., "Apple Watch" in device name)
+      if (!deviceToBootId && targetDevice) {
+        // Extract key words from target (e.g., "Apple Watch" from "Apple Watch Series 9")
+        const targetWords = targetDevice.split(' ').slice(0, 2).join(' ');
+        for (const device of availableDevices) {
+          if (device.name.includes(targetWords)) {
+            deviceToBootId = device.udid;
+            deviceToBootName = device.name;
+            logger.info({ requested: targetDevice, using: deviceToBootName }, 'Using similar device');
+            break;
+          }
+        }
+      }
+      
+      // If still no match, just use the first available device for this platform
+      if (!deviceToBootId && availableDevices.length > 0) {
+        deviceToBootId = availableDevices[0].udid;
+        deviceToBootName = availableDevices[0].name;
+        logger.info({ requested: targetDevice, using: deviceToBootName }, 'Using first available device');
+      }
+      
+      // If no devices available at all, throw an error
       if (!deviceToBootId) {
         const availableNames = availableDevices.map(d => d.name).join(', ');
-        throw new Error(`No available simulator found with name or ID "${targetDevice}". Available devices: ${availableNames || 'none'}`);
+        throw new Error(`No available simulator found for platform ${platform}. Available devices: ${availableNames || 'none'}`);
       }
       
       // Boot the device

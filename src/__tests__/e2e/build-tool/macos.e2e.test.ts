@@ -108,7 +108,7 @@ describe('macOS Build Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.swiftPackageDir,
+            projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
             platform: 'macOS',
             configuration: 'Release'
           }
@@ -127,7 +127,7 @@ describe('macOS Build Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.swiftPackageDir,
+            projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
             scheme: 'TestSPM',
             platform: 'macOS'
           }
@@ -194,7 +194,7 @@ describe('macOS Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('does not exist');
+      expect(text.toLowerCase()).toContain('no package.swift found');
     });
 
     test('should handle build failures with proper output', async () => {

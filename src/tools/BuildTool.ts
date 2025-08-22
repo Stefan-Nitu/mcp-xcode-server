@@ -47,11 +47,11 @@ export class BuildTool implements IBuildTool {
         properties: {
           projectPath: {
             type: 'string',
-            description: 'Path to the Xcode project or workspace'
+            description: 'Path to .xcodeproj/.xcworkspace file or Package.swift file'
           },
           scheme: {
             type: 'string',
-            description: 'Xcode scheme to build'
+            description: 'Xcode scheme to build (required for .xcodeproj/.xcworkspace, optional for Package.swift)'
           },
           platform: {
             type: 'string',
@@ -81,9 +81,8 @@ export class BuildTool implements IBuildTool {
     logger.info({ projectPath, args }, 'Determining project type');
     
     // Determine which tool to use based on project path
-    if (projectPath.endsWith('Package.swift') || projectPath.endsWith('/Package.swift')) {
+    if (projectPath.endsWith('Package.swift')) {
       logger.info('Detected SPM package, delegating to BuildSPMPackageTool');
-      // Pass the validated args to maintain consistency
       return this.spmPackageTool.execute(validated);
     } else if (projectPath.endsWith('.xcodeproj') || projectPath.endsWith('.xcworkspace')) {
       logger.info('Detected Xcode project/workspace, delegating to BuildXcodeProjectTool');

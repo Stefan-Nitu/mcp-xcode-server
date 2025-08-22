@@ -16,6 +16,7 @@
     "test:coverage": "jest --coverage",
     "test:unit": "jest src/__tests__/unit/",
     "test:integration": "jest src/__tests__/integration/",
+    "test:e2e": "jest src/__tests__/e2e/ --runInBand",
     "postinstall": "cd XcodeProjectModifier && swift build -c release",
     "build:modifier": "cd XcodeProjectModifier && swift build -c release"
   },

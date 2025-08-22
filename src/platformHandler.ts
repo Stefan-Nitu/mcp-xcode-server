@@ -32,9 +32,9 @@ export class PlatformHandler {
     [Platform.watchOS, {
       platform: Platform.watchOS,
       needsSimulator: true,
-      defaultDevice: 'Apple Watch Series 9 (45mm)',
+      defaultDevice: 'Apple Watch Series 10 (46mm)',
       destinationString: (deviceName?: string) => 
-        `platform=watchOS Simulator,name=${deviceName || 'Apple Watch Series 9 (45mm)'}`
+        `platform=watchOS Simulator,name=${deviceName || 'Apple Watch Series 10 (46mm)'}`
     }],
     
     [Platform.visionOS, {

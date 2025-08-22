@@ -137,15 +137,24 @@ App path: ${appPath || 'N/A'}`
     } catch (error: any) {
       logger.error({ error, projectPath, scheme, platform }, 'Build failed');
       
+      // Combine stdout and stderr to get full output
+      const stdout = error.stdout || '';
+      const stderr = error.stderr || '';
       const errorMessage = error.message || 'Unknown build error';
-      const buildOutput = error.stdout || error.stderr || '';
       
+      // Prefer stderr if it has the actual error details, otherwise use stdout
       let responseText: string;
-      if (buildOutput && buildOutput.includes('xcodebuild')) {
-        // Return the actual build output - it has all the context developers need
-        responseText = buildOutput;
+      if (stderr && stderr.includes('xcodebuild: error')) {
+        // stderr has the actual error - use it
+        responseText = stderr;
+      } else if (stdout && stdout.includes('xcodebuild')) {
+        // stdout has build output
+        responseText = stdout;
+      } else if (stderr) {
+        // Use any stderr we have
+        responseText = stderr;
       } else {
-        // Fallback to just the error message if no build output available
+        // Fallback to error message
         responseText = `Build failed: ${errorMessage}`;
       }
       
