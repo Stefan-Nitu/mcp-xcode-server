@@ -8,9 +8,9 @@ import path from 'path';
 import { SimulatorManager } from '../../simulatorManager.js';
 import { PlatformHandler } from '../../platformHandler.js';
 
-const logger = createModuleLogger('BuildSPMPackageXcodebuildTool');
+const logger = createModuleLogger('SPMXcodeProjectBuilder');
 
-export const buildSPMPackageXcodebuildSchema = z.object({
+export const buildSPMXcodeProjectSchema = z.object({
   projectPath: safePathSchema,
   scheme: z.string().optional(),
   platform: platformSchema.optional().default(Platform.iOS),
@@ -18,15 +18,11 @@ export const buildSPMPackageXcodebuildSchema = z.object({
   configuration: configurationSchema
 });
 
-export type BuildSPMPackageXcodebuildArgs = z.infer<typeof buildSPMPackageXcodebuildSchema>;
+export type BuildSPMXcodeProjectArgs = z.infer<typeof buildSPMXcodeProjectSchema>;
 
-export interface IBuildSPMPackageXcodebuildTool {
-  execute(args: any): Promise<any>;
-}
-
-export class BuildSPMPackageXcodebuildTool implements IBuildSPMPackageXcodebuildTool {
+export class SPMXcodeProjectBuilder {
   async execute(args: any) {
-    const validated = buildSPMPackageXcodebuildSchema.parse(args);
+    const validated = buildSPMXcodeProjectSchema.parse(args);
     const { projectPath, scheme, platform, deviceId, configuration } = validated;
     
     logger.info({ projectPath, scheme, platform, configuration }, 'Building SPM package with xcodebuild');
@@ -74,7 +70,7 @@ export class BuildSPMPackageXcodebuildTool implements IBuildSPMPackageXcodebuild
       
       logger.debug({ command, cwd: packageDir }, 'Build command');
       
-      const { stdout } = await execAsync(command, { 
+      await execAsync(command, { 
         cwd: packageDir,
         maxBuffer: 10 * 1024 * 1024 // 10MB buffer
       });

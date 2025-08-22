@@ -2,10 +2,10 @@ import { z } from 'zod';
 import { Platform } from '../../types.js';
 import { createModuleLogger } from '../../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from '../validators.js';
-import { BuildXcodeProjectTool } from './BuildXcodeProjectTool.js';
-import { BuildSPMPackageTool } from './BuildSPMPackageTool.js';
+import { XcodeProjectBuilder } from './XcodeProjectBuilder.js';
+import { SPMPackageBuilder } from './SPMPackageBuilder.js';
 
-const logger = createModuleLogger('BuildProjectTool');
+const logger = createModuleLogger('BuildTool');
 
 export const buildSchema = z.object({
   projectPath: safePathSchema,
@@ -27,15 +27,15 @@ export interface IBuildTool {
  * Facade tool that delegates to appropriate build tool based on project type
  */
 export class BuildTool implements IBuildTool {
-  private xcodeProjectTool: BuildXcodeProjectTool;
-  private spmPackageTool: BuildSPMPackageTool;
+  private xcodeProjectBuilder: XcodeProjectBuilder;
+  private spmPackageBuilder: SPMPackageBuilder;
   
   constructor(
-    xcodeProjectTool?: BuildXcodeProjectTool,
-    spmPackageTool?: BuildSPMPackageTool
+    xcodeProjectBuilder?: XcodeProjectBuilder,
+    spmPackageBuilder?: SPMPackageBuilder
   ) {
-    this.xcodeProjectTool = xcodeProjectTool || new BuildXcodeProjectTool();
-    this.spmPackageTool = spmPackageTool || new BuildSPMPackageTool();
+    this.xcodeProjectBuilder = xcodeProjectBuilder || new XcodeProjectBuilder();
+    this.spmPackageBuilder = spmPackageBuilder || new SPMPackageBuilder();
   }
 
   getToolDefinition() {
@@ -82,15 +82,15 @@ export class BuildTool implements IBuildTool {
     
     // Determine which tool to use based on project path
     if (projectPath.endsWith('Package.swift')) {
-      logger.info('Detected SPM package, delegating to BuildSPMPackageTool');
-      return this.spmPackageTool.execute(validated);
+      logger.info('Detected SPM package, delegating to SPMPackageBuilder');
+      return this.spmPackageBuilder.execute(validated);
     } else if (projectPath.endsWith('.xcodeproj') || projectPath.endsWith('.xcworkspace')) {
-      logger.info('Detected Xcode project/workspace, delegating to BuildXcodeProjectTool');
-      return this.xcodeProjectTool.execute(validated);
+      logger.info('Detected Xcode project/workspace, delegating to XcodeProjectBuilder');
+      return this.xcodeProjectBuilder.execute(validated);
     } else {
-      // Default to Xcode project tool for backward compatibility
-      logger.info('Unknown project type, defaulting to BuildXcodeProjectTool');
-      return this.xcodeProjectTool.execute(validated);
+      // Default to Xcode project builder for backward compatibility
+      logger.info('Unknown project type, defaulting to XcodeProjectBuilder');
+      return this.xcodeProjectBuilder.execute(validated);
     }
   }
 }

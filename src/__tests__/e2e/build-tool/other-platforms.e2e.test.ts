@@ -283,7 +283,7 @@ describe('Other Platform Build Tests', () => {
       if (text.includes('Build succeeded')) {
         expect(text).toContain('Platform: tvOS');
       } else {
-        expect(text).toMatch(/Unable to find a destination|no available simulator|device not found/i);
+        expect(text).toMatch(/Unable to find a destination|no available simulator|Device.*not found/i);
       }
     }, 30000);
   });

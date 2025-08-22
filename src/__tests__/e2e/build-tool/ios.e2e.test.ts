@@ -88,7 +88,7 @@ describe('iOS Build Tests', () => {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
-            deviceId: 'iPhone 15 Pro'
+            deviceId: 'iPhone 16 Pro'
           }
         }
       }, CallToolResultSchema);
@@ -100,12 +100,13 @@ describe('iOS Build Tests', () => {
         expect(text).toContain('Build succeeded');
         expect(text).toContain('Platform: iOS');
       } else {
-        expect(text).toMatch(/No available simulator found|Unable to find a destination/);
+        expect(text).toMatch(/No available simulator found|Unable to find a destination|Device.*not found/);
       }
     }, 30000);
 
-    test('should build with custom configuration', async () => {
+    test('should accept custom configuration values', async () => {
       // This tests that we accept custom configurations beyond Debug/Release
+      // Note: Xcode silently falls back to Release for unknown configurations
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -114,16 +115,17 @@ describe('iOS Build Tests', () => {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
-            configuration: 'Beta' // Custom configuration (will fail but should be accepted)
+            configuration: 'Beta' // Custom configuration (Xcode falls back to Release)
           }
         }
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
       
-      // The build will fail with unknown configuration Beta
-      expect(text).not.toContain('Build succeeded');
-      expect(text).toMatch(/error|failed|does not contain|configuration/i);
+      // Xcode silently falls back to Release for unknown configurations
+      // So the build succeeds but uses Release configuration
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Configuration: Beta'); // We report what was requested
     }, 30000);
   });
 
@@ -213,7 +215,7 @@ describe('iOS Build Tests', () => {
             projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
             scheme: testProjectManager.schemes.swiftPackage,
             platform: 'iOS',
-            deviceId: 'iPhone 15',
+            deviceId: 'iPhone 16 Pro',
             configuration: 'Debug'
           }
         }
@@ -226,7 +228,7 @@ describe('iOS Build Tests', () => {
         expect(text).toContain('Build succeeded');
         expect(text).toContain('Platform: iOS');
       } else {
-        expect(text).toMatch(/No available simulator found|Unable to find a destination/);
+        expect(text).toMatch(/No available simulator found|Unable to find a destination|Device.*not found/);
       }
     }, 30000);
   });
@@ -284,7 +286,7 @@ describe('iOS Build Tests', () => {
       
       // Should report device not found
       expect(text).not.toContain('Build succeeded');
-      expect(text).toMatch(/Unable to find a destination|No available simulator|Non-existent Device 99/);
+      expect(text).toMatch(/Unable to find a destination|No available simulator|Device.*not found/);
     }, 30000);
   });
 

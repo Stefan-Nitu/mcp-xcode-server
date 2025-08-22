@@ -6,23 +6,19 @@ import { execAsync } from '../../utils.js';
 import { existsSync } from 'fs';
 import path from 'path';
 
-const logger = createModuleLogger('BuildSPMPackageSwiftBuildTool');
+const logger = createModuleLogger('SPMSwiftBuilder');
 
-export const buildSPMPackageSwiftBuildSchema = z.object({
+export const buildSPMSwiftSchema = z.object({
   projectPath: safePathSchema,
   scheme: z.string().optional(),
   configuration: configurationSchema
 });
 
-export type BuildSPMPackageSwiftBuildArgs = z.infer<typeof buildSPMPackageSwiftBuildSchema>;
+export type BuildSPMSwiftArgs = z.infer<typeof buildSPMSwiftSchema>;
 
-export interface IBuildSPMPackageSwiftBuildTool {
-  execute(args: any): Promise<any>;
-}
-
-export class BuildSPMPackageSwiftBuildTool implements IBuildSPMPackageSwiftBuildTool {
+export class SPMSwiftBuilder {
   async execute(args: any) {
-    const validated = buildSPMPackageSwiftBuildSchema.parse(args);
+    const validated = buildSPMSwiftSchema.parse(args);
     const { projectPath, configuration } = validated;
     
     logger.info({ projectPath, configuration }, 'Building SPM package for macOS');
@@ -54,7 +50,7 @@ export class BuildSPMPackageSwiftBuildTool implements IBuildSPMPackageSwiftBuild
       
       logger.debug({ command }, 'Build command');
       
-      const { stdout } = await execAsync(command, { 
+      await execAsync(command, { 
         maxBuffer: 10 * 1024 * 1024 // 10MB buffer
       });
       

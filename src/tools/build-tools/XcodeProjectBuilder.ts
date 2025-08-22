@@ -8,7 +8,7 @@ import path from 'path';
 import { SimulatorManager } from '../../simulatorManager.js';
 import { PlatformHandler } from '../../platformHandler.js';
 
-const logger = createModuleLogger('BuildXcodeProjectTool');
+const logger = createModuleLogger('XcodeProjectBuilder');
 
 export const buildXcodeProjectSchema = z.object({
   projectPath: safePathSchema,
@@ -20,7 +20,7 @@ export const buildXcodeProjectSchema = z.object({
 
 export type BuildXcodeProjectArgs = z.infer<typeof buildXcodeProjectSchema>;
 
-export class BuildXcodeProjectTool {
+export class XcodeProjectBuilder {
 
   async execute(args: any) {
     const validated = buildXcodeProjectSchema.parse(args);
