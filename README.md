@@ -169,17 +169,17 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
 
 - **`build`**: Build an Xcode project, workspace, or Swift package
   - `projectPath`: Path to .xcodeproj, .xcworkspace, or Package.swift
-  - `scheme`: Xcode scheme to build (optional for SPM)
+  - `scheme`: Xcode scheme to build (required for .xcodeproj/.xcworkspace, optional for SPM)
   - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS)
   - `deviceId`: Simulator device name or UDID (optional)
-  - `configuration`: Build configuration (default: Debug)
+  - `configuration`: Build configuration (e.g., Debug, Release, Beta, Staging) (default: Debug)
 
 - **`run_project`**: Build and run an Apple platform project
   - `projectPath`: Path to .xcodeproj or .xcworkspace
-  - `scheme`: Xcode scheme to build
+  - `scheme`: Xcode scheme to build (required for .xcodeproj/.xcworkspace)
   - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS)
   - `deviceId`: Simulator device name or UDID (optional)
-  - `configuration`: Debug or Release (default: Debug)
+  - `configuration`: Build configuration (e.g., Debug, Release, Beta, Staging) (default: Debug)
 
 - **`test_project`**: Run tests for a project
   - All parameters from `run_project` plus:

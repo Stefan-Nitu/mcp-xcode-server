@@ -1,8 +1,12 @@
 import { z } from 'zod';
-import { XcodeBuilder } from '../xcodeBuilder.js';
 import { Platform } from '../types.js';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from './validators.js';
+import { BuildTool } from './build-tools/BuildTool.js';
+import { InstallAppTool } from './InstallAppTool.js';
+import { SimulatorManager } from '../simulatorManager.js';
+import { PlatformHandler } from '../platformHandler.js';
+import { execAsync } from '../utils.js';
 import path from 'path';
 
 const logger = createModuleLogger('RunProjectTool');
@@ -24,9 +28,16 @@ export interface IRunProjectTool {
 }
 
 export class RunProjectTool implements IRunProjectTool {
+  private buildTool: BuildTool;
+  private installAppTool: InstallAppTool;
+  
   constructor(
-    private xcodeBuilder: XcodeBuilder | typeof XcodeBuilder = XcodeBuilder
-  ) {}
+    buildTool?: BuildTool,
+    installAppTool?: InstallAppTool
+  ) {
+    this.buildTool = buildTool || new BuildTool();
+    this.installAppTool = installAppTool || new InstallAppTool();
+  }
 
   getToolDefinition() {
     return {
@@ -41,7 +52,7 @@ export class RunProjectTool implements IRunProjectTool {
           },
           scheme: {
             type: 'string',
-            description: 'Xcode scheme to build'
+            description: 'Xcode scheme to build (required for .xcodeproj/.xcworkspace)'
           },
           platform: {
             type: 'string',
@@ -55,9 +66,8 @@ export class RunProjectTool implements IRunProjectTool {
           },
           configuration: {
             type: 'string',
-            description: 'Build configuration (Debug/Release)',
-            default: 'Debug',
-            enum: ['Debug', 'Release']
+            description: 'Build configuration (e.g., Debug, Release, Beta, Staging)',
+            default: 'Debug'
           }
         },
         required: ['projectPath']
@@ -71,19 +81,58 @@ export class RunProjectTool implements IRunProjectTool {
     
     logger.info({ projectPath, scheme, platform, configuration }, 'Building and running project');
     
-    // Use static method if XcodeBuilder is the class, or instance method if it's an instance
-    const buildMethod = typeof this.xcodeBuilder === 'function' 
-      ? this.xcodeBuilder.buildProject
-      : this.xcodeBuilder.buildProjectInstance;
-      
-    const result = await buildMethod.call(this.xcodeBuilder, {
+    // Step 1: Ensure simulator is booted if needed
+    let bootedDevice = deviceId;
+    if (PlatformHandler.needsSimulator(platform)) {
+      bootedDevice = await SimulatorManager.ensureSimulatorBooted(platform, deviceId);
+      logger.debug({ bootedDevice }, 'Simulator booted');
+    }
+    
+    // Step 2: Build the project with the specific device (for optimal caching)
+    logger.info('Building project...');
+    const buildResult = await this.buildTool.execute({
       projectPath,
       scheme,
       platform,
-      deviceId,
-      configuration,
-      installApp: true  // Build and install
+      deviceId: bootedDevice,  // Build for the specific device for caching
+      configuration
     });
+    
+    // Extract app path from build result
+    const buildText = (buildResult.content[0] as any).text;
+    const appPathMatch = buildText.match(/App path: (.+)$/m);
+    const appPath = appPathMatch ? appPathMatch[1].trim() : null;
+    
+    if (!appPath || appPath === 'N/A') {
+      throw new Error('Build succeeded but could not find app path');
+    }
+    
+    // Step 3: Install and/or run the app
+    if (PlatformHandler.needsSimulator(platform)) {
+      // For simulator platforms, install the app (which also launches it)
+      logger.info({ appPath, deviceId: bootedDevice }, 'Installing app on simulator...');
+      await this.installAppTool.execute({
+        appPath,
+        deviceId: bootedDevice
+      });
+    } else if (platform === Platform.macOS) {
+      // For macOS, launch the built app using the same approach as SimulatorManager
+      logger.info({ appPath }, 'Launching macOS app...');
+      try {
+        // Use absolute path
+        const absolutePath = path.resolve(appPath);
+        logger.debug({ absolutePath }, 'Launching app with absolute path');
+        
+        // Use execAsync (promisified exec) just like SimulatorManager does
+        await execAsync(`open "${absolutePath}"`);
+        logger.info({ appPath: absolutePath }, 'macOS app launched successfully');
+      } catch (error: any) {
+        logger.error({ error: error.message, appPath }, 'Failed to launch macOS app');
+        // Don't fail the whole operation if launch fails
+      }
+    } else {
+      logger.info({ appPath, platform }, 'App built successfully');
+    }
     
     return {
       content: [
@@ -91,7 +140,9 @@ export class RunProjectTool implements IRunProjectTool {
           type: 'text',
           text: `Successfully built and ran project: ${scheme || path.basename(projectPath)}
 Platform: ${platform}
-App installed at: ${result.appPath || 'N/A'}`
+Configuration: ${configuration}
+Device: ${bootedDevice}
+App installed at: ${appPath}`
         }
       ]
     };

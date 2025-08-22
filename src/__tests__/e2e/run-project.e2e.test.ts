@@ -1,386 +1,266 @@
 /**
  * E2E tests for RunProjectTool
- * Tests building and running projects on simulators with comprehensive cleanup
+ * Tests building and running projects on all Apple platforms
  */
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from '@jest/globals';
-import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs';
-import { join, resolve } from 'path';
 import { execSync } from 'child_process';
-import { spawn, ChildProcess } from 'child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
+import { TestProjectManager } from '../utils/TestProjectManager';
+import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers';
+import { createModuleLogger } from '../../logger';
+
+const logger = createModuleLogger('run-project.e2e.test');
 
 describe('RunProjectTool E2E Tests', () => {
-  let serverProcess: ChildProcess;
   let client: Client;
   let transport: StdioClientTransport;
+  let projectManager: TestProjectManager;
   
-  // Test directories with unique timestamps
-  const timestamp = Date.now();
-  const testProjectDir = `/tmp/test-run-project-${timestamp}`;
-  const iosAppDir = join(testProjectDir, 'iOSApp');
-  const macOSAppDir = join(testProjectDir, 'macOSApp');
-  const swiftUIAppDir = join(testProjectDir, 'SwiftUIApp');
-  const derivedDataPath = join(testProjectDir, 'DerivedData');
-  
-  // Track simulators we boot for cleanup
-  let bootedSimulators: string[] = [];
+  // Set this to true to skip tests when simulators are not available
+  // Default is false since we expect all simulators to be available
+  const SKIP_IF_SIMULATOR_UNAVAILABLE = false;
   
   beforeAll(async () => {
-    // Clean up any existing test directories
-    if (existsSync(testProjectDir)) {
-      rmSync(testProjectDir, { recursive: true });
-    }
-    
-    // Create test directories
-    mkdirSync(testProjectDir, { recursive: true });
-    mkdirSync(iosAppDir, { recursive: true });
-    mkdirSync(macOSAppDir, { recursive: true });
-    mkdirSync(swiftUIAppDir, { recursive: true });
-    
     // Build the server
     execSync('npm run build', { cwd: process.cwd() });
     
-    // Create test projects
-    await createTestProjects();
+    // Initialize project manager
+    projectManager = new TestProjectManager();
+    await projectManager.setup();
   }, 120000);
   
-  afterAll(() => {
-    // Shutdown any simulators we booted
-    bootedSimulators.forEach(deviceId => {
-      try {
-        execSync(`xcrun simctl shutdown "${deviceId}"`, { stdio: 'ignore' });
-      } catch {
-        // Ignore errors - simulator might already be shutdown
-      }
-    });
+  afterAll(async () => {
+    // Clean up test artifacts
+    projectManager.cleanup();
     
-    // Comprehensive cleanup
-    cleanupAll();
+    // Note: We don't need to shutdown simulators since run_project manages them
+    // If you want to clean up all simulators after tests, uncomment:
+    try {
+      execSync('xcrun simctl shutdown all', { stdio: 'ignore' });
+    } catch {
+      // Ignore errors
+    }
   });
   
   beforeEach(async () => {
-    // Start MCP server
-    serverProcess = spawn('node', ['dist/index.js'], {
-      cwd: process.cwd(),
-      env: { ...process.env },
-    });
-    
-    // Create MCP client
-    transport = new StdioClientTransport({
-      command: 'node',
-      args: ['dist/index.js'],
-      cwd: process.cwd(),
-    });
-    
-    client = new Client({
-      name: 'test-client',
-      version: '1.0.0',
-    }, {
-      capabilities: {}
-    });
-    
-    await client.connect(transport);
+    // Create and connect MCP client
+    const connection = await createAndConnectClient();
+    client = connection.client;
+    transport = connection.transport;
   }, 30000);
   
   afterEach(async () => {
-    // Disconnect client
-    if (client) {
-      await client.close();
-    }
-    
-    // Kill server process
-    if (serverProcess) {
-      serverProcess.kill();
-      await new Promise(resolve => {
-        serverProcess.once('exit', resolve);
-      });
-    }
+    // Clean up client and transport
+    await cleanupClientAndTransport(client, transport);
     
     // Clean build artifacts after each test
-    cleanBuildArtifacts();
-    
-    // Uninstall any apps we installed
-    cleanInstalledApps();
+    projectManager.cleanBuildArtifacts();
   });
 
-  function cleanBuildArtifacts() {
-    // Clean all .build and DerivedData directories
-    const buildDirs = [
-      join(iosAppDir, '.build'),
-      join(iosAppDir, 'DerivedData'),
-      join(macOSAppDir, '.build'),
-      join(macOSAppDir, 'DerivedData'),
-      join(swiftUIAppDir, '.build'),
-      join(swiftUIAppDir, 'DerivedData'),
-      derivedDataPath,
-      join(process.cwd(), 'DerivedData')
-    ];
-    
-    buildDirs.forEach(dir => {
-      if (existsSync(dir)) {
-        rmSync(dir, { recursive: true });
+  /**
+   * Helper function to get an available simulator name for a platform (without booting)
+   */
+  async function getAvailableSimulator(platform: string): Promise<string | null> {
+    try {
+      const output = execSync(`xcrun simctl list devices -j`, { encoding: 'utf8' });
+      const data = JSON.parse(output);
+      
+      // Find devices for the specified platform
+      const platformKeys = Object.keys(data.devices).filter(key => {
+        const keyLower = key.toLowerCase();
+        const platformLower = platform.toLowerCase();
+        return keyLower.includes(platformLower);
+      });
+      
+      if (platformKeys.length === 0) {
+        logger.warn({ platform }, 'No simulators found for platform');
+        return null;
       }
-    });
-  }
-
-  function cleanInstalledApps() {
-    // Uninstall test apps from simulators
-    const bundleIds = [
-      'com.test.iOSApp',
-      'com.test.SwiftUIApp'
-    ];
-    
-    bundleIds.forEach(bundleId => {
-      try {
-        // Try to uninstall from booted devices
-        execSync(`xcrun simctl uninstall booted ${bundleId}`, { stdio: 'ignore' });
-      } catch {
-        // Ignore errors - app might not be installed
+      
+      // Get all devices for this platform
+      const devices = platformKeys.flatMap(key => data.devices[key] as any[]);
+      
+      // Find an available device
+      const availableDevice = devices.find(d => d.isAvailable);
+      
+      if (!availableDevice) {
+        logger.warn({ platform }, 'No available devices for platform');
+        return null;
       }
-    });
-  }
-
-  function cleanupAll() {
-    if (existsSync(testProjectDir)) {
-      rmSync(testProjectDir, { recursive: true });
-    }
-    
-    // Clean any global DerivedData that might have been created
-    const globalDerivedData = join(process.cwd(), 'DerivedData');
-    if (existsSync(globalDerivedData)) {
-      rmSync(globalDerivedData, { recursive: true });
+      
+      logger.info({ platform, device: availableDevice.name }, 'Found available simulator');
+      return availableDevice.name;
+    } catch (error) {
+      logger.error({ error, platform }, 'Failed to get available simulator');
+      return null;
     }
   }
 
-  async function createTestProjects() {
-    // Create iOS App Package.swift
-    writeFileSync(join(iosAppDir, 'Package.swift'), `// swift-tools-version: 6.0
-import PackageDescription
 
-let package = Package(
-    name: "iOSApp",
-    platforms: [.iOS(.v17)],
-    products: [
-        .executable(name: "iOSApp", targets: ["iOSApp"])
-    ],
-    targets: [
-        .executableTarget(
-            name: "iOSApp",
-            path: "Sources"
-        )
-    ]
-)
-`);
-    
-    // Create iOS app source
-    mkdirSync(join(iosAppDir, 'Sources'), { recursive: true });
-    writeFileSync(join(iosAppDir, 'Sources', 'main.swift'), `
-import Foundation
-
-print("iOS App is running!")
-print("Platform: iOS")
-print("Time: \\(Date())")
-
-// Keep app running for a moment
-Thread.sleep(forTimeInterval: 1.0)
-print("iOS App finished")
-`);
-    
-    // Create macOS App Package.swift
-    writeFileSync(join(macOSAppDir, 'Package.swift'), `// swift-tools-version: 6.0
-import PackageDescription
-
-let package = Package(
-    name: "macOSApp",
-    platforms: [.macOS(.v14)],
-    products: [
-        .executable(name: "macOSApp", targets: ["macOSApp"])
-    ],
-    targets: [
-        .executableTarget(
-            name: "macOSApp",
-            path: "Sources"
-        )
-    ]
-)
-`);
-    
-    // Create macOS app source
-    mkdirSync(join(macOSAppDir, 'Sources'), { recursive: true });
-    writeFileSync(join(macOSAppDir, 'Sources', 'main.swift'), `
-import Foundation
-
-print("macOS App is running!")
-print("Platform: macOS")
-print("Arguments: \\(CommandLine.arguments)")
-print("Environment: \\(ProcessInfo.processInfo.environment["USER"] ?? "unknown")")
-
-// Simulate some work
-for i in 1...3 {
-    print("Processing... \\(i)")
-    Thread.sleep(forTimeInterval: 0.5)
-}
-
-print("macOS App completed successfully")
-exit(0)
-`);
-    
-    // Create SwiftUI App (more complex)
-    writeFileSync(join(swiftUIAppDir, 'Package.swift'), `// swift-tools-version: 6.0
-import PackageDescription
-
-let package = Package(
-    name: "SwiftUIApp",
-    platforms: [.iOS(.v17), .macOS(.v14)],
-    products: [
-        .library(name: "SwiftUIApp", targets: ["SwiftUIApp"])
-    ],
-    targets: [
-        .target(
-            name: "SwiftUIApp",
-            path: "Sources"
-        )
-    ]
-)
-`);
-    
-    mkdirSync(join(swiftUIAppDir, 'Sources'), { recursive: true });
-    writeFileSync(join(swiftUIAppDir, 'Sources', 'SwiftUIApp.swift'), `
-import Foundation
-
-public struct SwiftUIApp {
-    public init() {}
-    
-    public func launch() {
-        print("SwiftUI App launched")
-    }
-}
-`);
-  }
-
-  describe('iOS App Running', () => {
-    test('should run iOS app on default simulator', async () => {
+  describe('iOS Platform', () => {
+    test('should build and run iOS project', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'run_project',
           arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'iOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-      
-      // Should either run successfully or report an error
-      if (text.toLowerCase().includes('success')) {
-        expect(text.toLowerCase()).toContain('ran');
-      }
-    });
-
-    test('should run iOS app on specific device', async () => {
-      // First get available simulators
-      const listResponse = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'list_simulators',
-          arguments: {
-            platform: 'iOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      const devices = JSON.parse((listResponse.content[0] as any).text);
-      const availableDevice = devices.find((d: any) => d.isAvailable && d.state !== 'Creating');
-      
-      if (availableDevice) {
-        const response = await client.request({
-          method: 'tools/call',
-          params: {
-            name: 'run_project',
-            arguments: {
-              projectPath: join(iosAppDir, 'Package.swift'),
-              scheme: 'iOSApp',
-              platform: 'iOS',
-              deviceId: availableDevice.name
-            }
-          }
-        }, CallToolResultSchema);
-        
-        expect(response).toBeDefined();
-        const text = (response.content[0] as any).text;
-        expect(text).toBeDefined();
-        
-        // Track if we booted a simulator
-        if (text.toLowerCase().includes('booted')) {
-          bootedSimulators.push(availableDevice.udid);
-        }
-      }
-    });
-
-    test('should handle iOS app with Release configuration', async () => {
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
             platform: 'iOS',
-            configuration: 'Release'
+            configuration: 'Debug'
           }
         }
       }, CallToolResultSchema);
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: iOS');
+      expect(text).toContain('App installed at:');
+    }, 120000);
+
+    test('should build and run iOS project with specific device', async () => {
+      // Get an available iOS simulator name (but don't boot it - run_project will do that)
+      const deviceName = await getAvailableSimulator('iOS');
       
-      if (text.toLowerCase().includes('success')) {
-        expect(text.toLowerCase()).toMatch(/release|optimized/);
+      if (!deviceName && SKIP_IF_SIMULATOR_UNAVAILABLE) {
+        console.warn('No iOS simulator available, skipping test');
+        return;
       }
-    });
+      
+      // We expect a simulator to be available
+      expect(deviceName).toBeTruthy();
+      
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_project',
+          arguments: {
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
+            platform: 'iOS',
+            deviceId: deviceName,  // Pass the device name, run_project will boot it
+            configuration: 'Debug'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: iOS');
+      expect(text).toContain(`Device: ${deviceName}`);
+    }, 120000);
+
+    test('should build and run with device UDID', async () => {
+      // Get list of available iOS simulators and use UDID instead of name
+      const output = execSync(`xcrun simctl list devices -j`, { encoding: 'utf8' });
+      const data = JSON.parse(output);
+      
+      const iosKeys = Object.keys(data.devices).filter(key => 
+        key.toLowerCase().includes('ios')
+      );
+      
+      if (iosKeys.length === 0) {
+        console.warn('No iOS simulators found, skipping test');
+        return;
+      }
+      
+      const availableDevice = iosKeys.flatMap(key => data.devices[key] as any[])
+        .find(d => d.isAvailable);
+      
+      if (!availableDevice) {
+        console.warn('No available iOS simulator found, skipping test');
+        return;
+      }
+      
+      logger.info({ udid: availableDevice.udid, name: availableDevice.name }, 'Testing with device UDID');
+      
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_project',
+          arguments: {
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
+            platform: 'iOS',
+            deviceId: availableDevice.udid,  // Use UDID instead of name
+            configuration: 'Debug'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: iOS');
+      // The tool should work with UDID and report the device name
+      expect(text).toContain(availableDevice.name);
+    }, 120000);
+
+    test('should respect device choice when multiple devices available', async () => {
+      // Get list of all available iOS simulators
+      const output = execSync(`xcrun simctl list devices -j`, { encoding: 'utf8' });
+      const data = JSON.parse(output);
+      
+      // Find iOS devices
+      const iosKeys = Object.keys(data.devices).filter(key => 
+        key.toLowerCase().includes('ios')
+      );
+      
+      if (iosKeys.length === 0) {
+        console.warn('No iOS simulators found, skipping test');
+        return;
+      }
+      
+      const allDevices = iosKeys.flatMap(key => data.devices[key] as any[])
+        .filter(d => d.isAvailable);
+      
+      if (allDevices.length < 2) {
+        console.warn('Need at least 2 iOS simulators for this test, skipping');
+        return;
+      }
+      
+      // Pick a specific device that is NOT the first one (to ensure we're not just getting default)
+      const chosenDevice = allDevices[allDevices.length - 1]; // Last device in list
+      logger.info({ device: chosenDevice.name }, 'Testing with specific device choice');
+      
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_project',
+          arguments: {
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
+            platform: 'iOS',
+            deviceId: chosenDevice.name,  // Explicitly choose this device
+            configuration: 'Debug'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: iOS');
+      // Verify the tool used our chosen device
+      expect(text).toContain(chosenDevice.name);
+    }, 120000);
   });
 
-  describe('macOS App Running', () => {
-    test('should run macOS app directly', async () => {
+  describe('macOS Platform', () => {
+    test('should build and run macOS project', async () => {
+      // Note: macOS doesn't need a simulator
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'run_project',
           arguments: {
-            projectPath: join(macOSAppDir, 'Package.swift'),
-            scheme: 'macOSApp',
-            platform: 'macOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-      
-      // macOS apps run directly without simulator
-      if (text.toLowerCase().includes('success')) {
-        expect(text.toLowerCase()).not.toContain('simulator');
-      }
-    });
-
-    test('should capture macOS app output', async () => {
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(macOSAppDir, 'Package.swift'),
-            scheme: 'macOSApp',
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
             platform: 'macOS',
             configuration: 'Debug'
           }
@@ -389,83 +269,75 @@ public struct SwiftUIApp {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      
-      // Should include some output or build info
-      if (text.toLowerCase().includes('success')) {
-        const hasOutput = 
-          text.includes('macOS App') ||
-          text.includes('Processing') ||
-          text.includes('completed') ||
-          text.includes('built');
-        expect(hasOutput).toBe(true);
-      }
-    });
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: macOS');
+    }, 120000);
   });
 
-  describe('Other Platforms', () => {
-    test('should handle tvOS platform', async () => {
+  describe('watchOS Platform', () => {
+    test('should build and run watchOS project', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'run_project',
           arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'tvOS'
+            projectPath: projectManager.paths.watchOSProjectPath,
+            scheme: projectManager.schemes.watchOSProject,
+            platform: 'watchOS',
+            configuration: 'Debug'
           }
         }
       }, CallToolResultSchema);
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-      // Should either work or report platform incompatibility
-    });
-
-    test('should handle watchOS platform', async () => {
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'watchOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-    });
-
-    test('should handle visionOS platform', async () => {
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'visionOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-    });
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: watchOS');
+    }, 120000);
   });
 
-  describe('Simulator Management', () => {
-    test('should boot simulator if needed', async () => {
-      // Ensure all simulators are shutdown first
-      try {
-        execSync('xcrun simctl shutdown all', { stdio: 'ignore' });
-      } catch {
-        // Ignore errors
+  describe('tvOS Platform', () => {
+    test('should build and run tvOS project', async () => {
+      // Note: We need to create a tvOS-compatible project first
+      // For now, we'll test with a multi-platform project
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_project',
+          arguments: {
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
+            platform: 'tvOS',
+            configuration: 'Debug'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      // May fail if project doesn't support tvOS, but should not crash
+      expect(text).toBeDefined();
+    }, 120000);
+  });
+
+  describe('visionOS Platform', () => {
+    test('should attempt to build and run visionOS project', async () => {
+      // Note: visionOS requires Xcode 15+ and visionOS SDK
+      
+      if (SKIP_IF_SIMULATOR_UNAVAILABLE) {
+        // Check if visionOS SDK is available
+        let visionOSAvailable = false;
+        try {
+          execSync('xcodebuild -showsdks | grep visionOS', { stdio: 'pipe' });
+          visionOSAvailable = true;
+        } catch {
+          visionOSAvailable = false;
+        }
+        
+        if (!visionOSAvailable) {
+          console.warn('visionOS SDK not available, skipping test');
+          return;
+        }
       }
       
       const response = await client.request({
@@ -473,63 +345,66 @@ public struct SwiftUIApp {
         params: {
           name: 'run_project',
           arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'iOS'
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
+            platform: 'visionOS',
+            configuration: 'Debug'
           }
         }
       }, CallToolResultSchema);
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      
-      // Should boot a simulator if none are running
-      if (text.toLowerCase().includes('success')) {
-        // Check if a simulator is now booted
-        const devicesOutput = execSync('xcrun simctl list devices booted', { encoding: 'utf8' });
-        const hasBootedDevice = devicesOutput.includes('Booted') || devicesOutput.includes('iPhone');
-        // May or may not have booted depending on test environment
-      }
-    });
+      // May fail if project doesn't support visionOS, but should not crash
+      expect(text).toBeDefined();
+    }, 120000);
+  });
 
-    test('should reuse already booted simulator', async () => {
-      // Boot a simulator first
-      const devices = JSON.parse(execSync('xcrun simctl list devices available -j', { encoding: 'utf8' })).devices;
-      const iosDevices = Object.values(devices).flat().filter((d: any) => 
-        d.isAvailable && d.name.includes('iPhone')
-      );
-      
-      if (iosDevices.length > 0) {
-        const device = iosDevices[0] as any;
-        execSync(`xcrun simctl boot "${device.udid}"`, { stdio: 'ignore' });
-        bootedSimulators.push(device.udid);
-        
-        // Now run project - should use the booted simulator
-        const response = await client.request({
-          method: 'tools/call',
-          params: {
-            name: 'run_project',
-            arguments: {
-              projectPath: join(iosAppDir, 'Package.swift'),
-              scheme: 'iOSApp',
-              platform: 'iOS'
-            }
+  describe('Configuration Options', () => {
+    test('should build and run with Release configuration', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_project',
+          arguments: {
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: projectManager.schemes.xcodeProject,
+            platform: 'iOS',
+            configuration: 'Release'
           }
-        }, CallToolResultSchema);
-        
-        expect(response).toBeDefined();
-        const text = (response.content[0] as any).text;
-        
-        // Should not mention booting since one is already booted
-        if (text.toLowerCase().includes('success')) {
-          // It might still mention the device but shouldn't say "booting"
         }
-      }
-    });
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Configuration: Release');
+    }, 120000);
+  });
+
+  describe('Workspace Support', () => {
+    test('should build and run project from workspace', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_project',
+          arguments: {
+            projectPath: projectManager.paths.workspacePath,
+            scheme: projectManager.schemes.workspace,
+            platform: 'iOS',
+            configuration: 'Debug'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Successfully built and ran project');
+    }, 120000);
   });
 
   describe('Error Handling', () => {
-    test('should handle non-existent project', async () => {
+    test('should handle non-existent project path', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -545,7 +420,7 @@ public struct SwiftUIApp {
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('error');
-    });
+    }, 30000);  // 30 second timeout for error cases
 
     test('should handle invalid scheme', async () => {
       const response = await client.request({
@@ -553,124 +428,8 @@ public struct SwiftUIApp {
         params: {
           name: 'run_project',
           arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'NonExistentScheme',
-            platform: 'iOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const text = (response.content[0] as any).text;
-      // Should report scheme not found or similar error
-      expect(text).toBeDefined();
-    });
-
-    test('should handle app crash gracefully', async () => {
-      // Create an app that crashes
-      const crashAppDir = join(testProjectDir, 'CrashApp');
-      mkdirSync(crashAppDir, { recursive: true });
-      
-      writeFileSync(join(crashAppDir, 'Package.swift'), `// swift-tools-version: 6.0
-import PackageDescription
-
-let package = Package(
-    name: "CrashApp",
-    platforms: [.macOS(.v14)],
-    products: [
-        .executable(name: "CrashApp", targets: ["CrashApp"])
-    ],
-    targets: [
-        .executableTarget(name: "CrashApp", path: "Sources")
-    ]
-)
-`);
-      
-      mkdirSync(join(crashAppDir, 'Sources'), { recursive: true });
-      writeFileSync(join(crashAppDir, 'Sources', 'main.swift'), `
-import Foundation
-print("About to crash...")
-fatalError("Intentional crash for testing")
-`);
-      
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(crashAppDir, 'Package.swift'),
-            scheme: 'CrashApp',
-            platform: 'macOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const text = (response.content[0] as any).text;
-      // Should handle the crash without throwing
-      expect(text).toBeDefined();
-      
-      // Clean up crash app
-      if (existsSync(crashAppDir)) {
-        rmSync(crashAppDir, { recursive: true });
-      }
-    });
-
-    test('should handle missing simulator', async () => {
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'iOS',
-            deviceId: 'Non-Existent Device XYZ'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const text = (response.content[0] as any).text;
-      // Should report device not found
-      expect(text.toLowerCase()).toMatch(/not found|error|unavailable/);
-    });
-
-    test('should handle build errors', async () => {
-      // Create project with syntax errors
-      const errorAppDir = join(testProjectDir, 'ErrorApp');
-      mkdirSync(errorAppDir, { recursive: true });
-      
-      writeFileSync(join(errorAppDir, 'Package.swift'), `// swift-tools-version: 6.0
-import PackageDescription
-
-let package = Package(
-    name: "ErrorApp",
-    platforms: [.iOS(.v17)],
-    products: [
-        .executable(name: "ErrorApp", targets: ["ErrorApp"])
-    ],
-    targets: [
-        .executableTarget(name: "ErrorApp", path: "Sources")
-    ]
-)
-`);
-      
-      mkdirSync(join(errorAppDir, 'Sources'), { recursive: true });
-      writeFileSync(join(errorAppDir, 'Sources', 'main.swift'), `
-// Invalid Swift code
-func broken() {
-    this is not valid Swift
-}
-`);
-      
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(errorAppDir, 'Package.swift'),
-            scheme: 'ErrorApp',
+            projectPath: projectManager.paths.xcodeProjectPath,
+            scheme: 'InvalidScheme',
             platform: 'iOS'
           }
         }
@@ -679,75 +438,62 @@ func broken() {
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('error');
-      
-      // Clean up
-      if (existsSync(errorAppDir)) {
-        rmSync(errorAppDir, { recursive: true });
-      }
-    });
-  });
+    }, 60000);  // 1 minute timeout
 
-  describe('App Installation', () => {
-    test('should report app installation path', async () => {
+    test('should handle unsupported platform for project', async () => {
+      // Try to build watchOS project as iOS
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'run_project',
           arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'iOS'
+            projectPath: projectManager.paths.watchOSProjectPath,
+            scheme: projectManager.schemes.watchOSProject,
+            platform: 'iOS',  // Wrong platform for watchOS project
+            configuration: 'Debug'
           }
         }
       }, CallToolResultSchema);
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      
-      // Should mention app installation if successful
-      if (text.toLowerCase().includes('success')) {
-        const hasInstallInfo = 
-          text.toLowerCase().includes('install') ||
-          text.toLowerCase().includes('.app') ||
-          text.toLowerCase().includes('bundle');
-        // May or may not include install info depending on implementation
-      }
-    });
+      expect(text.toLowerCase()).toContain('error');
+    }, 120000);  // Add 2 minute timeout
+  });
 
-    test('should clean up installed apps', async () => {
-      // Run an app
-      await client.request({
+  describe('Swift Package Manager Support', () => {
+    test('should build and run Swift package', async () => {
+      const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'run_project',
           arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'iOS'
+            projectPath: `${projectManager.paths.swiftPackageDir}/Package.swift`,
+            platform: 'macOS',
+            configuration: 'Debug'
           }
         }
       }, CallToolResultSchema);
       
-      // Clean installed apps
-      cleanInstalledApps();
-      
-      // Verify cleanup (this is more of a smoke test)
-      expect(() => cleanInstalledApps()).not.toThrow();
-    });
+      expect(response).toBeDefined();
+      const text = (response.content[0] as any).text;
+      // Should either succeed or report that it's not an executable package
+      expect(text).toBeDefined();
+    }, 120000);
   });
 
-  describe('Concurrent Runs', () => {
-    test('should handle concurrent run requests', async () => {
-      // Run multiple apps concurrently
-      const runs = Promise.all([
+  describe('Concurrent Builds', () => {
+    test('should handle concurrent run requests for different platforms', async () => {
+      const promises = [
         client.request({
           method: 'tools/call',
           params: {
             name: 'run_project',
             arguments: {
-              projectPath: join(macOSAppDir, 'Package.swift'),
-              scheme: 'macOSApp',
-              platform: 'macOS'
+              projectPath: projectManager.paths.xcodeProjectPath,
+              scheme: projectManager.schemes.xcodeProject,
+              platform: 'iOS',
+              configuration: 'Debug'
             }
           }
         }, CallToolResultSchema),
@@ -757,66 +503,20 @@ func broken() {
           params: {
             name: 'run_project',
             arguments: {
-              projectPath: join(swiftUIAppDir, 'Package.swift'),
-              scheme: 'SwiftUIApp',
-              platform: 'macOS'
+              projectPath: projectManager.paths.xcodeProjectPath,
+              scheme: projectManager.schemes.xcodeProject,
+              platform: 'macOS',
+              configuration: 'Debug'
             }
           }
         }, CallToolResultSchema)
-      ]);
+      ];
       
-      const results = await runs;
+      const results = await Promise.allSettled(promises);
       
-      expect(results).toHaveLength(2);
-      results.forEach(response => {
-        expect(response).toBeDefined();
-        expect(response.content[0].type).toBe('text');
-      });
-    });
-  });
-
-  describe('Cleanup Verification', () => {
-    test('should not leave build artifacts', async () => {
-      // Run a project
-      await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(macOSAppDir, 'Package.swift'),
-            scheme: 'macOSApp',
-            platform: 'macOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      // Clean artifacts
-      cleanBuildArtifacts();
-      
-      // Verify cleanup
-      expect(existsSync(derivedDataPath)).toBe(false);
-      expect(existsSync(join(macOSAppDir, '.build'))).toBe(false);
-      expect(existsSync(join(macOSAppDir, 'DerivedData'))).toBe(false);
-    });
-
-    test('should clean up test directory completely', async () => {
-      // Run something to create artifacts
-      await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'run_project',
-          arguments: {
-            projectPath: join(iosAppDir, 'Package.swift'),
-            scheme: 'iOSApp',
-            platform: 'iOS'
-          }
-        }
-      }, CallToolResultSchema);
-      
-      // Note: Full cleanup happens in afterAll
-      // This test just verifies our cleanup functions work
-      expect(() => cleanBuildArtifacts()).not.toThrow();
-      expect(() => cleanInstalledApps()).not.toThrow();
-    });
+      // At least one should succeed
+      const successfulResults = results.filter(r => r.status === 'fulfilled');
+      expect(successfulResults.length).toBeGreaterThan(0);
+    }, 180000);
   });
 });

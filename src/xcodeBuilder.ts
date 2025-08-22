@@ -71,8 +71,9 @@ export class XcodeBuilder {
 
   /**
    * Build an Xcode project (instance method)
+   * @deprecated Use BuildTool directly instead
    */
-  async buildProjectInstance(config: BuildConfiguration & { installApp?: boolean }): Promise<{ success: boolean; output: string; appPath?: string }> {
+  async buildProjectInstance(config: BuildConfiguration): Promise<{ success: boolean; output: string; appPath?: string }> {
     const { projectPath, scheme, platform = Platform.iOS, deviceId, configuration = 'Debug' } = config;
     
     if (!existsSync(projectPath)) {
@@ -111,10 +112,8 @@ export class XcodeBuilder {
       // Try to find the built app
       const appPath = await this.findBuiltAppInstance(projectPath, scheme || 'App', configuration);
       
-      // Install app if simulator was used and installApp is not false
-      if (appPath && bootedDevice && config.installApp !== false) {
-        await SimulatorManager.installApp(appPath, bootedDevice);
-      }
+      // Note: Installation is now handled by RunProjectTool composing BuildTool + InstallAppTool
+      // This method only builds, it doesn't install
 
       return {
         success: true,
@@ -600,7 +599,10 @@ export class XcodeBuilder {
   }
 
   // Static methods for backward compatibility - delegate to default instance
-  static async buildProject(config: BuildConfiguration & { installApp?: boolean }): Promise<{ success: boolean; output: string; appPath?: string }> {
+  /**
+   * @deprecated Use BuildTool directly instead
+   */
+  static async buildProject(config: BuildConfiguration): Promise<{ success: boolean; output: string; appPath?: string }> {
     return XcodeBuilder.getDefaultInstance().buildProjectInstance(config);
   }
 

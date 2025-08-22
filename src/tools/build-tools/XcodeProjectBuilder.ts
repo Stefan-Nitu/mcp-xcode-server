@@ -22,6 +22,74 @@ export type BuildXcodeProjectArgs = z.infer<typeof buildXcodeProjectSchema>;
 
 export class XcodeProjectBuilder {
 
+  /**
+   * Validates that a scheme supports the requested platform
+   * @throws Error if the platform is not supported
+   */
+  private async validatePlatformSupport(projectPath: string, scheme: string | undefined, platform: Platform): Promise<void> {
+    const isWorkspace = projectPath.endsWith('.xcworkspace');
+    const projectFlag = isWorkspace ? '-workspace' : '-project';
+    
+    let command = `xcodebuild -showBuildSettings ${projectFlag} "${projectPath}"`;
+    
+    if (scheme) {
+      command += ` -scheme "${scheme}"`;
+    }
+    
+    // Use a generic destination to check platform support
+    const destination = PlatformHandler.getGenericDestination(platform);
+    command += ` -destination '${destination}'`;
+    
+    try {
+      logger.debug({ command }, 'Validating platform support');
+      // Just check if the command succeeds - we don't need the output
+      await execAsync(command, { 
+        maxBuffer: 1024 * 1024, // 1MB is enough for validation
+        timeout: 10000 // 10 second timeout for validation
+      });
+      logger.debug({ platform, scheme }, 'Platform validation succeeded');
+    } catch (error: any) {
+      const stderr = error.stderr || '';
+      const stdout = error.stdout || '';
+      
+      // Check if error indicates platform mismatch
+      if (stderr.includes('Available destinations for') || stdout.includes('Available destinations for')) {
+        // Extract available platforms from the error message
+        const availablePlatforms = this.extractAvailablePlatforms(stderr + stdout);
+        throw new Error(
+          `Platform '${platform}' is not supported by scheme '${scheme || 'default'}'. ` +
+          `Available platforms: ${availablePlatforms.join(', ')}`
+        );
+      }
+      
+      // Some other error - let it pass through for now
+      logger.warn({ error: error.message }, 'Platform validation check failed, continuing anyway');
+    }
+  }
+  
+  /**
+   * Extracts available platforms from xcodebuild error output
+   */
+  private extractAvailablePlatforms(output: string): string[] {
+    const platforms = new Set<string>();
+    const lines = output.split('\n');
+    
+    for (const line of lines) {
+      // Look for lines like "{ platform:watchOS" or "{ platform:iOS Simulator"
+      const match = line.match(/\{ platform:([^,}]+)/);
+      if (match) {
+        let platform = match[1].trim();
+        // Normalize platform names
+        if (platform.includes('Simulator')) {
+          platform = platform.replace(' Simulator', '');
+        }
+        platforms.add(platform);
+      }
+    }
+    
+    return Array.from(platforms);
+  }
+
   async execute(args: any) {
     const validated = buildXcodeProjectSchema.parse(args);
     const { projectPath, scheme, platform, deviceId, configuration } = validated;
@@ -33,6 +101,9 @@ export class XcodeProjectBuilder {
       if (!existsSync(projectPath)) {
         throw new Error(`Project path does not exist: ${projectPath}`);
       }
+      
+      // Validate that the scheme supports the requested platform
+      await this.validatePlatformSupport(projectPath, scheme, platform);
       
       // Determine destination based on whether deviceId was specified
       let destination: string;
