@@ -34,10 +34,19 @@ export class XcodeProjectBuilder {
         throw new Error(`Project path does not exist: ${projectPath}`);
       }
       
-      // Ensure simulator is booted if platform needs it
-      let bootedDevice = '';
-      if (PlatformHandler.needsSimulator(platform)) {
-        bootedDevice = await SimulatorManager.ensureSimulatorBooted(platform, deviceId);
+      // Determine destination based on whether deviceId was specified
+      let destination: string;
+      
+      if (deviceId) {
+        // Specific device requested - boot it and build for it (caches build for running)
+        let bootedDevice = '';
+        if (PlatformHandler.needsSimulator(platform)) {
+          bootedDevice = await SimulatorManager.ensureSimulatorBooted(platform, deviceId);
+        }
+        destination = PlatformHandler.getDestination(platform, bootedDevice || deviceId);
+      } else {
+        // No device specified - use generic destination for fast compilation check
+        destination = PlatformHandler.getGenericDestination(platform);
       }
       
       // Build command using xcodebuild
@@ -55,7 +64,6 @@ export class XcodeProjectBuilder {
       command += ` -configuration "${configuration}"`;
       
       // Add destination
-      const destination = PlatformHandler.getDestination(platform, bootedDevice || deviceId);
       command += ` -destination '${destination}'`;
       
       // Add derived data path

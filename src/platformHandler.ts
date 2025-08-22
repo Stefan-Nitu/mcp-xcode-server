@@ -67,6 +67,25 @@ export class PlatformHandler {
     return this.getConfig(platform).defaultDevice;
   }
 
+  static getGenericDestination(platform: Platform): string {
+    // Use generic destinations that don't require booting a specific simulator
+    switch (platform) {
+      case Platform.iOS:
+        return 'generic/platform=iOS Simulator';
+      case Platform.tvOS:
+        return 'generic/platform=tvOS Simulator';
+      case Platform.watchOS:
+        return 'generic/platform=watchOS Simulator';
+      case Platform.visionOS:
+        return 'generic/platform=visionOS Simulator';
+      case Platform.macOS:
+        return 'platform=macOS';
+      default:
+        // Fallback to specific destination
+        return this.getDestination(platform);
+    }
+  }
+
   static parsePlatformFromString(platformStr: string): Platform {
     const normalizedStr = platformStr.toLowerCase();
     
