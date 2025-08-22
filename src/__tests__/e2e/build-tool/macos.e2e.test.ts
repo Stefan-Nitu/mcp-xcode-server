@@ -155,8 +155,13 @@ describe('macOS Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      
       // Either succeeds or reports platform not supported
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Platform: macOS');
+      } else {
+        expect(text).toMatch(/Unable to find a destination|Platform.*not supported|error/i);
+      }
     }, 30000);
   });
 
@@ -175,8 +180,13 @@ describe('macOS Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      
       // Either succeeds or reports platform not supported
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Platform: macOS');
+      } else {
+        expect(text).toMatch(/Unable to find a destination|Platform.*not supported|error/i);
+      }
     }, 30000);
   });
 

@@ -11,9 +11,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../../utils/TestProjectManager';
-import { createModuleLogger } from '../../../logger';
-
-const logger = createModuleLogger('iOS-Build-E2E');
+import { cleanupClientAndTransport, createAndConnectClient } from '../../utils/testHelpers';
 
 describe('iOS Build Tests', () => {
   let client: Client;
@@ -27,56 +25,13 @@ describe('iOS Build Tests', () => {
   }, 120000);
   
   beforeEach(async () => {
-    transport = new StdioClientTransport({
-      command: 'node',
-      args: ['dist/index.js'],
-      cwd: process.cwd(),
-    });
-    
-    client = new Client({
-      name: 'test-client',
-      version: '1.0.0',
-    }, {
-      capabilities: {}
-    });
-    
-    await client.connect(transport);
+    const result = await createAndConnectClient();
+    client = result.client;
+    transport = result.transport;
   });
   
   afterEach(async () => {
-    if (client) {
-      await client.close();
-    }
-    
-    if (transport) {
-      const transportProcess = (transport as any)._process;
-      await transport.close();
-      
-      if (transportProcess) {
-        if (transportProcess.stdin && !transportProcess.stdin.destroyed) {
-          transportProcess.stdin.end();
-          transportProcess.stdin.destroy();
-        }
-        if (transportProcess.stdout && !transportProcess.stdout.destroyed) {
-          transportProcess.stdout.destroy();
-        }
-        if (transportProcess.stderr && !transportProcess.stderr.destroyed) {
-          transportProcess.stderr.destroy();
-        }
-        transportProcess.unref();
-        if (!transportProcess.killed) {
-          transportProcess.kill('SIGTERM');
-          await new Promise(resolve => {
-            const timeout = setTimeout(resolve, 100);
-            transportProcess.once('exit', () => {
-              clearTimeout(timeout);
-              resolve(undefined);
-            });
-          });
-        }
-      }
-    }
-    
+    await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
   });
 
@@ -93,10 +48,6 @@ describe('iOS Build Tests', () => {
           }
         }
       }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      expect(response.content).toBeDefined();
-      expect(response.content[0]).toBeDefined();
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -143,9 +94,14 @@ describe('iOS Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      
       // Should either succeed or report device not found
-      expect(text).toMatch(/Build succeeded|No available simulator found/);
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Build succeeded');
+        expect(text).toContain('Platform: iOS');
+      } else {
+        expect(text).toMatch(/No available simulator found|Unable to find a destination/);
+      }
     }, 30000);
 
     test('should build with custom configuration', async () => {
@@ -164,8 +120,10 @@ describe('iOS Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-      // The build will likely fail with unknown configuration, but the parameter should be accepted
+      
+      // The build will fail with unknown configuration Beta
+      expect(text).not.toContain('Build succeeded');
+      expect(text).toMatch(/error|failed|does not contain|configuration/i);
     }, 30000);
   });
 
@@ -262,9 +220,14 @@ describe('iOS Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      
       // Should either succeed or report device issue
-      expect(text).toMatch(/Build succeeded|No available simulator found/);
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Build succeeded');
+        expect(text).toContain('Platform: iOS');
+      } else {
+        expect(text).toMatch(/No available simulator found|Unable to find a destination/);
+      }
     }, 30000);
   });
 
@@ -318,8 +281,10 @@ describe('iOS Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      
       // Should report device not found
+      expect(text).not.toContain('Build succeeded');
+      expect(text).toMatch(/Unable to find a destination|No available simulator|Non-existent Device 99/);
     }, 30000);
   });
 
@@ -357,8 +322,10 @@ describe('iOS Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      // Should contain actual xcodebuild output
-      expect(text).toBeDefined();
+      
+      // Should contain actual xcodebuild error with scheme issue
+      expect(text).not.toContain('Build succeeded');
+      expect(text).toMatch(/scheme.*InvalidScheme|Scheme.*not found|cannot find scheme/i);
       expect(text.length).toBeGreaterThan(50); // Should have meaningful error output
     });
   });

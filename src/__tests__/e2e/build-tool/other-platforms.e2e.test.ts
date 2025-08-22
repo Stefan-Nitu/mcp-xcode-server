@@ -94,7 +94,6 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
       // Will either succeed if tvOS SDK is installed, or fail with meaningful error
       if (text.includes('Build succeeded')) {
         expect(text).toContain('Platform: tvOS');
@@ -118,8 +117,15 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-      // SPM for tvOS uses xcodebuild
+      
+      // SPM builds should either succeed or report clear errors
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Build succeeded');
+        expect(text).toContain('Platform: tvOS');
+      } else {
+        // Should have meaningful error message about tvOS support
+        expect(text).toMatch(/Unable to find a destination|error|failed/i);
+      }
     }, 30000);
   });
 
@@ -138,7 +144,6 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeTruthy();
       
       // Check if the project doesn't support watchOS (this is acceptable to skip)
       if (text.includes('Unable to find a destination matching') || 
@@ -167,7 +172,6 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeTruthy();
       
       // Check if the project doesn't support watchOS (this is acceptable to skip)
       if (text.includes('Unable to find a destination matching')) {
@@ -196,8 +200,7 @@ describe('Other Platform Build Tests', () => {
         }
       }, CallToolResultSchema);
       
-      const text = (response.content[0] as any).text;
-      expect(text).toBeTruthy(); // Should have a response
+      const text = (response.content[0] as any).text; // Should have a response
       
       // Only acceptable non-success outcomes are platform/simulator issues
       if (text.includes('Unable to find a destination matching') || 
@@ -227,7 +230,15 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      
+      // SPM builds should either succeed or report clear errors  
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Build succeeded');
+        expect(text).toContain('Platform: visionOS');
+      } else {
+        // Should have meaningful error message about visionOS support
+        expect(text).toMatch(/Unable to find a destination|error|failed/i);
+      }
     }, 50000);
   });
 
@@ -246,9 +257,10 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      
       // Should get validation error for invalid platform
-      expect(text.toLowerCase()).toContain('validation');
+      expect(text).not.toContain('Build succeeded');
+      expect(text.toLowerCase()).toMatch(/validation|invalid platform|unsupported/);
     });
 
     test('should handle missing simulators gracefully', async () => {
@@ -266,8 +278,13 @@ describe('Other Platform Build Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
-      // Should either find the device or report it's missing
+      
+      // Should either build with the device or report device not found
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Platform: tvOS');
+      } else {
+        expect(text).toMatch(/Unable to find a destination|no available simulator|device not found/i);
+      }
     }, 30000);
   });
 });
