@@ -81,13 +81,25 @@ export class XcodeProjectBuilder {
         // Ignore errors finding app path
       }
       
+      // Check if the configuration actually worked by looking at the build path
+      // If the app is in a folder named after the configuration, it worked
+      let actualConfiguration = configuration;
+      let configNote = '';
+      
+      if (appPath && !appPath.toLowerCase().includes(configuration.toLowerCase())) {
+        // The app wasn't built in the expected configuration directory
+        // This means Xcode fell back to Release
+        actualConfiguration = 'Release';
+        configNote = ` - ${configuration} configuration was not found`;
+      }
+      
       return {
         content: [
           {
             type: 'text',
             text: `Build succeeded: ${scheme || path.basename(projectPath)}
 Platform: ${platform}
-Configuration: ${configuration}
+Configuration: ${actualConfiguration}${configNote}
 App path: ${appPath || 'N/A'}`
           }
         ]

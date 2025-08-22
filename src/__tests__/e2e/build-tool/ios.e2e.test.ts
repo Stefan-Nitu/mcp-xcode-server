@@ -104,9 +104,8 @@ describe('iOS Build Tests', () => {
       }
     }, 30000);
 
-    test('should accept custom configuration values', async () => {
+    test('should build with custom configuration Beta', async () => {
       // This tests that we accept custom configurations beyond Debug/Release
-      // Note: Xcode silently falls back to Release for unknown configurations
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -115,7 +114,30 @@ describe('iOS Build Tests', () => {
             projectPath: testProjectManager.paths.xcodeProjectPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
-            configuration: 'Beta' // Custom configuration (Xcode falls back to Release)
+            configuration: 'Beta' // Custom configuration that exists
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      
+      // Beta configuration should work once added to the project
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Configuration: Beta');
+      expect(text).not.toContain('configuration was not found');
+    }, 30000);
+
+    test('should fallback to Release for non-existent configuration', async () => {
+      // This tests that Xcode falls back to Release for unknown configurations
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build',
+          arguments: {
+            projectPath: testProjectManager.paths.xcodeProjectPath,
+            scheme: testProjectManager.schemes.xcodeProject,
+            platform: 'iOS',
+            configuration: 'NonExistent' // Configuration that doesn't exist
           }
         }
       }, CallToolResultSchema);
@@ -123,9 +145,10 @@ describe('iOS Build Tests', () => {
       const text = (response.content[0] as any).text;
       
       // Xcode silently falls back to Release for unknown configurations
-      // So the build succeeds but uses Release configuration
+      // We report the actual configuration with a note about what was not found
       expect(text).toContain('Build succeeded');
-      expect(text).toContain('Configuration: Beta'); // We report what was requested
+      expect(text).toContain('Configuration: Release'); // What actually happened
+      expect(text).toContain('NonExistent configuration was not found'); // Clear explanation
     }, 30000);
   });
 
