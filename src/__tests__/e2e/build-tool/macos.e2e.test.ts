@@ -11,9 +11,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../../utils/TestProjectManager';
-import { createModuleLogger } from '../../../logger';
-
-const logger = createModuleLogger('macOS-Build-E2E');
+import { cleanupClientAndTransport, createAndConnectClient } from '../../utils/testHelpers';
 
 describe('macOS Build Tests', () => {
   let client: Client;
@@ -27,56 +25,13 @@ describe('macOS Build Tests', () => {
   }, 120000);
   
   beforeEach(async () => {
-    transport = new StdioClientTransport({
-      command: 'node',
-      args: ['dist/index.js'],
-      cwd: process.cwd(),
-    });
-    
-    client = new Client({
-      name: 'test-client',
-      version: '1.0.0',
-    }, {
-      capabilities: {}
-    });
-    
-    await client.connect(transport);
+    const result = await createAndConnectClient();
+    client = result.client;
+    transport = result.transport;
   });
   
   afterEach(async () => {
-    if (client) {
-      await client.close();
-    }
-    
-    if (transport) {
-      const transportProcess = (transport as any)._process;
-      await transport.close();
-      
-      if (transportProcess) {
-        if (transportProcess.stdin && !transportProcess.stdin.destroyed) {
-          transportProcess.stdin.end();
-          transportProcess.stdin.destroy();
-        }
-        if (transportProcess.stdout && !transportProcess.stdout.destroyed) {
-          transportProcess.stdout.destroy();
-        }
-        if (transportProcess.stderr && !transportProcess.stderr.destroyed) {
-          transportProcess.stderr.destroy();
-        }
-        transportProcess.unref();
-        if (!transportProcess.killed) {
-          transportProcess.kill('SIGTERM');
-          await new Promise(resolve => {
-            const timeout = setTimeout(resolve, 100);
-            transportProcess.once('exit', () => {
-              clearTimeout(timeout);
-              resolve(undefined);
-            });
-          });
-        }
-      }
-    }
-    
+    await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
   });
 

@@ -9,6 +9,7 @@ export class TestProjectManager {
   private xcodeProjectPath: string;
   private swiftPackagePath: string;
   private workspacePath: string;
+  private watchOSProjectPath: string;
 
   constructor() {
     // Use the actual test artifacts directory
@@ -18,6 +19,7 @@ export class TestProjectManager {
     this.xcodeProjectPath = join(this.testArtifactsDir, 'TestProjectXCTest', 'TestProjectXCTest.xcodeproj');
     this.swiftPackagePath = join(this.testArtifactsDir, 'TestSPM');
     this.workspacePath = join(this.testArtifactsDir, 'Test.xcworkspace');
+    this.watchOSProjectPath = join(this.testArtifactsDir, 'TestProjectWatchOS', 'TestProjectWatchOS.xcodeproj');
   }
 
   get paths() {
@@ -28,7 +30,9 @@ export class TestProjectManager {
       workspaceDir: this.testArtifactsDir,
       derivedDataPath: join(this.testArtifactsDir, 'DerivedData'),
       xcodeProjectPath: this.xcodeProjectPath,
-      workspacePath: this.workspacePath
+      workspacePath: this.workspacePath,
+      watchOSProjectPath: this.watchOSProjectPath,
+      watchOSProjectDir: join(this.testArtifactsDir, 'TestProjectWatchOS')
     };
   }
 
@@ -36,7 +40,8 @@ export class TestProjectManager {
     return {
       xcodeProject: 'TestProjectXCTest',
       workspace: 'TestProjectXCTest',  // The workspace uses the same scheme
-      swiftPackage: 'TestSPM'  // SPM packages use their package name as the scheme
+      swiftPackage: 'TestSPM',  // SPM packages use their package name as the scheme
+      watchOSProject: 'TestProjectWatchOS Watch App'  // The watchOS app scheme
     };
   }
 
@@ -86,7 +91,8 @@ export class TestProjectManager {
     // Clean build folders in Xcode projects
     const xcodeProjects = [
       join(this.testArtifactsDir, 'TestProjectXCTest'),
-      join(this.testArtifactsDir, 'TestProjectSwiftTesting')
+      join(this.testArtifactsDir, 'TestProjectSwiftTesting'),
+      join(this.testArtifactsDir, 'TestProjectWatchOS')
     ];
 
     xcodeProjects.forEach(projectDir => {

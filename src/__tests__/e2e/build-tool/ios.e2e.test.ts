@@ -96,12 +96,8 @@ describe('iOS Build Tests', () => {
       const text = (response.content[0] as any).text;
       
       // Should either succeed or report device not found
-      if (text.includes('Build succeeded')) {
         expect(text).toContain('Build succeeded');
         expect(text).toContain('Platform: iOS');
-      } else {
-        expect(text).toMatch(/No available simulator found|Unable to find a destination|Device.*not found/);
-      }
     }, 30000);
 
     test('should build with custom configuration Beta', async () => {

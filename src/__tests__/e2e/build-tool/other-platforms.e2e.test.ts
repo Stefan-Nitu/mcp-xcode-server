@@ -10,6 +10,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../../utils/TestProjectManager';
+import { cleanupClientAndTransport, createAndConnectClient } from '../../utils/testHelpers';
 import { createModuleLogger } from '../../../logger';
 
 const logger = createModuleLogger('Other-Platform-Build-E2E');
@@ -26,56 +27,13 @@ describe('Other Platform Build Tests', () => {
   }, 120000);
   
   beforeEach(async () => {
-    transport = new StdioClientTransport({
-      command: 'node',
-      args: ['dist/index.js'],
-      cwd: process.cwd(),
-    });
-    
-    client = new Client({
-      name: 'test-client',
-      version: '1.0.0',
-    }, {
-      capabilities: {}
-    });
-    
-    await client.connect(transport);
+    const result = await createAndConnectClient();
+    client = result.client;
+    transport = result.transport;
   });
   
   afterEach(async () => {
-    if (client) {
-      await client.close();
-    }
-    
-    if (transport) {
-      const transportProcess = (transport as any)._process;
-      await transport.close();
-      
-      if (transportProcess) {
-        if (transportProcess.stdin && !transportProcess.stdin.destroyed) {
-          transportProcess.stdin.end();
-          transportProcess.stdin.destroy();
-        }
-        if (transportProcess.stdout && !transportProcess.stdout.destroyed) {
-          transportProcess.stdout.destroy();
-        }
-        if (transportProcess.stderr && !transportProcess.stderr.destroyed) {
-          transportProcess.stderr.destroy();
-        }
-        transportProcess.unref();
-        if (!transportProcess.killed) {
-          transportProcess.kill('SIGTERM');
-          await new Promise(resolve => {
-            const timeout = setTimeout(resolve, 100);
-            transportProcess.once('exit', () => {
-              clearTimeout(timeout);
-              resolve(undefined);
-            });
-          });
-        }
-      }
-    }
-    
+    await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
   });
 
@@ -118,19 +76,35 @@ describe('Other Platform Build Tests', () => {
       
       const text = (response.content[0] as any).text;
       
-      // SPM builds should either succeed or report clear errors
-      if (text.includes('Build succeeded')) {
-        expect(text).toContain('Build succeeded');
-        expect(text).toContain('Platform: tvOS');
-      } else {
-        // Should have meaningful error message about tvOS support
-        expect(text).toMatch(/Unable to find a destination|error|failed/i);
-      }
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: tvOS');
     }, 30000);
   });
 
   describe('watchOS Builds', () => {
-    test('should handle watchOS project build', async () => {
+    test('should build watchOS project successfully', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build',
+          arguments: {
+            projectPath: testProjectManager.paths.watchOSProjectPath,
+            scheme: testProjectManager.schemes.watchOSProject,
+            platform: 'watchOS'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      
+      // This should succeed since we have a proper watchOS project
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: watchOS');
+      expect(text).toContain(testProjectManager.schemes.watchOSProject);
+    }, 30000);
+
+    test('should handle iOS project without watchOS support', async () => {
+      // Try to build an iOS-only project for watchOS
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -145,17 +119,9 @@ describe('Other Platform Build Tests', () => {
       
       const text = (response.content[0] as any).text;
       
-      // Check if the project doesn't support watchOS (this is acceptable to skip)
-      if (text.includes('Unable to find a destination matching') || 
-          text.includes('xcodebuild: error')) {
-        // Project doesn't support watchOS - this is OK, skip the test
-        expect(text).toMatch(/Unable to find a destination matching|xcodebuild: error/);
-        return;
-      }
-      
-      // Otherwise, the build MUST succeed
-      expect(text).toContain('Build succeeded');
-      expect(text).toContain('Platform: watchOS');
+      // This should fail since TestProjectXCTest doesn't have watchOS targets
+      expect(text).toMatch(/Unable to find a destination matching|xcodebuild: error|does not contain.*watchOS/);
+      expect(text).not.toContain('Build succeeded');
     }, 30000);
 
     test('should handle watchOS SPM build', async () => {
@@ -173,16 +139,15 @@ describe('Other Platform Build Tests', () => {
       
       const text = (response.content[0] as any).text;
       
-      // Check if the project doesn't support watchOS (this is acceptable to skip)
+      // SPM packages may or may not support watchOS
       if (text.includes('Unable to find a destination matching')) {
-        // Project doesn't support watchOS - this is OK, skip the test
+        // Package doesn't support watchOS - this is OK
         expect(text).toContain('Unable to find a destination matching');
-        return; // Skip further assertions
+      } else {
+        // If it does support watchOS, it should succeed
+        expect(text).toContain('Build succeeded');
+        expect(text).toContain('Platform: watchOS');
       }
-      
-      // Otherwise, the build MUST succeed
-      expect(text).toContain('Build succeeded');
-      expect(text).toContain('Platform: watchOS');
     }, 30000);
   });
 
