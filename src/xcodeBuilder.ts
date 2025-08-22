@@ -300,6 +300,7 @@ export class XcodeBuilder {
   /**
    * Clean build artifacts, DerivedData, or test results
    */
+  // Deprecated - use CleanBuildTool directly
   async cleanProjectInstance(config: {
     projectPath?: string;
     scheme?: string;
@@ -308,82 +309,16 @@ export class XcodeBuilder {
     cleanTarget?: 'build' | 'derivedData' | 'testResults' | 'all';
     derivedDataPath?: string;
   }): Promise<{ success: boolean; message: string }> {
-    const { 
-      projectPath, 
-      scheme, 
-      platform = Platform.iOS, 
-      configuration = 'Debug',
-      cleanTarget = 'build',
-      derivedDataPath = './DerivedData'
-    } = config;
+    logger.warn('cleanProjectInstance is deprecated. Use CleanBuildTool directly.');
     
-    const messages: string[] = [];
+    // For backward compatibility, delegate to CleanBuildTool
+    const { CleanBuildTool } = await import('./tools/CleanBuildTool.js');
+    const cleanTool = new CleanBuildTool();
+    const result = await cleanTool.execute(config);
     
-    try {
-      // Clean build folder using xcodebuild clean
-      if (cleanTarget === 'build' || cleanTarget === 'all') {
-        if (projectPath && existsSync(projectPath)) {
-          const isWorkspace = projectPath.endsWith('.xcworkspace');
-          const projectFlag = isWorkspace ? '-workspace' : '-project';
-          
-          let command = `xcodebuild clean ${projectFlag} "${projectPath}"`;
-          
-          if (scheme) {
-            command += ` -scheme "${scheme}"`;
-          }
-          
-          command += ` -configuration "${configuration}"`;
-          
-          logger.info({ projectPath, scheme, configuration }, 'Cleaning build folder');
-          
-          try {
-            await this.execAsync(command);
-            messages.push(`Cleaned build folder for ${scheme || path.basename(projectPath)}`);
-          } catch (error: any) {
-            logger.warn({ error, projectPath }, 'Failed to clean build folder');
-            messages.push(`Warning: Could not clean build folder: ${error.message}`);
-          }
-        } else if (cleanTarget === 'build') {
-          return {
-            success: false,
-            message: 'Project path required for cleaning build folder'
-          };
-        }
-      }
-      
-      // Clean DerivedData folder
-      if (cleanTarget === 'derivedData' || cleanTarget === 'testResults' || cleanTarget === 'all') {
-        if (existsSync(derivedDataPath)) {
-          if (cleanTarget === 'testResults') {
-            // Only clean test results
-            const testLogsPath = path.join(derivedDataPath, 'Logs', 'Test');
-            if (existsSync(testLogsPath)) {
-              rmSync(testLogsPath, { recursive: true, force: true });
-              messages.push('Cleared test results');
-              logger.info({ path: testLogsPath }, 'Cleared test results');
-            } else {
-              messages.push('No test results to clear');
-            }
-          } else {
-            // Clean entire DerivedData
-            rmSync(derivedDataPath, { recursive: true, force: true });
-            messages.push(`Removed DerivedData at ${derivedDataPath}`);
-            logger.info({ path: derivedDataPath }, 'Removed DerivedData');
-          }
-        } else {
-          messages.push(`No DerivedData found at ${derivedDataPath}`);
-        }
-      }
-      
-      return {
-        success: true,
-        message: messages.length > 0 ? messages.join('. ') : 'Nothing to clean'
-      };
-      
-    } catch (error: any) {
-      logger.error({ error, projectPath, cleanTarget }, 'Failed to clean project');
-      throw new Error(`Failed to clean project: ${error.message}`);
-    }
+    // Parse the result to match the expected return type
+    const parsed = JSON.parse(result.content[0].text);
+    return parsed;
   }
 
   /**
