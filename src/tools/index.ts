@@ -9,7 +9,7 @@ export { ShutdownSimulatorTool } from './ShutdownSimulatorTool.js';
 export { ViewSimulatorScreenTool } from './ViewSimulatorScreenTool.js';
 
 // Build and test tools
-export { BuildTool } from './BuildTool.js';
+export { BuildTool } from './build-tools/BuildTool.js';
 export { RunProjectTool } from './RunProjectTool.js';
 export { TestProjectTool } from './TestProjectTool.js';
 export { TestSPMModuleTool } from './TestSPMModuleTool.js';

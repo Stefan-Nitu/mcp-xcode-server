@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { Platform } from '../types.js';
-import { createModuleLogger } from '../logger.js';
-import { safePathSchema, platformSchema, configurationSchema } from './validators.js';
-import { BuildSPMPackageSwiftBuildTool } from './build-spm/BuildSPMPackageSwiftBuildTool.js';
-import { BuildSPMPackageXcodebuildTool } from './build-spm/BuildSPMPackageXcodebuildTool.js';
+import { Platform } from '../../types.js';
+import { createModuleLogger } from '../../logger.js';
+import { safePathSchema, platformSchema, configurationSchema } from '../validators.js';
+import { BuildSPMPackageSwiftBuildTool } from './BuildSPMPackageSwiftBuildTool.js';
+import { BuildSPMPackageXcodebuildTool } from './BuildSPMPackageXcodebuildTool.js';
 
 const logger = createModuleLogger('BuildSPMPackageTool');
 

@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { Platform } from '../types.js';
-import { createModuleLogger } from '../logger.js';
-import { safePathSchema, platformSchema, configurationSchema } from './validators.js';
-import { execAsync } from '../utils.js';
+import { Platform } from '../../types.js';
+import { createModuleLogger } from '../../logger.js';
+import { safePathSchema, platformSchema, configurationSchema } from '../validators.js';
+import { execAsync } from '../../utils.js';
 import { existsSync } from 'fs';
 import path from 'path';
-import { SimulatorManager } from '../simulatorManager.js';
-import { PlatformHandler } from '../platformHandler.js';
+import { SimulatorManager } from '../../simulatorManager.js';
+import { PlatformHandler } from '../../platformHandler.js';
 
 const logger = createModuleLogger('BuildXcodeProjectTool');
 

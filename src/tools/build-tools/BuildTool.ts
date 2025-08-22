@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Platform } from '../types.js';
-import { createModuleLogger } from '../logger.js';
-import { safePathSchema, platformSchema, configurationSchema } from './validators.js';
+import { Platform } from '../../types.js';
+import { createModuleLogger } from '../../logger.js';
+import { safePathSchema, platformSchema, configurationSchema } from '../validators.js';
 import { BuildXcodeProjectTool } from './BuildXcodeProjectTool.js';
 import { BuildSPMPackageTool } from './BuildSPMPackageTool.js';
 
