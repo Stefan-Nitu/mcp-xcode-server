@@ -12,6 +12,8 @@ export { ViewSimulatorScreenTool } from './ViewSimulatorScreenTool.js';
 export { BuildTool } from './build-tools/BuildTool.js';
 export { BuildSwiftPackageTool } from './BuildSwiftPackageTool.js';
 export { RunSwiftPackageTool } from './RunSwiftPackageTool.js';
+export { BuildXcodeTool } from './BuildXcodeTool.js';
+export { RunXcodeTool } from './RunXcodeTool.js';
 export { RunProjectTool } from './RunProjectTool.js';
 export { TestProjectTool } from './TestProjectTool.js';
 export { TestSPMModuleTool } from './TestSPMModuleTool.js';
