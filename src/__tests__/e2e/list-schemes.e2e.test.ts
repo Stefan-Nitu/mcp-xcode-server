@@ -157,48 +157,6 @@ describe('ListSchemesTool E2E Tests', () => {
     });
   });
 
-  describe('Shared vs Non-Shared Schemes', () => {
-    test('should include shared schemes by default', async () => {
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'list_schemes',
-          arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
-            shared: true
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const schemes = JSON.parse((response.content[0] as any).text);
-      
-      expect(Array.isArray(schemes)).toBe(true);
-      expect(schemes.length).toBeGreaterThan(0);
-    });
-
-    test('should handle shared parameter set to false', async () => {
-      const response = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'list_schemes',
-          arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
-            shared: false
-          }
-        }
-      }, CallToolResultSchema);
-      
-      expect(response).toBeDefined();
-      const content = (response.content[0] as any).text;
-      
-      // Might return empty array if only shared schemes exist
-      const schemes = JSON.parse(content);
-      expect(Array.isArray(schemes)).toBe(true);
-      // Non-shared schemes are user-specific and might not exist in test projects
-    });
-  });
-
   describe('Error Handling', () => {
     test('should handle non-existent project path', async () => {
       const response = await client.request({
@@ -374,8 +332,7 @@ describe('ListSchemesTool E2E Tests', () => {
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
-            shared: false // Non-shared schemes might not exist
+            projectPath: projectManager.paths.xcodeProjectPath
           }
         }
       }, CallToolResultSchema);

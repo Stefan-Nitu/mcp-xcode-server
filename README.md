@@ -196,7 +196,6 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
 
 - **`list_schemes`**: List all available schemes in an Xcode project or workspace
   - `projectPath`: Path to .xcodeproj or .xcworkspace
-  - `shared`: Include shared schemes (default: true)
   - Returns: JSON array of scheme names
 
 - **`get_build_settings`**: Get build settings for a scheme

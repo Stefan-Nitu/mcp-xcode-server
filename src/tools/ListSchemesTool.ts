@@ -9,8 +9,7 @@ const execAsync = promisify(exec);
 
 // Validation schema
 export const listSchemesSchema = z.object({
-  projectPath: safePathSchema,
-  shared: z.boolean().optional().default(true)
+  projectPath: safePathSchema
 });
 
 export type ListSchemesArgs = z.infer<typeof listSchemesSchema>;
@@ -32,11 +31,6 @@ export class ListSchemesTool implements IListSchemesTool {
           projectPath: {
             type: 'string',
             description: 'Path to the Xcode project or workspace'
-          },
-          shared: {
-            type: 'boolean',
-            description: 'Include shared schemes (default: true)',
-            default: true
           }
         },
         required: ['projectPath']
