@@ -38,13 +38,13 @@ These tools have been thoroughly tested with comprehensive e2e tests and refacto
    - Test file: `src/__tests__/e2e/list-simulators.e2e.test.ts`
    - Notes: Self-contained implementation, handles dynamic simulator configurations
 
+7. **BootSimulatorTool** ✅
+   - Status: Validated
+   - Test file: `src/__tests__/e2e/boot-simulator.e2e.test.ts`
+   - Notes: Self-contained implementation, comprehensive e2e tests
+
 ### ⏳ Pending Validation
 These tools need comprehensive e2e testing and potential refactoring:
-
-7. **BootSimulatorTool** ⏳
-   - Status: Pending
-   - Test file: Partial coverage in `simulator-tools.e2e.test.ts`
-   - Notes: Needs dedicated e2e test file
 
 8. **ShutdownSimulatorTool** ⏳
    - Status: Pending

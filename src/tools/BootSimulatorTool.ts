@@ -1,8 +1,13 @@
 import { z } from 'zod';
-import { SimulatorManager } from '../simulatorManager.js';
+import { exec as nodeExec } from 'child_process';
+import { promisify } from 'util';
 import { createModuleLogger } from '../logger.js';
 
 const logger = createModuleLogger('BootSimulatorTool');
+
+// Type for the exec function
+export type ExecFunction = typeof nodeExec;
+export type ExecAsyncFunction = (command: string, options?: any) => Promise<{ stdout: string; stderr: string }>;
 
 // Validation schema
 export const bootSimulatorSchema = z.object({
@@ -18,9 +23,13 @@ export interface IBootSimulatorTool {
 }
 
 export class BootSimulatorTool implements IBootSimulatorTool {
-  constructor(
-    private simulatorManager = SimulatorManager
-  ) {}
+  private readonly execAsync: ExecAsyncFunction;
+
+  constructor(execFunc?: ExecFunction) {
+    // Use provided exec or default to Node's exec for testing
+    const exec = execFunc || nodeExec;
+    this.execAsync = promisify(exec) as unknown as ExecAsyncFunction;
+  }
 
   getToolDefinition() {
     return {
@@ -45,7 +54,30 @@ export class BootSimulatorTool implements IBootSimulatorTool {
     
     logger.info({ deviceId }, 'Booting simulator');
     
-    await this.simulatorManager.bootSimulator(deviceId);
+    try {
+      // Boot the simulator
+      await this.execAsync(`xcrun simctl boot "${deviceId}"`);
+      logger.info({ deviceId }, 'Simulator booted successfully');
+    } catch (error: any) {
+      // Check if simulator is already booted - that's OK
+      if (error.message && error.message.includes('Unable to boot device in current state: Booted')) {
+        logger.debug({ deviceId }, 'Simulator already in booted state');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Simulator already booted: ${deviceId}`
+            }
+          ]
+        };
+      }
+      // Real error - throw it
+      logger.error({ error, deviceId }, 'Failed to boot simulator');
+      throw new Error(`Failed to boot simulator: ${error.message}`);
+    }
+    
+    // Open Simulator.app to show the UI
+    await this.ensureSimulatorAppOpen();
     
     return {
       content: [
@@ -55,5 +87,25 @@ export class BootSimulatorTool implements IBootSimulatorTool {
         }
       ]
     };
+  }
+
+  /**
+   * Ensure the Simulator app is open
+   */
+  private async ensureSimulatorAppOpen(): Promise<void> {
+    try {
+      // Check if Simulator.app is already running
+      await this.execAsync('pgrep -x Simulator');
+      logger.debug('Simulator.app is already running');
+    } catch {
+      // Simulator app not running, open it
+      logger.debug('Opening Simulator.app');
+      try {
+        await this.execAsync('open -a Simulator');
+      } catch (error: any) {
+        // Log but don't fail - simulator will still work headless
+        logger.warn({ error }, 'Could not open Simulator.app, continuing headless');
+      }
+    }
   }
 }
