@@ -106,6 +106,16 @@ These tools need comprehensive e2e testing and potential refactoring:
     - Test file: `src/__tests__/e2e/manage-dependencies.e2e.test.ts`
     - Notes: Has tests but needs validation for refactoring
 
+20. **BuildSwiftPackageTool** ⏳
+    - Status: Pending
+    - Test file: `src/__tests__/e2e/build-swift-package.e2e.test.ts`
+    - Notes: New tool, has comprehensive e2e and unit tests but not yet validated in production
+
+21. **RunSwiftPackageTool** ⏳
+    - Status: Pending
+    - Test file: `src/__tests__/e2e/run-swift-package.e2e.test.ts`
+    - Notes: New tool, has comprehensive e2e and unit tests but not yet validated in production
+
 ## Testing Guidelines
 
 ### For Validated Tools
