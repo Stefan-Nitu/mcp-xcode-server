@@ -146,6 +146,24 @@ describe('BuildXcodeTool E2E Tests', () => {
   });
 
   describe('Platform Support', () => {
+    test('should handle iOS platform (default)', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build_xcode',
+          arguments: {
+            projectPath: testProjectManager.paths.xcodeProjectPath,
+            scheme: testProjectManager.schemes.xcodeProject
+            // iOS is default platform
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: iOS');
+    }, 30000);
+
     test('should handle macOS platform', async () => {
       const response = await client.request({
         method: 'tools/call',
@@ -186,6 +204,48 @@ describe('BuildXcodeTool E2E Tests', () => {
         expect(text).toContain('Platform: tvOS');
       } else {
         expect(text.toLowerCase()).toMatch(/platform.*not supported|unable to find a destination/i);
+      }
+    }, 30000);
+
+    test('should handle watchOS platform', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build_xcode',
+          arguments: {
+            projectPath: testProjectManager.paths.xcodeProjectPath,
+            scheme: testProjectManager.schemes.xcodeProject,
+            platform: 'watchOS'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Platform: watchOS');
+      } else {
+        expect(text.toLowerCase()).toMatch(/platform.*not supported|unable to find a destination/i);
+      }
+    }, 30000);
+
+    test('should handle visionOS platform', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build_xcode',
+          arguments: {
+            projectPath: testProjectManager.paths.xcodeProjectPath,
+            scheme: testProjectManager.schemes.xcodeProject,
+            platform: 'visionOS'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      if (text.includes('Build succeeded')) {
+        expect(text).toContain('Platform: visionOS');
+      } else {
+        expect(text.toLowerCase()).toMatch(/platform.*not supported|unable to find a destination|requires xcode 15/i);
       }
     }, 30000);
   });
