@@ -1,10 +1,11 @@
 import { z } from 'zod';
-import { XcodeBuilder } from '../xcodeBuilder.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from './validators.js';
-import { XcodeBuilderAdapter } from './XcodeBuilderAdapter.js';
 
 const logger = createModuleLogger('ListSchemesTool');
+const execAsync = promisify(exec);
 
 // Validation schema
 export const listSchemesSchema = z.object({
@@ -21,14 +22,6 @@ export interface IListSchemesTool {
 }
 
 export class ListSchemesTool implements IListSchemesTool {
-  private adapter: XcodeBuilderAdapter;
-  
-  constructor(
-    xcodeBuilder: XcodeBuilder | typeof XcodeBuilder = XcodeBuilder
-  ) {
-    this.adapter = new XcodeBuilderAdapter(xcodeBuilder);
-  }
-
   getToolDefinition() {
     return {
       name: 'list_schemes',
@@ -53,34 +46,76 @@ export class ListSchemesTool implements IListSchemesTool {
 
   async execute(args: any) {
     const validated = listSchemesSchema.parse(args);
-    const { projectPath, shared } = validated;
+    const { projectPath } = validated;
     
-    logger.info({ projectPath, shared }, 'Listing schemes');
+    logger.info({ projectPath }, 'Listing schemes');
     
-    const schemes = await this.adapter.listSchemes(projectPath, shared);
-    
-    if (!schemes || schemes.length === 0) {
+    try {
+      // Determine if it's a workspace or project
+      const isWorkspace = projectPath.endsWith('.xcworkspace');
+      const flag = isWorkspace ? '-workspace' : '-project';
+      
+      // Run xcodebuild -list to get schemes
+      const command = `xcodebuild -list ${flag} "${projectPath}"`;
+      logger.debug({ command }, 'Running xcodebuild command');
+      
+      const { stdout } = await execAsync(command, { 
+        maxBuffer: 1024 * 1024 // 1MB buffer
+      });
+      
+      // Parse the output to extract schemes
+      const schemes = this.parseSchemes(stdout);
+      
+      logger.info({ schemes: schemes.length }, 'Found schemes');
+      
       return {
         content: [
           {
             type: 'text',
-            text: 'No schemes found in the project'
+            text: JSON.stringify(schemes)
+          }
+        ]
+      };
+    } catch (error: any) {
+      logger.error({ error: error.message, projectPath }, 'Failed to list schemes');
+      
+      // Return error response
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: Failed to list schemes - ${error.message}`
           }
         ]
       };
     }
+  }
+
+  private parseSchemes(output: string): string[] {
+    const schemes: string[] = [];
+    const lines = output.split('\n');
+    let inSchemesSection = false;
     
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            projectPath,
-            schemes,
-            count: schemes.length
-          }, null, 2)
-        }
-      ]
-    };
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Check if we're entering the Schemes section
+      if (trimmedLine === 'Schemes:') {
+        inSchemesSection = true;
+        continue;
+      }
+      
+      // If we're in the schemes section and hit an empty line, stop
+      if (inSchemesSection && trimmedLine === '') {
+        break;
+      }
+      
+      // If we're in the schemes section, add the scheme
+      if (inSchemesSection && trimmedLine) {
+        schemes.push(trimmedLine);
+      }
+    }
+    
+    return schemes;
   }
 }
