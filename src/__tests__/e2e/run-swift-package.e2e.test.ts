@@ -1,0 +1,230 @@
+/**
+ * E2E tests for RunSwiftPackageTool
+ * Tests running Swift Package executables
+ */
+
+import { describe, test, expect, beforeAll, beforeEach, afterEach, afterAll } from '@jest/globals';
+import { execSync } from 'child_process';
+import { join } from 'path';
+import { Client } from '@modelcontextprotocol/sdk/client/index';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
+import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
+import { TestProjectManager } from '../utils/TestProjectManager.js';
+
+describe('RunSwiftPackageTool E2E Tests', () => {
+  let client: Client;
+  let transport: StdioClientTransport;
+  let testProjectManager: TestProjectManager;
+  
+  beforeAll(async () => {
+    // Build the server
+    execSync('npm run build', { cwd: process.cwd() });
+    testProjectManager = new TestProjectManager();
+    testProjectManager.setup();
+  }, 120000);
+  
+  afterAll(() => {
+    testProjectManager.cleanup();
+  });
+  
+  beforeEach(async () => {
+    const setup = await createAndConnectClient();
+    client = setup.client;
+    transport = setup.transport;
+  }, 30000);
+  
+  afterEach(async () => {
+    await cleanupClientAndTransport(client, transport);
+  });
+
+  describe('Basic Execution', () => {
+    test('should run SPM executable with default configuration', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageDir,
+            executable: 'TestSPMExecutable'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Execution completed: TestSPMExecutable');
+      expect(text).toContain('Configuration: Debug');
+      expect(text).toContain('TestSPM Executable Running');
+      expect(text).toContain('Execution completed successfully');
+    }, 30000);
+
+    test('should run with Release configuration', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageDir,
+            executable: 'TestSPMExecutable',
+            configuration: 'Release'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Configuration: Release');
+      expect(text).toContain('TestSPM Executable Running');
+    }, 30000);
+
+    test('should run from Package.swift path', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
+            executable: 'TestSPMExecutable'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('TestSPM Executable Running');
+    }, 30000);
+  });
+
+  describe('Argument Handling', () => {
+    test('should pass single argument to executable', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageDir,
+            executable: 'TestSPMExecutable',
+            arguments: ['test-arg']
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Received 1 arguments');
+      expect(text).toContain('Arg 1: test-arg');
+    }, 30000);
+
+    test('should pass multiple arguments to executable', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageDir,
+            executable: 'TestSPMExecutable',
+            arguments: ['arg1', 'arg2', 'arg3']
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Received 3 arguments');
+      expect(text).toContain('Arg 1: arg1');
+      expect(text).toContain('Arg 2: arg2');
+      expect(text).toContain('Arg 3: arg3');
+    }, 30000);
+  });
+
+  describe('Error Handling', () => {
+    test('should handle non-existent package', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: '/non/existent/package'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text.toLowerCase()).toContain('failed');
+      expect(text).toContain('No Package.swift found');
+    });
+
+    test('should handle non-existent executable', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageDir,
+            executable: 'NonExistentExecutable'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text.toLowerCase()).toContain('error');
+      // Swift will report unknown executable
+    });
+
+    test('should handle executable failure with exit code', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageDir,
+            executable: 'TestSPMExecutable',
+            arguments: ['--fail']
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      // The executable should print error message before failing
+      expect(text).toContain('Requested failure via --fail flag');
+    }, 30000);
+
+    test('should handle broken Package.swift', async () => {
+      // Create a broken package temporarily
+      const brokenPackagePath = '/tmp/broken-run-spm-test';
+      execSync(`mkdir -p ${brokenPackagePath}`, { stdio: 'pipe' });
+      execSync(`echo 'invalid swift code' > ${brokenPackagePath}/Package.swift`, { stdio: 'pipe' });
+      
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: brokenPackagePath
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text.toLowerCase()).toContain('error');
+      
+      // Clean up
+      execSync(`rm -rf ${brokenPackagePath}`, { stdio: 'pipe' });
+    }, 30000);
+  });
+
+  describe('Default Executable', () => {
+    test('should run without specifying executable name', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'run_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageDir
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      // Should run the default executable (first one found)
+      expect(text).toContain('Execution completed: default executable');
+      expect(text).toContain('TestSPM Executable Running');
+    }, 30000);
+  });
+});

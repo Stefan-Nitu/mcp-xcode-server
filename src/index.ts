@@ -22,6 +22,7 @@ import {
   ViewSimulatorScreenTool,
   BuildTool,
   BuildSwiftPackageTool,
+  RunSwiftPackageTool,
   RunProjectTool,
   TestProjectTool,
   TestSPMModuleTool,
@@ -77,6 +78,7 @@ class XcodeServer {
       // Build and test
       new BuildTool(),
       new BuildSwiftPackageTool(),
+      new RunSwiftPackageTool(),
       new RunProjectTool(),
       new TestProjectTool(),
       new TestSPMModuleTool(),
