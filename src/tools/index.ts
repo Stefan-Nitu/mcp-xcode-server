@@ -13,8 +13,8 @@ export { BuildSwiftPackageTool } from './BuildSwiftPackageTool.js';
 export { RunSwiftPackageTool } from './RunSwiftPackageTool.js';
 export { BuildXcodeTool } from './BuildXcodeTool.js';
 export { RunXcodeTool } from './RunXcodeTool.js';
-export { TestProjectTool } from './TestProjectTool.js';
-export { TestSPMModuleTool } from './TestSPMModuleTool.js';
+export { TestXcodeTool } from './TestXcodeTool.js';
+export { TestSwiftPackageTool } from './TestSwiftPackageTool.js';
 export { CleanBuildTool } from './CleanBuildTool.js';
 
 // Archive and export tools
@@ -37,6 +37,5 @@ export { GetDeviceLogsTool } from './GetDeviceLogsTool.js';
 // Advanced project management tools
 export { ManageDependenciesTool } from './ManageDependenciesTool.js';
 
-// Export validators and adapters for use in other tools
+// Export validators for use in other tools
 export * from './validators.js';
-export { XcodeBuilderAdapter } from './XcodeBuilderAdapter.js';

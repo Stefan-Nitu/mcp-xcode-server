@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { XcodeBuilder } from '../xcodeBuilder.js';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from './validators.js';
-import { XcodeBuilderAdapter } from './XcodeBuilderAdapter.js';
+import { Xcode } from '../utils/projects/Xcode.js';
+import { XcodeProject } from '../utils/projects/XcodeProject.js';
 
 const logger = createModuleLogger('ListTargetsTool');
 
@@ -20,12 +20,10 @@ export interface IListTargetsTool {
 }
 
 export class ListTargetsTool implements IListTargetsTool {
-  private adapter: XcodeBuilderAdapter;
+  private xcode: Xcode;
   
-  constructor(
-    xcodeBuilder: XcodeBuilder | typeof XcodeBuilder = XcodeBuilder
-  ) {
-    this.adapter = new XcodeBuilderAdapter(xcodeBuilder);
+  constructor(xcode?: Xcode) {
+    this.xcode = xcode || new Xcode();
   }
 
   getToolDefinition() {
@@ -51,30 +49,52 @@ export class ListTargetsTool implements IListTargetsTool {
     
     logger.info({ projectPath }, 'Listing targets');
     
-    const targets = await this.adapter.listTargets(projectPath);
-    
-    if (!targets || targets.length === 0) {
+    try {
+      // Open the project
+      const project = await this.xcode.open(projectPath);
+      
+      // Ensure it's an Xcode project
+      if (!(project instanceof XcodeProject)) {
+        throw new Error('Not an Xcode project or workspace');
+      }
+      
+      // Get targets
+      const targets = await project.getTargets();
+      
+      if (!targets || targets.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'No targets found in the project'
+            }
+          ]
+        };
+      }
+      
       return {
         content: [
           {
             type: 'text',
-            text: 'No targets found in the project'
+            text: JSON.stringify({
+              projectPath,
+              targets,
+              count: targets.length
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      logger.error({ error, projectPath }, 'Failed to list targets');
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Failed to list targets: ${error.message}`
           }
         ]
       };
     }
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            projectPath,
-            targets,
-            count: targets.length
-          }, null, 2)
-        }
-      ]
-    };
   }
 }

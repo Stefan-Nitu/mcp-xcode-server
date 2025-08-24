@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { XcodeBuilder } from '../xcodeBuilder.js';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from './validators.js';
-import { XcodeBuilderAdapter } from './XcodeBuilderAdapter.js';
+import { Xcode } from '../utils/projects/Xcode.js';
+import { XcodeProject } from '../utils/projects/XcodeProject.js';
 
 const logger = createModuleLogger('GetProjectInfoTool');
 
@@ -20,12 +20,10 @@ export interface IGetProjectInfoTool {
 }
 
 export class GetProjectInfoTool implements IGetProjectInfoTool {
-  private adapter: XcodeBuilderAdapter;
+  private xcode: Xcode;
   
-  constructor(
-    xcodeBuilder: XcodeBuilder | typeof XcodeBuilder = XcodeBuilder
-  ) {
-    this.adapter = new XcodeBuilderAdapter(xcodeBuilder);
+  constructor(xcode?: Xcode) {
+    this.xcode = xcode || new Xcode();
   }
 
   getToolDefinition() {
@@ -51,30 +49,41 @@ export class GetProjectInfoTool implements IGetProjectInfoTool {
     
     logger.info({ projectPath }, 'Getting project info');
     
-    const info = await this.adapter.getProjectInfo(projectPath);
-    
-    if (!info) {
+    try {
+      // Open the project
+      const project = await this.xcode.open(projectPath);
+      
+      // Ensure it's an Xcode project
+      if (!(project instanceof XcodeProject)) {
+        throw new Error('Not an Xcode project or workspace');
+      }
+      
+      // Get project info
+      const info = await project.getProjectInfo();
+      
       return {
         content: [
           {
             type: 'text',
-            text: 'Could not retrieve project information'
+            text: JSON.stringify({
+              projectPath,
+              projectType: projectPath.endsWith('.xcworkspace') ? 'Workspace' : 'Project',
+              ...info
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      logger.error({ error, projectPath }, 'Failed to get project info');
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Failed to get project info: ${error.message}`
           }
         ]
       };
     }
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            projectPath,
-            projectType: projectPath.endsWith('.xcworkspace') ? 'Workspace' : 'Project',
-            ...info
-          }, null, 2)
-        }
-      ]
-    };
   }
 }
