@@ -5,10 +5,11 @@
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { BuildXcodeTool } from '../../tools/BuildXcodeTool.js';
-import { Platform } from '../../types.js';
+import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 import * as fs from 'fs';
 import * as utils from '../../utils.js';
 import * as platformHandler from '../../platformHandler.js';
+import { config } from '../../config.js';
 
 // Mock the modules
 jest.mock('fs', () => ({
@@ -21,9 +22,13 @@ jest.mock('../../utils.js', () => ({
 
 jest.mock('../../platformHandler.js', () => ({
   PlatformHandler: {
-    needsSimulator: jest.fn(),
-    getDestination: jest.fn(),
-    getGenericDestination: jest.fn()
+    needsSimulator: jest.fn()
+  }
+}));
+
+jest.mock('../../config.js', () => ({
+  config: {
+    getDerivedDataPath: jest.fn()
   }
 }));
 
@@ -32,17 +37,36 @@ describe('BuildXcodeTool Unit Tests', () => {
   const mockExecAsync = utils.execAsync as jest.MockedFunction<typeof utils.execAsync>;
   const mockExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>;
   const mockNeedsSimulator = platformHandler.PlatformHandler.needsSimulator as jest.MockedFunction<typeof platformHandler.PlatformHandler.needsSimulator>;
-  const mockGetDestination = platformHandler.PlatformHandler.getDestination as jest.MockedFunction<typeof platformHandler.PlatformHandler.getDestination>;
-  const mockGetGenericDestination = platformHandler.PlatformHandler.getGenericDestination as jest.MockedFunction<typeof platformHandler.PlatformHandler.getGenericDestination>;
-
-  // Mock SimulatorBooter
-  const mockSimulatorBooter = {
-    ensureBooted: jest.fn<(platform: string, deviceId?: string) => Promise<string>>()
+  const mockGetDerivedDataPath = config.getDerivedDataPath as jest.MockedFunction<typeof config.getDerivedDataPath>;
+  
+  // Create mock XcodeProject with proper instanceof support
+  const mockBuildProject = jest.fn<(options: any) => Promise<any>>();
+  const mockXcodeProject = Object.create(XcodeProject.prototype);
+  mockXcodeProject.buildProject = mockBuildProject;
+  mockXcodeProject.path = '/test/project.xcodeproj';
+  
+  // Mock Xcode
+  const mockXcode = {
+    open: jest.fn<(path: string) => Promise<any>>()
+  };
+  
+  // Mock Device
+  const mockDevice = {
+    id: 'booted-device-id',
+    name: 'Mock Device',
+    ensureBooted: jest.fn<() => Promise<void>>()
+  };
+  
+  // Mock Devices
+  const mockDevices = {
+    find: jest.fn<(nameOrId: string) => Promise<any>>()
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    tool = new BuildXcodeTool(mockSimulatorBooter as any);
+    tool = new BuildXcodeTool(mockDevices as any, mockXcode as any);
+    // Default setup
+    mockGetDerivedDataPath.mockReturnValue('./DerivedData');
   });
 
   describe('Tool Definition', () => {
@@ -51,7 +75,7 @@ describe('BuildXcodeTool Unit Tests', () => {
       
       expect(definition.name).toBe('build_xcode');
       expect(definition.description).toBe('Build an Xcode project or workspace');
-      expect(definition.inputSchema.required).toEqual(['projectPath']);
+      expect(definition.inputSchema.required).toEqual(['projectPath', 'scheme']);
       expect(definition.inputSchema.properties.platform.enum).toEqual(['iOS', 'macOS', 'tvOS', 'watchOS', 'visionOS']);
       expect(definition.inputSchema.properties.platform.default).toBe('iOS');
       expect(definition.inputSchema.properties.configuration.default).toBe('Debug');
@@ -61,34 +85,36 @@ describe('BuildXcodeTool Unit Tests', () => {
   describe('Build Command Generation', () => {
     test('should build .xcodeproj with scheme', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // build
-        .mockResolvedValueOnce({ stdout: '/path/to/app.app', stderr: '' }); // find app
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: '/path/to/app.app'
+      });
 
-      await tool.execute({
+      const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
         scheme: 'MyScheme',
         platform: 'iOS'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.stringContaining('-project "/test/project.xcodeproj"'),
-        expect.any(Object)
+      expect(mockBuildProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scheme: 'MyScheme',
+          platform: 'iOS'
+        })
       );
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.stringContaining('-scheme "MyScheme"'),
-        expect.any(Object)
-      );
+      expect(result.content[0].text).toContain('Build succeeded');
     });
 
-    test('should build .xcworkspace with workspace flag', async () => {
+    test('should build .xcworkspace', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // build
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: '/path/to/app.app'
+      });
 
       await tool.execute({
         projectPath: '/test/workspace.xcworkspace',
@@ -96,136 +122,111 @@ describe('BuildXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.stringContaining('-workspace "/test/workspace.xcworkspace"'),
-        expect.any(Object)
-      );
+      expect(mockXcode.open).toHaveBeenCalledWith('/test/workspace.xcworkspace');
+      expect(mockBuildProject).toHaveBeenCalled();
     });
 
-    test('should use generic destination when no deviceId specified', async () => {
+    test('should build without deviceId', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // build
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: undefined
+      });
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
         platform: 'iOS'
       });
 
-      expect(mockGetGenericDestination).toHaveBeenCalledWith(Platform.iOS);
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.stringContaining("destination 'generic/platform=iOS Simulator'"),
-        expect.any(Object)
+      expect(mockBuildProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deviceId: undefined
+        })
       );
     });
 
     test('should boot simulator when deviceId specified for iOS', async () => {
       mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulatorBooter.ensureBooted.mockResolvedValue('booted-device-id');
-      mockGetDestination.mockReturnValue('id=booted-device-id');
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // build
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.find.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded'
+      });
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
         platform: 'iOS',
         deviceId: 'my-device'
       });
 
-      expect(mockSimulatorBooter.ensureBooted).toHaveBeenCalledWith('iOS', 'my-device');
-      expect(mockGetDestination).toHaveBeenCalledWith(Platform.iOS, 'booted-device-id');
+      expect(mockDevices.find).toHaveBeenCalledWith('my-device');
+      expect(mockDevice.ensureBooted).toHaveBeenCalled();
+      expect(mockBuildProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deviceId: 'booted-device-id'
+        })
+      );
     });
 
     test('should build with Release configuration', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // build
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded'
+      });
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
         configuration: 'Release'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.stringContaining('-configuration "Release"'),
-        expect.any(Object)
+      expect(mockBuildProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: 'Release'
+        })
       );
     });
 
     test('should build with custom configuration', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // build
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded'
+      });
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
         configuration: 'Beta'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.stringContaining('-configuration "Beta"'),
-        expect.any(Object)
+      expect(mockBuildProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: 'Beta'
+        })
       );
-    });
-  });
-
-  describe('Platform Validation', () => {
-    test('should validate platform support before building', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation succeeds
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // build
-
-      await tool.execute({
-        projectPath: '/test/project.xcodeproj',
-        scheme: 'MyScheme',
-        platform: 'iOS'
-      });
-
-      // First call should be platform validation
-      expect(mockExecAsync).toHaveBeenNthCalledWith(1,
-        expect.stringContaining('xcodebuild -showBuildSettings'),
-        expect.objectContaining({ timeout: 10000 })
-      );
-    });
-
-    test('should handle platform not supported error', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=watchOS Simulator');
-      
-      const platformError = new Error('Platform check failed') as any;
-      platformError.stderr = 'Available destinations for the "MyScheme" scheme: { platform:iOS }';
-      mockExecAsync.mockRejectedValueOnce(platformError);
-
-      const result = await tool.execute({
-        projectPath: '/test/project.xcodeproj',
-        scheme: 'MyScheme',
-        platform: 'watchOS'
-      });
-
-      expect(result.content[0].text).toContain("Platform 'watchOS' is not supported");
-      expect(result.content[0].text).toContain('Available platforms: iOS');
     });
   });
 
   describe('Output Handling', () => {
     test('should find and report app path after successful build', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: 'Build succeeded', stderr: '' }) // build
-        .mockResolvedValueOnce({ stdout: './DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app', stderr: '' }); // find app
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
+      });
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -238,14 +239,17 @@ describe('BuildXcodeTool Unit Tests', () => {
 
     test('should handle missing app path gracefully', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: 'Build succeeded', stderr: '' }) // build
-        .mockRejectedValueOnce(new Error('find failed')); // find app fails
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: undefined
+      });
+      mockExecAsync.mockRejectedValue(new Error('find failed'));
 
       const result = await tool.execute({
-        projectPath: '/test/project.xcodeproj'
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme'
       });
 
       expect(result.content[0].text).toContain('Build succeeded');
@@ -254,14 +258,16 @@ describe('BuildXcodeTool Unit Tests', () => {
 
     test('should detect when custom configuration falls back to Release', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: 'Build succeeded', stderr: '' }) // build
-        .mockResolvedValueOnce({ stdout: './DerivedData/Build/Products/Release-iphonesimulator/MyApp.app', stderr: '' }); // find app in Release folder
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Release-iphonesimulator/MyApp.app'
+      });
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
         configuration: 'Beta'
       });
 
@@ -274,21 +280,32 @@ describe('BuildXcodeTool Unit Tests', () => {
       mockExistsSync.mockReturnValue(false);
 
       const result = await tool.execute({
-        projectPath: '/non/existent/project.xcodeproj'
+        projectPath: '/non/existent/project.xcodeproj',
+        scheme: 'MyScheme'
       });
 
       expect(result.content[0].text).toBe('Build failed: Project path does not exist: /non/existent/project.xcodeproj');
     });
 
-    test('should handle build failure with stderr', async () => {
+    test('should handle non-Xcode project', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // platform validation
-      
-      const buildError = new Error('Build failed') as any;
-      buildError.stderr = 'xcodebuild: error: Scheme "InvalidScheme" is not configured';
-      mockExecAsync.mockRejectedValueOnce(buildError);
+      mockXcode.open.mockResolvedValue({ type: 'swift-package' });
+
+      const result = await tool.execute({
+        projectPath: '/test/Package.swift',
+        scheme: 'MyScheme'
+      });
+
+      expect(result.content[0].text).toContain('Build failed: Not an Xcode project or workspace');
+    });
+
+    test('should handle build failure', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockBuildProject.mockResolvedValue({
+        success: false,
+        output: 'xcodebuild: error: Scheme "InvalidScheme" is not configured'
+      });
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -298,38 +315,32 @@ describe('BuildXcodeTool Unit Tests', () => {
       expect(result.content[0].text).toContain('xcodebuild: error: Scheme "InvalidScheme" is not configured');
     });
 
-    test('should handle build failure with stdout', async () => {
+    test('should handle device not found', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // platform validation
-      
-      const buildError = new Error('Build failed') as any;
-      buildError.stdout = 'xcodebuild output: compilation errors';
-      buildError.stderr = '';
-      mockExecAsync.mockRejectedValueOnce(buildError);
+      mockNeedsSimulator.mockReturnValue(true);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.find.mockResolvedValue(null);
 
       const result = await tool.execute({
-        projectPath: '/test/project.xcodeproj'
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
+        platform: 'iOS',
+        deviceId: 'non-existent'
       });
 
-      expect(result.content[0].text).toBe('xcodebuild output: compilation errors');
+      expect(result.content[0].text).toContain('Build failed: Device not found: non-existent');
     });
 
-    test('should handle build failure with only error message', async () => {
+    test('should handle general errors', async () => {
       mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // platform validation
-      
-      const buildError = new Error('Unknown build error');
-      mockExecAsync.mockRejectedValueOnce(buildError);
+      mockXcode.open.mockRejectedValue(new Error('Unknown error'));
 
       const result = await tool.execute({
-        projectPath: '/test/project.xcodeproj'
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toBe('Build failed: Unknown build error');
+      expect(result.content[0].text).toBe('Build failed: Unknown error');
     });
   });
 
@@ -337,38 +348,29 @@ describe('BuildXcodeTool Unit Tests', () => {
     test('should reject invalid platform', async () => {
       await expect(tool.execute({
         projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
         platform: 'Android'
-      })).rejects.toThrow();
+      })).rejects.toThrow('Invalid enum value');
     });
 
     test('should reject path traversal attempts', async () => {
       await expect(tool.execute({
-        projectPath: '../../../etc/passwd'
+        projectPath: '../../../etc/passwd',
+        scheme: 'MyScheme'
       })).rejects.toThrow('Path traversal');
     });
 
     test('should reject command injection attempts', async () => {
       await expect(tool.execute({
-        projectPath: '/test; rm -rf /'
+        projectPath: '/test; rm -rf /',
+        scheme: 'MyScheme'
       })).rejects.toThrow('Command injection');
     });
 
-    test('should accept project without scheme', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockGetGenericDestination.mockReturnValue('generic/platform=iOS Simulator');
-      mockExecAsync
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // platform validation
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // build
-
-      await tool.execute({
+    test('should require scheme parameter', async () => {
+      await expect(tool.execute({
         projectPath: '/test/project.xcodeproj'
-      });
-
-      // Should not include -scheme in command
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        expect.not.stringContaining('-scheme'),
-        expect.any(Object)
-      );
+      })).rejects.toThrow();
     });
   });
 });

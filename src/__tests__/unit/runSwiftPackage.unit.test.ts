@@ -5,26 +5,25 @@
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { RunSwiftPackageTool } from '../../tools/RunSwiftPackageTool.js';
-import * as fs from 'fs';
-import * as utils from '../../utils.js';
-
-// Mock the modules
-jest.mock('fs', () => ({
-  existsSync: jest.fn()
-}));
-
-jest.mock('../../utils.js', () => ({
-  execAsync: jest.fn()
-}));
+import { SwiftPackage } from '../../utils/projects/SwiftPackage.js';
 
 describe('RunSwiftPackageTool Unit Tests', () => {
   let tool: RunSwiftPackageTool;
-  const mockExecAsync = utils.execAsync as jest.MockedFunction<typeof utils.execAsync>;
-  const mockExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>;
+  
+  // Create mock SwiftPackage with proper instanceof support
+  const mockRun = jest.fn<(options?: any) => Promise<any>>();
+  const mockSwiftPackage = Object.create(SwiftPackage.prototype);
+  mockSwiftPackage.run = mockRun;
+  mockSwiftPackage.path = '/test/package';
+  
+  // Mock Xcode
+  const mockXcode = {
+    open: jest.fn<(path: string) => Promise<any>>()
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    tool = new RunSwiftPackageTool();
+    tool = new RunSwiftPackageTool(mockXcode as any);
   });
 
   describe('Tool Definition', () => {
@@ -41,156 +40,165 @@ describe('RunSwiftPackageTool Unit Tests', () => {
 
   describe('Command Generation', () => {
     test('should run with debug configuration by default', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Hello, World!'
+      });
 
-      await tool.execute({
+      const result = await tool.execute({
         packagePath: '/test/package'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        'swift run --package-path "/test/package" -c debug',
-        { maxBuffer: 10 * 1024 * 1024 }
-      );
+      expect(mockRun).toHaveBeenCalledWith({
+        executable: undefined,
+        configuration: 'Debug',
+        arguments: undefined
+      });
+      expect(result.content[0].text).toContain('Execution completed: default executable');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Output:\nHello, World!');
     });
 
-    test('should run with release configuration when specified', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
+    test('should run with release configuration', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Release output'
+      });
 
       await tool.execute({
         packagePath: '/test/package',
         configuration: 'Release'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        'swift run --package-path "/test/package" -c release',
-        { maxBuffer: 10 * 1024 * 1024 }
-      );
+      expect(mockRun).toHaveBeenCalledWith({
+        executable: undefined,
+        configuration: 'Release',
+        arguments: undefined
+      });
     });
 
-    test('should specify executable when provided', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
+    test('should run specific executable', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'MyApp output'
+      });
+
+      const result = await tool.execute({
+        packagePath: '/test/package',
+        executable: 'MyApp'
+      });
+
+      expect(mockRun).toHaveBeenCalledWith({
+        executable: 'MyApp',
+        configuration: 'Debug',
+        arguments: undefined
+      });
+      expect(result.content[0].text).toContain('Execution completed: MyApp');
+    });
+
+    test('should pass arguments to executable', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Args output'
+      });
 
       await tool.execute({
         packagePath: '/test/package',
-        executable: 'MyExecutable'
+        executable: 'MyApp',
+        arguments: ['--verbose', '--input', 'test.txt']
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        'swift run --package-path "/test/package" -c debug "MyExecutable"',
-        { maxBuffer: 10 * 1024 * 1024 }
-      );
+      expect(mockRun).toHaveBeenCalledWith({
+        executable: 'MyApp',
+        configuration: 'Debug',
+        arguments: ['--verbose', '--input', 'test.txt']
+      });
     });
 
-    test('should pass single argument to executable', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
+    test('should handle all parameters together', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Complete output'
+      });
 
       await tool.execute({
         packagePath: '/test/package',
-        executable: 'MyExecutable',
-        arguments: ['--verbose']
+        executable: 'MyApp',
+        configuration: 'Release',
+        arguments: ['--help']
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        'swift run --package-path "/test/package" -c debug "MyExecutable" "--verbose"',
-        { maxBuffer: 10 * 1024 * 1024 }
-      );
-    });
-
-    test('should pass multiple arguments to executable', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
-
-      await tool.execute({
-        packagePath: '/test/package',
-        executable: 'MyExecutable',
-        arguments: ['arg1', 'arg2', 'arg3']
+      expect(mockRun).toHaveBeenCalledWith({
+        executable: 'MyApp',
+        configuration: 'Release',
+        arguments: ['--help']
       });
-
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        'swift run --package-path "/test/package" -c debug "MyExecutable" "arg1" "arg2" "arg3"',
-        { maxBuffer: 10 * 1024 * 1024 }
-      );
     });
   });
 
   describe('Path Handling', () => {
-    test('should extract directory from Package.swift path', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
+    test('should accept package directory path', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Success'
+      });
 
       await tool.execute({
-        packagePath: '/test/package/Package.swift'
+        packagePath: '/test/MyPackage'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        'swift run --package-path "/test/package" -c debug',
-        { maxBuffer: 10 * 1024 * 1024 }
-      );
+      expect(mockXcode.open).toHaveBeenCalledWith('/test/MyPackage');
     });
 
-    test('should use directory path directly', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
+    test('should accept Package.swift path directly', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Success'
+      });
 
       await tool.execute({
-        packagePath: '/test/package'
+        packagePath: '/test/MyPackage/Package.swift'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        'swift run --package-path "/test/package" -c debug',
-        { maxBuffer: 10 * 1024 * 1024 }
-      );
-    });
-
-    test('should check for Package.swift existence', async () => {
-      mockExistsSync.mockReturnValue(false);
-
-      const result = await tool.execute({
-        packagePath: '/test/package'
-      });
-
-      expect(mockExistsSync).toHaveBeenCalledWith('/test/package/Package.swift');
-      expect(result.content[0].text).toContain('No Package.swift found');
+      expect(mockXcode.open).toHaveBeenCalledWith('/test/MyPackage/Package.swift');
     });
   });
 
-  describe('Output Handling', () => {
-    test('should return stdout and stderr combined on success', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ 
-        stdout: 'Program output',
-        stderr: 'Warning message'
+  describe('Output Formatting', () => {
+    test('should format success output correctly', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Program output:\nLine 1\nLine 2\nDone!'
       });
 
       const result = await tool.execute({
         packagePath: '/test/package',
-        executable: 'MyExecutable'
-      });
-
-      expect(result.content[0].text).toContain('Execution completed: MyExecutable');
-      expect(result.content[0].text).toContain('Program output');
-      expect(result.content[0].text).toContain('Warning message');
-    });
-
-    test('should include configuration in output', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
-
-      const result = await tool.execute({
-        packagePath: '/test/package',
+        executable: 'MyApp',
         configuration: 'Release'
       });
 
-      expect(result.content[0].text).toContain('Configuration: Release');
+      expect(result.content[0].text).toBe(
+        'Execution completed: MyApp\n' +
+        'Configuration: Release\n\n' +
+        'Output:\n' +
+        'Program output:\nLine 1\nLine 2\nDone!'
+      );
     });
 
-    test('should show default executable when none specified', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
+    test('should handle default executable name', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Default output'
+      });
 
       const result = await tool.execute({
         packagePath: '/test/package'
@@ -201,69 +209,68 @@ describe('RunSwiftPackageTool Unit Tests', () => {
   });
 
   describe('Error Handling', () => {
-    test('should return combined stdout and stderr on failure', async () => {
-      mockExistsSync.mockReturnValue(true);
-      const runError = new Error('Command failed') as any;
-      runError.stdout = 'Program output before error';
-      runError.stderr = 'Error: Something went wrong';
-      mockExecAsync.mockRejectedValue(runError);
+    test('should handle non-Swift package', async () => {
+      mockXcode.open.mockResolvedValue({ type: 'xcode-project' });
+
+      const result = await tool.execute({
+        packagePath: '/test/project.xcodeproj'
+      });
+
+      expect(result.content[0].text).toBe('Run failed: No Package.swift found at: /test/project.xcodeproj');
+    });
+
+    test('should handle run failure', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: false,
+        output: 'error: no such module \'Foundation\''
+      });
 
       const result = await tool.execute({
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toContain('Program output before error');
-      expect(result.content[0].text).toContain('Error: Something went wrong');
+      expect(result.content[0].text).toBe('Run failed: error: no such module \'Foundation\'');
     });
 
-    test('should handle only stdout on failure', async () => {
-      mockExistsSync.mockReturnValue(true);
-      const runError = new Error('Command failed') as any;
-      runError.stdout = 'Only stdout output';
-      runError.stderr = '';
-      mockExecAsync.mockRejectedValue(runError);
+    test('should handle run throwing error', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      const error = new Error('Execution failed') as any;
+      error.stdout = 'Building...';
+      error.stderr = 'error: compilation failed';
+      mockRun.mockRejectedValue(error);
 
       const result = await tool.execute({
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toBe('Only stdout output');
+      expect(result.content[0].text).toBe('Run failed: Execution failed');
     });
 
-    test('should handle only stderr on failure', async () => {
-      mockExistsSync.mockReturnValue(true);
-      const runError = new Error('Command failed') as any;
-      runError.stdout = '';
-      runError.stderr = 'Only stderr output';
-      mockExecAsync.mockRejectedValue(runError);
+    test('should handle Xcode.open throwing error', async () => {
+      const error = new Error('Package.swift not found');
+      mockXcode.open.mockRejectedValue(error);
 
       const result = await tool.execute({
-        packagePath: '/test/package'
+        packagePath: '/test/NonExistent'
       });
 
-      expect(result.content[0].text).toBe('Only stderr output');
+      expect(result.content[0].text).toBe('Run failed: Package.swift not found');
     });
 
-    test('should return error message if no output available', async () => {
-      mockExistsSync.mockReturnValue(true);
-      const runError = new Error('Command failed');
-      mockExecAsync.mockRejectedValue(runError);
-
-      const result = await tool.execute({
-        packagePath: '/test/package'
+    test('should handle missing executable', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: false,
+        output: 'error: no executable product named \'NonExistent\''
       });
 
-      expect(result.content[0].text).toBe('Run failed: Command failed');
-    });
-
-    test('should handle Package.swift not found', async () => {
-      mockExistsSync.mockReturnValue(false);
-
       const result = await tool.execute({
-        packagePath: '/test/nonexistent'
+        packagePath: '/test/package',
+        executable: 'NonExistent'
       });
 
-      expect(result.content[0].text).toBe('Run failed: Error: No Package.swift found at: /test/nonexistent');
+      expect(result.content[0].text).toBe('Run failed: error: no executable product named \'NonExistent\'');
     });
   });
 
@@ -271,8 +278,8 @@ describe('RunSwiftPackageTool Unit Tests', () => {
     test('should reject invalid configuration', async () => {
       await expect(tool.execute({
         packagePath: '/test/package',
-        configuration: 'Beta'
-      })).rejects.toThrow();
+        configuration: 'Custom'
+      })).rejects.toThrow('Invalid enum value');
     });
 
     test('should reject path traversal attempts', async () => {
@@ -283,23 +290,28 @@ describe('RunSwiftPackageTool Unit Tests', () => {
 
     test('should reject command injection attempts', async () => {
       await expect(tool.execute({
-        packagePath: '/test; rm -rf /'
+        packagePath: '/test/package; rm -rf /'
       })).rejects.toThrow('Command injection');
     });
 
-    test('should accept empty arguments array', async () => {
-      mockExistsSync.mockReturnValue(true);
-      mockExecAsync.mockResolvedValue({ stdout: 'Test output', stderr: '' });
-
-      await tool.execute({
-        packagePath: '/test/package',
-        arguments: []
+    test('should validate arguments array', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockRun.mockResolvedValue({
+        success: true,
+        output: 'Success'
       });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        'swift run --package-path "/test/package" -c debug',
-        { maxBuffer: 10 * 1024 * 1024 }
-      );
+      // Valid arguments should work
+      await tool.execute({
+        packagePath: '/test/package',
+        arguments: ['arg1', 'arg2', 'arg3']
+      });
+
+      expect(mockRun).toHaveBeenCalledWith({
+        executable: undefined,
+        configuration: 'Debug',
+        arguments: ['arg1', 'arg2', 'arg3']
+      });
     });
   });
 });

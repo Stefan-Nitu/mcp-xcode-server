@@ -117,7 +117,7 @@ describe('PlatformHandler', () => {
     });
     
     test('should return default device for watchOS', () => {
-      expect(PlatformHandler.getDefaultDevice(Platform.watchOS)).toBe('Apple Watch Series 9 (45mm)');
+      expect(PlatformHandler.getDefaultDevice(Platform.watchOS)).toBe('Apple Watch Series 10 (46mm)');
     });
     
     test('should return default device for visionOS', () => {

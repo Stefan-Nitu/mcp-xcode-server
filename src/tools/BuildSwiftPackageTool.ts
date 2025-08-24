@@ -97,7 +97,10 @@ export class BuildSwiftPackageTool implements IBuildSwiftPackageTool {
           {
             type: 'text',
             text: `Build succeeded: ${path.basename(project.path)}
-Configuration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}`
+Configuration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}
+
+Full output:
+${buildResult.output}`
           }
         ]
       };

@@ -33,11 +33,17 @@ export const listSimulatorsSchema = z.object({
 });
 
 export const bootSimulatorSchema = z.object({
-  deviceId: z.string().min(1, 'Device ID is required')
+  deviceId: z.string({
+    required_error: 'Device ID is required',
+    invalid_type_error: 'Device ID must be a string'
+  }).min(1, 'Device ID cannot be empty')
 });
 
 export const shutdownSimulatorSchema = z.object({
-  deviceId: z.string().min(1, 'Device ID is required')
+  deviceId: z.string({
+    required_error: 'Device ID is required',
+    invalid_type_error: 'Device ID must be a string'
+  }).min(1, 'Device ID cannot be empty')
 });
 
 export const buildProjectSchema = z.object({
@@ -95,7 +101,7 @@ export const getDeviceLogsSchema = z.object({
   deviceId: z.string().optional(),
   predicate: z.string()
     .refine(
-      (pred) => !pred.includes('`') && !pred.includes('$'),
+      (pred) => !pred.includes('`') && !pred.includes('$') && !pred.includes(';'),
       { message: 'Command injection patterns not allowed in predicate' }
     )
     .optional(),

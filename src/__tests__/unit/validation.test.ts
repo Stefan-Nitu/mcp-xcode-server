@@ -112,7 +112,7 @@ describe('Validation Schemas', () => {
 
     test('should reject empty deviceId', () => {
       expect(() => bootSimulatorSchema.parse({ deviceId: '' }))
-        .toThrow('Device ID is required');
+        .toThrow('Device ID cannot be empty');
     });
   });
 

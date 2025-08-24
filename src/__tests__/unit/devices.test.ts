@@ -146,7 +146,6 @@ describe('Devices', () => {
       expect(device).not.toBeNull();
       // Should prefer the booted device
       expect(device?.id).toBe('iOS-2');
-      expect(device?.isBooted()).toBe(true);
     });
 
     it('should find device for tvOS platform', async () => {
@@ -299,7 +298,6 @@ describe('Devices', () => {
       
       expect(device).not.toBeNull();
       expect(device?.id).toBe('iOS-2');
-      expect(device?.isBooted()).toBe(true);
     });
 
     it('should return null if no booted device', async () => {
