@@ -38,7 +38,7 @@ export class TestSwiftPackageTool {
           },
           filter: {
             type: 'string',
-            description: 'Filter for specific tests (optional)'
+            description: 'Filter for specific tests (e.g., "MyPackageTests.UserTests" for a class, "MyPackageTests.UserTests/testLogin" for a method)'
           },
           configuration: {
             type: 'string',

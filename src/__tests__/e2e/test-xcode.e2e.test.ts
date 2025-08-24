@@ -51,7 +51,7 @@ describe('TestXcodeTool E2E Tests', () => {
       expect(text).toMatch(/Tests (passed|failed)/);
       expect(text).toContain('Platform: iOS');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
-    }, 60000);
+    }, 120000); // Increased timeout for simulator boot and test execution
 
     test('should require scheme parameter', async () => {
       const response = await client.request({
@@ -88,7 +88,7 @@ describe('TestXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
       expect(text).toMatch(/Tests (passed|failed)/);
-    }, 60000);
+    }, 120000);
 
     test('should filter tests when testTarget is specified', async () => {
       const response = await client.request({

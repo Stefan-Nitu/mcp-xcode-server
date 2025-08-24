@@ -73,7 +73,7 @@ export class TestXcodeTool {
           },
           testFilter: {
             type: 'string',
-            description: 'Filter for specific test classes or methods'
+            description: 'Filter for specific test classes or methods (e.g., "MyAppTests/UserTests" for a class, "MyAppTests/UserTests/testLogin" for a method)'
           }
         },
         required: ['projectPath', 'scheme']
@@ -101,15 +101,27 @@ export class TestXcodeTool {
         throw new Error('Not an Xcode project or workspace');
       }
       
-      // Boot simulator if needed
+      // Boot simulator if needed (tests always need a real simulator, not generic)
       let bootedDeviceId = deviceId;
-      if (deviceId && PlatformHandler.needsSimulator(platform)) {
-        const device = await this.devices.find(deviceId);
-        if (!device) {
-          throw new Error(`Device not found: ${deviceId}`);
+      if (PlatformHandler.needsSimulator(platform)) {
+        if (deviceId) {
+          // User specified a device
+          const device = await this.devices.find(deviceId);
+          if (!device) {
+            throw new Error(`Device not found: ${deviceId}`);
+          }
+          await device.ensureBooted();
+          bootedDeviceId = device.id;
+        } else {
+          // No device specified, find one for the platform
+          const device = await this.devices.findForPlatform(platform);
+          if (!device) {
+            throw new Error(`No available simulator for platform: ${platform}`);
+          }
+          await device.ensureBooted();
+          bootedDeviceId = device.id;
+          logger.info({ deviceId: device.id, deviceName: device.name }, 'Using auto-selected device for tests');
         }
-        await device.ensureBooted();
-        bootedDeviceId = device.id;
       }
       
       // Run tests using XcodeProject
