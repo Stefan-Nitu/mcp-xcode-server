@@ -8,6 +8,13 @@ A Model Context Protocol (MCP) server for Xcode - build, test, run, and manage A
 
 This MCP server enables AI assistants and development tools to interact with Apple's development ecosystem directly. It provides comprehensive control over Xcode projects, Swift packages, and simulators, making it possible to build, test, and debug iOS/macOS applications without leaving your editor.
 
+### Recent Improvements (v2.4.0)
+- **Unified Architecture**: Consolidated build and test operations into cohesive Xcode and SwiftPackage utility classes
+- **Enhanced Device Management**: Modular simulator device management with clean separation of concerns
+- **Improved Testing**: Better test framework support with behavior-focused testing
+- **Security Enhancements**: Comprehensive input validation with command injection protection
+- **Better Error Messages**: More descriptive validation errors for better developer experience
+
 ## Key Features
 
 ### Core Functionality
@@ -193,20 +200,20 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
   - `configuration`: Build configuration (Debug or Release) (default: Debug)
   - `arguments`: Arguments to pass to the executable (optional)
 
-- **`test_project`**: Run tests for a project
+- **`test_project`**: Run tests for an Xcode project
   - `projectPath`: Path to .xcodeproj or .xcworkspace
-  - `scheme`: Xcode scheme to test
+  - `scheme`: Xcode scheme to test (optional, uses default if not provided)
   - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS) (default: iOS)
   - `deviceId`: Simulator device name or UDID (optional)
   - `configuration`: Build configuration (Debug or Release) (default: Debug)
-  - `testTarget`: Specific test target (e.g., "MyAppTests")
-  - `testFilter`: Filter for specific test methods
+  - `testTarget`: Specific test target (e.g., "MyAppTests") (optional)
+  - `testFilter`: Filter for specific test methods (optional)
 
 - **`test_spm_module`**: Test a Swift Package Manager module
   - `packagePath`: Path to the Swift package
-  - `platform`: Target platform (default: macOS)
-  - `testFilter`: Filter for specific tests
-  - `osVersion`: OS version for testing
+  - `platform`: Target platform (iOS, macOS, tvOS, watchOS) (default: macOS)
+  - `testFilter`: Filter for specific tests (optional)
+  - `osVersion`: OS version for testing (e.g., "17.2") (optional)
 
 #### Project Information
 
@@ -320,7 +327,7 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
 
 ### watchOS
 - Requires watchOS Simulator
-- Default device: Apple Watch Series 9 (45mm)
+- Default device: Apple Watch Series 10 (46mm)
 
 ### visionOS
 - Requires visionOS Simulator
@@ -328,23 +335,39 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
 
 ## Architecture
 
-The server follows SOLID principles with modular, class-based tool architecture:
+The server follows SOLID principles with a modular, class-based architecture that separates concerns and promotes testability:
 
 ### Core Components
 - **`index.ts`**: MCP server with tool registry and request handling
 - **`types.ts`**: Type definitions and interfaces
 - **`logger.ts`**: Structured logging with Pino, including test-aware logging
-- **`platformHandler.ts`**: Platform-specific configuration
-- **`simulatorManager.ts`**: Simulator lifecycle management
-- **`xcodeBuilder.ts`**: Build and test operations with dependency injection
+- **`platformHandler.ts`**: Platform-specific configuration and destination management
+- **`validation.ts`**: Comprehensive Zod schemas with security validation for all tool inputs
+- **`config.ts`**: Centralized configuration management
+
+### Utility Architecture
+The server uses a clean separation between device management and build operations:
+
+#### Device Management (`utils/devices/`)
+- **`Devices.ts`**: Device discovery and management
+- **`SimulatorDevice.ts`**: Unified simulator interface
+- **`SimulatorBoot.ts`**: Boot/shutdown operations
+- **`SimulatorApps.ts`**: App installation and management
+- **`SimulatorUI.ts`**: UI operations (screenshots, appearance)
+- **`SimulatorInfo.ts`**: Device state and logging
+- **`SimulatorReset.ts`**: Device reset operations
+
+#### Build Operations (`utils/xcode/`)
+- **`Xcode.ts`**: Factory for Xcode operations
+- **`XcodeProject.ts`**: Xcode project building and running
+- **`SwiftPackage.ts`**: Swift Package Manager operations
 
 ### Tool Architecture
-Each tool is a self-contained class in the `tools/` directory:
-- **Individual tool classes**: Each tool implements its own validation, execution logic, and MCP definition
-- **`validators.ts`**: Shared validation schemas for common patterns (paths, platforms, configurations)
-- **`XcodeBuilderAdapter.ts`**: Adapter pattern for handling static/instance method compatibility
-- **No inheritance**: Each tool is independent, avoiding complex hierarchies
+Each tool is a self-contained class in the `tools/` directory implementing the `Tool` interface:
+- **Individual tool classes**: Each tool encapsulates its own validation, execution logic, and MCP definition
+- **No inheritance**: Tools are independent, avoiding complex hierarchies
 - **Dependency injection**: Tools accept dependencies in constructors for testability
+- **Consistent error handling**: All tools use structured validation and error reporting
 
 ## Example Usage
 
@@ -531,22 +554,29 @@ mcp-xcode/
 ├── src/
 │   ├── index.ts              # MCP server entry point with graceful shutdown
 │   ├── types.ts              # TypeScript type definitions
-│   ├── validation.ts         # Zod schemas for input validation
+│   ├── validation.ts         # Zod schemas with security validation
 │   ├── logger.ts             # Structured logging with Pino
 │   ├── platformHandler.ts    # Platform abstraction layer
-│   ├── simulatorManager.ts   # Simulator management
-│   ├── xcodeBuilder.ts       # Build and test operations
+│   ├── config.ts            # Configuration management
+│   ├── utils/               # Utility modules
+│   │   ├── devices/         # Device management classes
+│   │   │   ├── Devices.ts
+│   │   │   ├── SimulatorDevice.ts
+│   │   │   └── ... (component classes)
+│   │   └── xcode/           # Build operation classes
+│   │       ├── Xcode.ts
+│   │       ├── XcodeProject.ts
+│   │       └── SwiftPackage.ts
 │   ├── tools/               # Individual tool classes
 │   │   ├── index.ts         # Tool exports
-│   │   ├── validators.ts    # Shared validation schemas
-│   │   ├── XcodeBuilderAdapter.ts  # Adapter for dependency injection
 │   │   └── ... (21 tool classes)
 │   └── __tests__/           # Test suites
-│       ├── unit/            # Unit tests with dependency injection
+│       ├── unit/            # Unit tests with mocking
 │       ├── integration/     # Integration tests
-│       └── e2e/             # End-to-end tests for all 21 tools
+│       └── e2e/             # End-to-end tests
 ├── dist/                    # Compiled JavaScript
 ├── test_artifacts/          # Test projects for validation
+├── docs/                    # Documentation
 ├── .github/
 │   └── workflows/
 │       └── ci.yml          # GitHub Actions CI/CD pipeline
