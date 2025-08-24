@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { XcodeBuilder } from '../xcodeBuilder.js';
 import { Platform } from '../types.js';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema, platformSchema } from './validators.js';
-import { XcodeBuilderAdapter } from './XcodeBuilderAdapter.js';
+import { XcodeProject } from '../utils/projects/XcodeProject.js';
+import { existsSync } from 'fs';
 
 const logger = createModuleLogger('ArchiveProjectTool');
 
@@ -25,13 +25,7 @@ export interface IArchiveProjectTool {
 }
 
 export class ArchiveProjectTool implements IArchiveProjectTool {
-  private adapter: XcodeBuilderAdapter;
-  
-  constructor(
-    xcodeBuilder: XcodeBuilder | typeof XcodeBuilder = XcodeBuilder
-  ) {
-    this.adapter = new XcodeBuilderAdapter(xcodeBuilder);
-  }
+  constructor() {}
 
   getToolDefinition() {
     return {
@@ -76,27 +70,61 @@ export class ArchiveProjectTool implements IArchiveProjectTool {
     
     logger.info({ projectPath, scheme, platform, configuration, archivePath }, 'Archiving project');
     
-    const resultPath = await this.adapter.archiveProject(
-      projectPath,
-      scheme,
-      platform,
-      configuration,
-      archivePath
-    );
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            success: true,
-            message: `Successfully archived ${scheme}`,
-            archivePath: resultPath,
-            platform,
-            configuration
-          }, null, 2)
-        }
-      ]
-    };
+    try {
+      // Check if project exists
+      if (!existsSync(projectPath)) {
+        throw new Error(`Project path does not exist: ${projectPath}`);
+      }
+      
+      // Determine project type
+      const isWorkspace = projectPath.endsWith('.xcworkspace');
+      const projectType = isWorkspace ? 'workspace' : 'project';
+      
+      // Create XcodeProject instance
+      const xcodeProject = new XcodeProject(projectPath, projectType);
+      
+      // Archive the project
+      const result = await xcodeProject.archiveProject({
+        scheme,
+        configuration,
+        platform,
+        archivePath
+      });
+      
+      if (!result.success) {
+        throw new Error('Archive failed');
+      }
+      
+      logger.info({ archivePath: result.archivePath }, 'Archive succeeded');
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              message: `Successfully archived ${scheme}`,
+              archivePath: result.archivePath,
+              platform,
+              configuration
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      logger.error({ error: error.message, projectPath }, 'Archive failed');
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              message: `Archive failed: ${error.message}`
+            }, null, 2)
+          }
+        ]
+      };
+    }
   }
 }

@@ -239,16 +239,22 @@ export class SimulatorManager {
   }
 
   /**
-   * Ensure the Simulator app is open
+   * Ensure the Simulator app is open (skipped during tests)
    */
   private async ensureSimulatorAppOpen(): Promise<void> {
+    // Skip opening GUI during tests
+    if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+      logger.debug('Skipping Simulator GUI in test environment');
+      return;
+    }
+    
     try {
       await this.execAsync(`pgrep -x Simulator`);
       // Simulator is running
     } catch {
       // Simulator app not running, open it
       logger.debug('Opening Simulator app');
-      await this.execAsync(`open -a Simulator`);
+      await this.execAsync(`open -g -a Simulator`);
     }
   }
 
@@ -256,6 +262,20 @@ export class SimulatorManager {
    * Install an app on the simulator
    */
   async installAppInstance(appPath: string, deviceId?: string): Promise<void> {
+    // If a specific device is provided, ensure it's booted first
+    if (deviceId) {
+      // Check device state
+      const devices = await this.listSimulatorsInstance(true);
+      const device = devices.find(d => d.udid === deviceId || d.name === deviceId);
+      
+      if (device && device.state !== 'Booted') {
+        logger.info({ deviceId, state: device.state }, 'Device not booted, booting now...');
+        await this.bootSimulatorInstance(device.udid);
+        // Wait a moment for the boot to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
     let command = `xcrun simctl install `;
     if (deviceId) {
       command += `"${deviceId}" `;

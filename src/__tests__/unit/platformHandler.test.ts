@@ -33,7 +33,7 @@ describe('PlatformHandler', () => {
       const config = PlatformHandler.getConfig(Platform.watchOS);
       expect(config.platform).toBe(Platform.watchOS);
       expect(config.needsSimulator).toBe(true);
-      expect(config.defaultDevice).toBe('Apple Watch Series 9 (45mm)');
+      expect(config.defaultDevice).toBe('Apple Watch Series 10 (46mm)');
     });
     
     test('should return config for visionOS', () => {
@@ -94,12 +94,12 @@ describe('PlatformHandler', () => {
     
     test('should return watchOS destination with default device', () => {
       const destination = PlatformHandler.getDestination(Platform.watchOS);
-      expect(destination).toBe('platform=watchOS Simulator,name=Apple Watch Series 9 (45mm)');
+      expect(destination).toBe('platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)');
     });
     
     test('should return visionOS destination with default device', () => {
       const destination = PlatformHandler.getDestination(Platform.visionOS);
-      expect(destination).toBe('platform=visionOS Simulator,name=Apple Vision Pro');
+      expect(destination).toBe('platform=xrOS Simulator,name=Apple Vision Pro');
     });
   });
   

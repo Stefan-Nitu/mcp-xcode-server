@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { XcodeBuilder } from '../xcodeBuilder.js';
 import { Platform } from '../types.js';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from './validators.js';
-import { XcodeBuilderAdapter } from './XcodeBuilderAdapter.js';
+import { XcodeInfo } from '../utils/projects/XcodeInfo.js';
+import { existsSync } from 'fs';
 
 const logger = createModuleLogger('GetBuildSettingsTool');
 
@@ -24,12 +24,10 @@ export interface IGetBuildSettingsTool {
 }
 
 export class GetBuildSettingsTool implements IGetBuildSettingsTool {
-  private adapter: XcodeBuilderAdapter;
+  private xcodeInfo: XcodeInfo;
   
-  constructor(
-    xcodeBuilder: XcodeBuilder | typeof XcodeBuilder = XcodeBuilder
-  ) {
-    this.adapter = new XcodeBuilderAdapter(xcodeBuilder);
+  constructor(xcodeInfo?: XcodeInfo) {
+    this.xcodeInfo = xcodeInfo || new XcodeInfo();
   }
 
   getToolDefinition() {
@@ -69,51 +67,77 @@ export class GetBuildSettingsTool implements IGetBuildSettingsTool {
     
     logger.info({ projectPath, scheme, configuration, platform }, 'Getting build settings');
     
-    const settings = await this.adapter.getBuildSettings(
-      projectPath,
-      scheme,
-      configuration,
-      platform
-    );
-    
-    if (!settings || Object.keys(settings).length === 0) {
+    try {
+      // Check if project exists
+      if (!existsSync(projectPath)) {
+        throw new Error(`Project path does not exist: ${projectPath}`);
+      }
+      
+      // Determine project type
+      const isWorkspace = projectPath.endsWith('.xcworkspace');
+      
+      // Get build settings using XcodeInfo
+      const settingsResult = await this.xcodeInfo.getBuildSettings(
+        projectPath,
+        isWorkspace,
+        scheme,
+        configuration,
+        platform
+      );
+      
+      // The result should contain the build settings
+      const settings = settingsResult[0]?.buildSettings || settingsResult;
+      
+      if (!settings || Object.keys(settings).length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'No build settings found'
+            }
+          ]
+        };
+      }
+      
+      // Extract key settings for summary
+      const keySetting = {
+        PRODUCT_NAME: settings.PRODUCT_NAME,
+        PRODUCT_BUNDLE_IDENTIFIER: settings.PRODUCT_BUNDLE_IDENTIFIER,
+        SWIFT_VERSION: settings.SWIFT_VERSION,
+        IPHONEOS_DEPLOYMENT_TARGET: settings.IPHONEOS_DEPLOYMENT_TARGET,
+        MACOSX_DEPLOYMENT_TARGET: settings.MACOSX_DEPLOYMENT_TARGET,
+        ARCHS: settings.ARCHS,
+        CONFIGURATION: settings.CONFIGURATION,
+        SDK_NAME: settings.SDK_NAME
+      };
+      
       return {
         content: [
           {
             type: 'text',
-            text: 'No build settings found'
+            text: JSON.stringify({
+              projectPath,
+              scheme,
+              configuration: configuration || settings.CONFIGURATION,
+              platform: platform || 'Derived from SDK',
+              keySettings: keySetting,
+              allSettings: settings,
+              totalSettings: Object.keys(settings).length
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      logger.error({ error: error.message, projectPath }, 'Failed to get build settings');
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Failed to get build settings: ${error.message}`
           }
         ]
       };
     }
-    
-    // Extract key settings for summary
-    const keySetting = {
-      PRODUCT_NAME: settings.PRODUCT_NAME,
-      PRODUCT_BUNDLE_IDENTIFIER: settings.PRODUCT_BUNDLE_IDENTIFIER,
-      SWIFT_VERSION: settings.SWIFT_VERSION,
-      IPHONEOS_DEPLOYMENT_TARGET: settings.IPHONEOS_DEPLOYMENT_TARGET,
-      MACOSX_DEPLOYMENT_TARGET: settings.MACOSX_DEPLOYMENT_TARGET,
-      ARCHS: settings.ARCHS,
-      CONFIGURATION: settings.CONFIGURATION,
-      SDK_NAME: settings.SDK_NAME
-    };
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            projectPath,
-            scheme,
-            configuration: configuration || settings.CONFIGURATION,
-            platform: platform || 'Derived from SDK',
-            keySettings: keySetting,
-            allSettings: settings,
-            totalSettings: Object.keys(settings).length
-          }, null, 2)
-        }
-      ]
-    };
   }
 }

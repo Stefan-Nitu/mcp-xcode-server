@@ -1,17 +1,12 @@
 import { z } from 'zod';
-import { exec as nodeExec } from 'child_process';
-import { promisify } from 'util';
 import { createModuleLogger } from '../logger.js';
+import { Devices } from '../utils/devices/Devices.js';
 
 const logger = createModuleLogger('BootSimulatorTool');
 
-// Type for the exec function
-export type ExecFunction = typeof nodeExec;
-export type ExecAsyncFunction = (command: string, options?: any) => Promise<{ stdout: string; stderr: string }>;
-
 // Validation schema
 export const bootSimulatorSchema = z.object({
-  deviceId: z.string().min(1, 'Device ID is required')
+  deviceId: z.string({ required_error: 'Device ID is required' }).min(1, 'Device ID is required')
 });
 
 export type BootSimulatorArgs = z.infer<typeof bootSimulatorSchema>;
@@ -23,12 +18,10 @@ export interface IBootSimulatorTool {
 }
 
 export class BootSimulatorTool implements IBootSimulatorTool {
-  private readonly execAsync: ExecAsyncFunction;
+  private devices: Devices;
 
-  constructor(execFunc?: ExecFunction) {
-    // Use provided exec or default to Node's exec for testing
-    const exec = execFunc || nodeExec;
-    this.execAsync = promisify(exec) as unknown as ExecAsyncFunction;
+  constructor(devices?: Devices) {
+    this.devices = devices || new Devices();
   }
 
   getToolDefinition() {
@@ -54,58 +47,44 @@ export class BootSimulatorTool implements IBootSimulatorTool {
     
     logger.info({ deviceId }, 'Booting simulator');
     
+    // Find the device
+    const device = await this.devices.find(deviceId);
+    if (!device) {
+      throw new Error(`Device not found: ${deviceId}`);
+    }
+    
     try {
       // Boot the simulator
-      await this.execAsync(`xcrun simctl boot "${deviceId}"`);
-      logger.info({ deviceId }, 'Simulator booted successfully');
+      await device.bootDevice();
+      logger.info({ deviceId: device.id, name: device.name }, 'Simulator booted successfully');
     } catch (error: any) {
       // Check if simulator is already booted - that's OK
-      if (error.message && error.message.includes('Unable to boot device in current state: Booted')) {
-        logger.debug({ deviceId }, 'Simulator already in booted state');
+      if (error.message && error.message.includes('already booted')) {
+        logger.debug({ deviceId: device.id }, 'Simulator already in booted state');
         return {
           content: [
             {
               type: 'text',
-              text: `Simulator already booted: ${deviceId}`
+              text: `Simulator already booted: ${device.name} (${device.id})`
             }
           ]
         };
       }
       // Real error - throw it
-      logger.error({ error, deviceId }, 'Failed to boot simulator');
-      throw new Error(`Failed to boot simulator: ${error.message}`);
+      logger.error({ error, deviceId: device.id }, 'Failed to boot simulator');
+      throw error;
     }
     
-    // Open Simulator.app to show the UI
-    await this.ensureSimulatorAppOpen();
+    // Open Simulator.app to show the UI (handles test env)
+    await device.open();
     
     return {
       content: [
         {
           type: 'text',
-          text: `Successfully booted simulator: ${deviceId}`
+          text: `Successfully booted simulator: ${device.name} (${device.id})`
         }
       ]
     };
-  }
-
-  /**
-   * Ensure the Simulator app is open
-   */
-  private async ensureSimulatorAppOpen(): Promise<void> {
-    try {
-      // Check if Simulator.app is already running
-      await this.execAsync('pgrep -x Simulator');
-      logger.debug('Simulator.app is already running');
-    } catch {
-      // Simulator app not running, open it
-      logger.debug('Opening Simulator.app');
-      try {
-        await this.execAsync('open -a Simulator');
-      } catch (error: any) {
-        // Log but don't fail - simulator will still work headless
-        logger.warn({ error }, 'Could not open Simulator.app, continuing headless');
-      }
-    }
   }
 }

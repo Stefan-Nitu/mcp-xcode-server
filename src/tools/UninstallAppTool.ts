@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SimulatorManager } from '../simulatorManager.js';
+import { Devices } from '../utils/devices/Devices.js';
 import { createModuleLogger } from '../logger.js';
 
 const logger = createModuleLogger('UninstallAppTool');
@@ -20,9 +20,11 @@ export interface IUninstallAppTool {
 }
 
 export class UninstallAppTool implements IUninstallAppTool {
-  constructor(
-    private simulatorManager = SimulatorManager
-  ) {}
+  private devices: Devices;
+
+  constructor(devices?: Devices) {
+    this.devices = devices || new Devices();
+  }
 
   getToolDefinition() {
     return {
@@ -51,13 +53,27 @@ export class UninstallAppTool implements IUninstallAppTool {
     
     logger.info({ bundleId, deviceId }, 'Uninstalling app');
     
-    await this.simulatorManager.uninstallApp(bundleId, deviceId);
+    let device;
+    if (deviceId) {
+      device = await this.devices.find(deviceId);
+      if (!device) {
+        throw new Error(`Device not found: ${deviceId}`);
+      }
+    } else {
+      // Use booted device if no device specified
+      device = await this.devices.getBooted();
+      if (!device) {
+        throw new Error('No booted simulator found. Please boot a simulator first or specify a device ID.');
+      }
+    }
+    
+    await device.uninstall(bundleId);
     
     return {
       content: [
         {
           type: 'text',
-          text: `Successfully uninstalled app: ${bundleId}`
+          text: `Successfully uninstalled app: ${bundleId} from ${device.name}`
         }
       ]
     };

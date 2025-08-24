@@ -22,10 +22,6 @@ describe('BuildXcodeTool E2E Tests', () => {
     testProjectManager.setup();
   }, 120000);
   
-  afterAll(() => {
-    testProjectManager.cleanup();
-  });
-  
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
@@ -34,6 +30,7 @@ describe('BuildXcodeTool E2E Tests', () => {
   
   afterEach(async () => {
     await cleanupClientAndTransport(client, transport);
+    testProjectManager.cleanup();
   });
 
   describe('Xcode Project Builds', () => {
@@ -55,7 +52,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       expect(text).toContain('Platform: iOS');
     }, 30000);
 
-    test('should build without scheme (using default)', async () => {
+    test('should require scheme parameter', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -68,8 +65,10 @@ describe('BuildXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      // Should either succeed with default scheme or report error
-      expect(text).toBeDefined();
+      // Should fail with validation error
+      expect(text.toLowerCase()).toContain('validation error');
+      expect(text.toLowerCase()).toContain('scheme');
+      expect(text.toLowerCase()).toContain('required');
     }, 30000);
 
     test('should build with Release configuration', async () => {
@@ -179,11 +178,8 @@ describe('BuildXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       // Either succeeds or reports platform not supported
-      if (text.includes('Build succeeded')) {
-        expect(text).toContain('Platform: macOS');
-      } else {
-        expect(text.toLowerCase()).toMatch(/platform.*not supported|unable to find a destination/i);
-      }
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: macOS');
     }, 30000);
 
     test('should handle tvOS platform', async () => {
@@ -200,11 +196,8 @@ describe('BuildXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      if (text.includes('Build succeeded')) {
-        expect(text).toContain('Platform: tvOS');
-      } else {
-        expect(text.toLowerCase()).toMatch(/platform.*not supported|unable to find a destination/i);
-      }
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: tvOS');
     }, 30000);
 
     test('should handle watchOS platform', async () => {
@@ -213,19 +206,16 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
-            scheme: testProjectManager.schemes.xcodeProject,
+            projectPath: testProjectManager.paths.watchOSProjectPath,
+            scheme: testProjectManager.schemes.watchOSProject,
             platform: 'watchOS'
           }
         }
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      if (text.includes('Build succeeded')) {
-        expect(text).toContain('Platform: watchOS');
-      } else {
-        expect(text.toLowerCase()).toMatch(/platform.*not supported|unable to find a destination/i);
-      }
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: watchOS');
     }, 30000);
 
     test('should handle visionOS platform', async () => {
@@ -242,11 +232,8 @@ describe('BuildXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      if (text.includes('Build succeeded')) {
-        expect(text).toContain('Platform: visionOS');
-      } else {
-        expect(text.toLowerCase()).toMatch(/platform.*not supported|unable to find a destination|requires xcode 15/i);
-      }
+      expect(text).toContain('Build succeeded');
+      expect(text).toContain('Platform: visionOS');
     }, 30000);
   });
 
@@ -299,11 +286,8 @@ describe('BuildXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      // Should either use Beta if it exists, or fall back to Release
-      expect(text).toBeDefined();
-      if (text.includes('Build succeeded')) {
-        expect(text).toMatch(/Configuration: (Beta|Release)/);
-      }
+      expect(text).toContain('Build succeeded');
+      expect(text).toMatch(/Configuration: (Beta)/);
     }, 30000);
   });
 });

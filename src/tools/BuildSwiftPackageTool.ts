@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from './validators.js';
-import { execAsync } from '../utils.js';
-import { existsSync } from 'fs';
+import { Xcode } from '../utils/projects/Xcode.js';
+import { SwiftPackage } from '../utils/projects/SwiftPackage.js';
+import { XcodeError, XcodeErrorType } from '../utils/projects/XcodeErrors.js';
 import path from 'path';
 
 const logger = createModuleLogger('BuildSwiftPackageTool');
@@ -28,6 +29,11 @@ export interface IBuildSwiftPackageTool {
  * Extends it with target/product support
  */
 export class BuildSwiftPackageTool implements IBuildSwiftPackageTool {
+  private xcode: Xcode;
+  
+  constructor(xcode?: Xcode) {
+    this.xcode = xcode || new Xcode();
+  }
   getToolDefinition() {
     return {
       name: 'build_swift_package',
@@ -66,76 +72,49 @@ export class BuildSwiftPackageTool implements IBuildSwiftPackageTool {
     logger.info({ packagePath, target, product, configuration }, 'Building Swift package');
     
     try {
-      // Determine the actual package directory (from SPMSwiftBuilder)
-      let packageDir: string;
-      if (packagePath.endsWith('Package.swift')) {
-        packageDir = path.dirname(packagePath);
-      } else {
-        packageDir = packagePath;
+      // Open the package using Xcode utility
+      const project = await this.xcode.open(packagePath);
+      
+      // Ensure it's a Swift package, not an Xcode project
+      if (!(project instanceof SwiftPackage)) {
+        throw new Error(`No Package.swift found at: ${packagePath}`);
       }
       
-      // Check if Package.swift exists (from SPMSwiftBuilder)
-      const packageFile = path.join(packageDir, 'Package.swift');
-      if (!existsSync(packageFile)) {
-        throw new Error(`No Package.swift found at: ${packageDir}`);
-      }
-      
-      // Build command for macOS using swift build (from SPMSwiftBuilder)
-      let command = `swift build --package-path "${packageDir}"`;
-      
-      // Add configuration (from SPMSwiftBuilder logic)
-      if (configuration === 'Release') {
-        command += ' -c release';
-      } else {
-        command += ' -c debug';
-      }
-      
-      // NEW: Add target if specified
-      if (target) {
-        command += ` --target "${target}"`;
-      }
-      
-      // NEW: Add product if specified
-      if (product) {
-        command += ` --product "${product}"`;
-      }
-      
-      logger.debug({ command }, 'Build command');
-      
-      await execAsync(command, { 
-        maxBuffer: 10 * 1024 * 1024 // 10MB buffer (from SPMSwiftBuilder)
+      // Build the package using SwiftPackage
+      const buildResult = await project.buildPackage({
+        configuration,
+        target,
+        product
       });
       
-      // Success response (adapted from SPMSwiftBuilder)
+      if (!buildResult.success) {
+        throw new Error(buildResult.output);
+      }
+      
+      // Success response
       return {
         content: [
           {
             type: 'text',
-            text: `Build succeeded: ${path.basename(packageDir)}
+            text: `Build succeeded: ${path.basename(project.path)}
 Configuration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}`
           }
         ]
       };
     } catch (error: any) {
-      // Error handling (from SPMSwiftBuilder)
       logger.error({ error, packagePath }, 'Swift package build failed');
       
-      const errorMessage = error.message || 'Unknown build error';
-      // Prefer stderr for errors, as stdout might contain "Building for debugging..."
-      const buildOutput = error.stderr || error.stdout || '';
-      
-      let responseText: string;
-      if (buildOutput) {
-        responseText = buildOutput;
-      } else {
-        responseText = `Build failed: ${errorMessage}`;
+      // Handle XcodeError with context-specific message
+      let errorMessage = error.message || 'Unknown build error';
+      if (error instanceof XcodeError && error.type === XcodeErrorType.ProjectNotFound) {
+        errorMessage = `No Package.swift found at: ${error.path}`;
       }
       
       return {
         content: [
           {
             type: 'text',
-            text: responseText
+            text: `Build failed: ${errorMessage}`
           }
         ]
       };

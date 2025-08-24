@@ -6,13 +6,31 @@
 import { Platform, PlatformConfig } from './types.js';
 
 export class PlatformHandler {
+  // Helper to determine if a string is a UUID
+  private static isUUID(str: string): boolean {
+    return /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(str);
+  }
+
+  // Helper to create destination string with proper id/name detection
+  private static createDestinationString(platform: Platform, defaultDevice: string) {
+    return (deviceId?: string) => {
+      // visionOS uses 'xrOS' internally
+      const platformName = platform === Platform.visionOS ? 'xrOS' : platform;
+      
+      if (!deviceId) {
+        return `platform=${platformName} Simulator,name=${defaultDevice}`;
+      }
+      const key = this.isUUID(deviceId) ? 'id' : 'name';
+      return `platform=${platformName} Simulator,${key}=${deviceId}`;
+    };
+  }
+
   private static platformConfigs: Map<Platform, PlatformConfig> = new Map([
     [Platform.iOS, {
       platform: Platform.iOS,
       needsSimulator: true,
       defaultDevice: 'iPhone 16 Pro',
-      destinationString: (deviceName?: string) => 
-        `platform=iOS Simulator,name=${deviceName || 'iPhone 16 Pro'}`
+      destinationString: this.createDestinationString(Platform.iOS, 'iPhone 16 Pro')
     }],
     
     [Platform.macOS, {
@@ -25,24 +43,21 @@ export class PlatformHandler {
       platform: Platform.tvOS,
       needsSimulator: true,
       defaultDevice: 'Apple TV',
-      destinationString: (deviceName?: string) => 
-        `platform=tvOS Simulator,name=${deviceName || 'Apple TV'}`
+      destinationString: this.createDestinationString(Platform.tvOS, 'Apple TV')
     }],
     
     [Platform.watchOS, {
       platform: Platform.watchOS,
       needsSimulator: true,
       defaultDevice: 'Apple Watch Series 10 (46mm)',
-      destinationString: (deviceName?: string) => 
-        `platform=watchOS Simulator,name=${deviceName || 'Apple Watch Series 10 (46mm)'}`
+      destinationString: this.createDestinationString(Platform.watchOS, 'Apple Watch Series 10 (46mm)')
     }],
     
     [Platform.visionOS, {
       platform: Platform.visionOS,
       needsSimulator: true,
       defaultDevice: 'Apple Vision Pro',
-      destinationString: (deviceName?: string) => 
-        `platform=visionOS Simulator,name=${deviceName || 'Apple Vision Pro'}`
+      destinationString: this.createDestinationString(Platform.visionOS, 'Apple Vision Pro')
     }]
   ]);
 
@@ -77,7 +92,7 @@ export class PlatformHandler {
       case Platform.watchOS:
         return 'generic/platform=watchOS Simulator';
       case Platform.visionOS:
-        return 'generic/platform=visionOS Simulator';
+        return 'generic/platform=xrOS Simulator';  // visionOS uses xrOS internally
       case Platform.macOS:
         return 'platform=macOS';
       default:

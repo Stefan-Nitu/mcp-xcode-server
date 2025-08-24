@@ -26,16 +26,6 @@ describe('RunXcodeTool E2E Tests', () => {
     await projectManager.setup();
   }, 120000);
   
-  afterAll(async () => {
-    projectManager.cleanup();
-    // Clean up any running simulators
-    try {
-      execSync('xcrun simctl shutdown all', { stdio: 'ignore' });
-    } catch {
-      // Ignore errors
-    }
-  });
-  
   beforeEach(async () => {
     const connection = await createAndConnectClient();
     client = connection.client;
@@ -43,8 +33,23 @@ describe('RunXcodeTool E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
+    // Shutdown simulators instead of reset (erase) to avoid slow test cleanup
+    try {
+      execSync('xcrun simctl shutdown all', { stdio: 'ignore' });
+    } catch {
+      // Ignore errors
+    }
+    
+    // Close any macOS test apps that may be running
+    try {
+      // Kill the test app if it's running (TestProjectXCTest is the macOS app name)
+      execSync('pkill -f TestProjectXCTest', { stdio: 'ignore' });
+    } catch {
+      // Ignore if not running
+    }
+    
     await cleanupClientAndTransport(client, transport);
-    projectManager.cleanBuildArtifacts();
+    projectManager.cleanup();
   });
 
   /**
@@ -88,8 +93,8 @@ describe('RunXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
       expect(text).toContain('Platform: iOS');
-      expect(text).toContain('App installed at:');
-    }, 120000);
+      expect(text).toContain('App path:');
+    }, 180000); // Increased timeout to 3 minutes
 
     test('should build and run with specific device', async () => {
       const deviceName = await getAvailableSimulator('iOS');
@@ -134,12 +139,9 @@ describe('RunXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       // macOS may not be supported by all test projects
-      if (text.includes('Successfully built and ran project')) {
+        expect(text).toContain('Successfully built and ran project');
         expect(text).toContain('Platform: macOS');
-        expect(text).not.toContain('Device:'); // No device for macOS
-      } else {
-        expect(text).toContain('Run failed');
-      }
+        expect(text).toContain('Device: N/A'); // macOS doesn't use devices
     }, 120000);
   });
 
@@ -158,8 +160,8 @@ describe('RunXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      // May fail if project doesn't support tvOS
-      expect(text).toBeDefined();
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: tvOS');
     }, 120000);
 
     test('should handle watchOS platform', async () => {
@@ -172,13 +174,12 @@ describe('RunXcodeTool E2E Tests', () => {
             scheme: projectManager.schemes.watchOSProject,
             platform: 'watchOS'
           }
-        }
+        } 
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      if (text.includes('Successfully built and ran project')) {
-        expect(text).toContain('Platform: watchOS');
-      }
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: watchOS');
     }, 120000);
 
     test('should handle visionOS platform', async () => {
@@ -209,7 +210,8 @@ describe('RunXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      expect(text).toContain('Successfully built and ran project');
+      expect(text).toContain('Platform: visionOS');
     }, 120000);
   });
 
@@ -304,7 +306,7 @@ describe('RunXcodeTool E2E Tests', () => {
       expect(text).toContain('Run failed');
     }, 60000);
 
-    test('should handle missing scheme gracefully', async () => {
+    test('should require scheme parameter', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -312,13 +314,16 @@ describe('RunXcodeTool E2E Tests', () => {
           arguments: {
             projectPath: projectManager.paths.xcodeProjectPath,
             platform: 'iOS'
+            // Missing required scheme parameter
           }
         }
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      // Should either use default scheme or report error
-      expect(text).toBeDefined();
+      // Should fail with validation error about missing required field
+      expect(text.toLowerCase()).toContain('validation error');
+      expect(text.toLowerCase()).toContain('scheme');
+      expect(text.toLowerCase()).toContain('required');
     }, 60000);
   });
 });

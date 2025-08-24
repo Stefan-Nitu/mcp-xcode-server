@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from './validators.js';
-import { execAsync } from '../utils.js';
-import { existsSync } from 'fs';
-import path from 'path';
+import { Xcode } from '../utils/projects/Xcode.js';
+import { SwiftPackage } from '../utils/projects/SwiftPackage.js';
+import { XcodeError, XcodeErrorType } from '../utils/projects/XcodeErrors.js';
 
 const logger = createModuleLogger('RunSwiftPackageTool');
 
@@ -27,6 +27,11 @@ export interface IRunSwiftPackageTool {
  * Uses `swift run` to build and execute Swift package executables
  */
 export class RunSwiftPackageTool implements IRunSwiftPackageTool {
+  private xcode: Xcode;
+  
+  constructor(xcode?: Xcode) {
+    this.xcode = xcode || new Xcode();
+  }
   getToolDefinition() {
     return {
       name: 'run_swift_package',
@@ -66,81 +71,48 @@ export class RunSwiftPackageTool implements IRunSwiftPackageTool {
     logger.info({ packagePath, executable, configuration, arguments: execArgs }, 'Running Swift package');
     
     try {
-      // Determine the actual package directory
-      let packageDir: string;
-      if (packagePath.endsWith('Package.swift')) {
-        packageDir = path.dirname(packagePath);
-      } else {
-        packageDir = packagePath;
+      // Open the package using Xcode utility
+      const project = await this.xcode.open(packagePath);
+      
+      // Ensure it's a Swift package, not an Xcode project
+      if (!(project instanceof SwiftPackage)) {
+        throw new Error(`No Package.swift found at: ${packagePath}`);
       }
       
-      // Check if Package.swift exists
-      const packageFile = path.join(packageDir, 'Package.swift');
-      if (!existsSync(packageFile)) {
-        throw new Error(`Error: No Package.swift found at: ${packageDir}`);
-      }
-      
-      // Build command using swift run
-      let command = `swift run --package-path "${packageDir}"`;
-      
-      // Add configuration
-      if (configuration === 'Release') {
-        command += ' -c release';
-      } else {
-        command += ' -c debug';
-      }
-      
-      // Add executable name if specified
-      if (executable) {
-        command += ` "${executable}"`;
-      }
-      
-      // Add arguments if provided
-      if (execArgs && execArgs.length > 0) {
-        command += ' ' + execArgs.map(arg => `"${arg}"`).join(' ');
-      }
-      
-      logger.debug({ command }, 'Run command');
-      
-      // Execute the command and capture output
-      const { stdout, stderr } = await execAsync(command, { 
-        maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+      // Run the package using SwiftPackage
+      const runResult = await project.run({
+        executable,
+        configuration,
+        arguments: execArgs
       });
       
-      // Combine stdout and stderr for complete output
-      const output = stdout + (stderr ? '\n' + stderr : '');
+      if (!runResult.success) {
+        throw new Error(runResult.output);
+      }
       
       // Success response
       return {
         content: [
           {
             type: 'text',
-            text: `Execution completed: ${executable || 'default executable'}\nConfiguration: ${configuration}\n\nOutput:\n${output}`
+            text: `Execution completed: ${executable || 'default executable'}\nConfiguration: ${configuration}\n\nOutput:\n${runResult.output}`
           }
         ]
       };
     } catch (error: any) {
       logger.error({ error, packagePath }, 'Swift package run failed');
       
-      const errorMessage = error.message || 'Unknown run error';
-      // Combine both stdout and stderr to get full output from the executable
-      const stdout = error.stdout || '';
-      const stderr = error.stderr || '';
-      const output = stdout + (stderr ? (stdout ? '\n' : '') + stderr : '');
-      
-      let responseText: string;
-      if (output) {
-        // If there's output, show it (could be from the executable itself)
-        responseText = output;
-      } else {
-        responseText = `Run failed: ${errorMessage}`;
+      // Handle XcodeError with context-specific message
+      let errorMessage = error.message || 'Unknown run error';
+      if (error instanceof XcodeError && error.type === XcodeErrorType.ProjectNotFound) {
+        errorMessage = `No Package.swift found at: ${error.path}`;
       }
       
       return {
         content: [
           {
             type: 'text',
-            text: responseText
+            text: `Run failed: ${errorMessage}`
           }
         ]
       };

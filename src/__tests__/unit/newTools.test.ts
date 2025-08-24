@@ -146,7 +146,7 @@ describe('New Tools Unit Tests', () => {
       mockXcodeBuilder = {
         archiveProjectInstance: jest.fn<() => Promise<string>>().mockResolvedValue('/path/to/archive.xcarchive')
       };
-      tool = new ArchiveProjectTool(mockXcodeBuilder);
+      tool = new ArchiveProjectTool();
     });
 
     it('should archive project successfully', async () => {

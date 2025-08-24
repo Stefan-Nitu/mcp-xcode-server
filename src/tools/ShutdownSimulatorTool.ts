@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { SimulatorManager } from '../simulatorManager.js';
+import { Devices } from '../utils/devices/Devices.js';
 import { createModuleLogger } from '../logger.js';
 
 const logger = createModuleLogger('ShutdownSimulatorTool');
 
 // Validation schema
 export const shutdownSimulatorSchema = z.object({
-  deviceId: z.string().min(1, 'Device ID is required')
+  deviceId: z.string({ required_error: 'Device ID is required' }).min(1, 'Device ID is required')
 });
 
 export type ShutdownSimulatorArgs = z.infer<typeof shutdownSimulatorSchema>;
@@ -18,9 +18,11 @@ export interface IShutdownSimulatorTool {
 }
 
 export class ShutdownSimulatorTool implements IShutdownSimulatorTool {
-  constructor(
-    private simulatorManager = SimulatorManager
-  ) {}
+  private devices: Devices;
+
+  constructor(devices?: Devices) {
+    this.devices = devices || new Devices();
+  }
 
   getToolDefinition() {
     return {
@@ -45,13 +47,18 @@ export class ShutdownSimulatorTool implements IShutdownSimulatorTool {
     
     logger.info({ deviceId }, 'Shutting down simulator');
     
-    await this.simulatorManager.shutdownSimulator(deviceId);
+    const device = await this.devices.find(deviceId);
+    if (!device) {
+      throw new Error(`Device not found: ${deviceId}`);
+    }
+    
+    await device.shutdown();
     
     return {
       content: [
         {
           type: 'text',
-          text: `Successfully shutdown simulator: ${deviceId}`
+          text: `Successfully shutdown simulator: ${device.name} (${device.id})`
         }
       ]
     };

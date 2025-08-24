@@ -24,10 +24,6 @@ describe('RunSwiftPackageTool E2E Tests', () => {
     testProjectManager.setup();
   }, 120000);
   
-  afterAll(() => {
-    testProjectManager.cleanup();
-  });
-  
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
@@ -36,6 +32,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
   
   afterEach(async () => {
     await cleanupClientAndTransport(client, transport);
+    testProjectManager.cleanup();
   });
 
   describe('Basic Execution', () => {

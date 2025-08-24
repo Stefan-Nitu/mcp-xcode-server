@@ -167,22 +167,38 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
 
 #### Project Management
 
-- **`build`**: Build an Xcode project, workspace, or Swift package
-  - `projectPath`: Path to .xcodeproj, .xcworkspace, or Package.swift
-  - `scheme`: Xcode scheme to build (required for .xcodeproj/.xcworkspace, optional for SPM)
-  - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS)
+- **`build_xcode`**: Build an Xcode project or workspace
+  - `projectPath`: Path to .xcodeproj or .xcworkspace
+  - `scheme`: Xcode scheme to build (required)
+  - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS) (default: iOS)
   - `deviceId`: Simulator device name or UDID (optional)
   - `configuration`: Build configuration (e.g., Debug, Release, Beta, Staging) (default: Debug)
 
-- **`run_project`**: Build and run an Apple platform project
+- **`build_swift_package`**: Build a Swift Package Manager package
+  - `packagePath`: Path to Package.swift or package directory
+  - `configuration`: Build configuration (Debug or Release) (default: Debug)
+  - `target`: Build specific target (optional)
+  - `product`: Build specific product (optional)
+
+- **`run_xcode`**: Build and run an Xcode project or workspace
   - `projectPath`: Path to .xcodeproj or .xcworkspace
-  - `scheme`: Xcode scheme to build (required for .xcodeproj/.xcworkspace)
-  - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS)
+  - `scheme`: Xcode scheme to build and run (required)
+  - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS) (default: iOS)
   - `deviceId`: Simulator device name or UDID (optional)
   - `configuration`: Build configuration (e.g., Debug, Release, Beta, Staging) (default: Debug)
+
+- **`run_swift_package`**: Build and run a Swift Package Manager executable
+  - `packagePath`: Path to Package.swift or package directory
+  - `executable`: The executable product to run (optional, uses default if not specified)
+  - `configuration`: Build configuration (Debug or Release) (default: Debug)
+  - `arguments`: Arguments to pass to the executable (optional)
 
 - **`test_project`**: Run tests for a project
-  - All parameters from `run_project` plus:
+  - `projectPath`: Path to .xcodeproj or .xcworkspace
+  - `scheme`: Xcode scheme to test
+  - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS) (default: iOS)
+  - `deviceId`: Simulator device name or UDID (optional)
+  - `configuration`: Build configuration (Debug or Release) (default: Debug)
   - `testTarget`: Specific test target (e.g., "MyAppTests")
   - `testFilter`: Filter for specific test methods
 
@@ -355,10 +371,10 @@ Each tool is a self-contained class in the `tools/` directory:
 }
 ```
 
-### Build a macOS App
+### Build and Run a macOS App
 ```json
 {
-  "tool": "run_project",
+  "tool": "run_xcode",
   "arguments": {
     "projectPath": "/path/to/MacApp.xcodeproj",
     "scheme": "MacApp",

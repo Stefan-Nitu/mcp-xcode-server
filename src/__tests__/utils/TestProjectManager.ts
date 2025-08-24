@@ -1,6 +1,7 @@
 import { existsSync, rmSync, readdirSync, statSync } from 'fs';
 import { join, resolve } from 'path';
 import { createModuleLogger } from '../../logger';
+import { config } from '../../config';
 
 const logger = createModuleLogger('TestProjectManager');
 
@@ -50,12 +51,14 @@ export class TestProjectManager {
     this.cleanBuildArtifacts();
   }
 
-  cleanBuildArtifacts() {
+  private cleanBuildArtifacts() {
     // Clean DerivedData
     const derivedDataPaths = [
       join(this.testArtifactsDir, 'DerivedData'),
       join(process.cwd(), 'DerivedData'),
-      './DerivedData'
+      './DerivedData',
+      // Clean new MCP-Xcode DerivedData location from config
+      config.derivedDataBasePath
     ];
 
     derivedDataPaths.forEach(path => {
@@ -148,10 +151,11 @@ export class TestProjectManager {
       
       logger.debug('Test artifacts cleaned successfully');
     } catch (error) {
-      logger.warn({ error }, 'Failed to use git clean, falling back to manual cleanup');
-      // Fallback to manual cleanup if git is not available
-      this.cleanBuildArtifacts();
+      logger.warn({ error }, 'Failed to use git clean');
     }
+    
+    // ALWAYS clean build artifacts including MCP-Xcode DerivedData
+    this.cleanBuildArtifacts();
     
     // Also clean DerivedData in project root
     const projectDerivedData = join(process.cwd(), 'DerivedData');

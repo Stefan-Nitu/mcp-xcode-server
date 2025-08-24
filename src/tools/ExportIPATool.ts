@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { XcodeBuilder } from '../xcodeBuilder.js';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from './validators.js';
-import { XcodeBuilderAdapter } from './XcodeBuilderAdapter.js';
+import { XcodeArchive } from '../utils/projects/XcodeArchive.js';
+import { existsSync } from 'fs';
 
 const logger = createModuleLogger('ExportIPATool');
 
@@ -22,12 +22,10 @@ export interface IExportIPATool {
 }
 
 export class ExportIPATool implements IExportIPATool {
-  private adapter: XcodeBuilderAdapter;
+  private xcodeArchive: XcodeArchive;
   
-  constructor(
-    xcodeBuilder: XcodeBuilder | typeof XcodeBuilder = XcodeBuilder
-  ) {
-    this.adapter = new XcodeBuilderAdapter(xcodeBuilder);
+  constructor(xcodeArchive?: XcodeArchive) {
+    this.xcodeArchive = xcodeArchive || new XcodeArchive();
   }
 
   getToolDefinition() {
@@ -63,25 +61,52 @@ export class ExportIPATool implements IExportIPATool {
     
     logger.info({ archivePath, exportPath, exportMethod }, 'Exporting IPA');
     
-    const resultPath = await this.adapter.exportIPA(
-      archivePath,
-      exportPath,
-      exportMethod
-    );
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            success: true,
-            message: 'Successfully exported IPA',
-            exportPath: resultPath,
-            exportMethod,
-            archivePath
-          }, null, 2)
-        }
-      ]
-    };
+    try {
+      // Check if archive exists
+      if (!existsSync(archivePath)) {
+        throw new Error(`Archive not found at: ${archivePath}`);
+      }
+      
+      // Export the IPA using XcodeArchive
+      const result = await this.xcodeArchive.exportIPA(archivePath, {
+        exportMethod,
+        exportPath
+      });
+      
+      if (!result.success) {
+        throw new Error('Export failed');
+      }
+      
+      logger.info({ ipaPath: result.ipaPath }, 'IPA export succeeded');
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              message: 'Successfully exported IPA',
+              exportPath: result.ipaPath,
+              exportMethod,
+              archivePath
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      logger.error({ error: error.message, archivePath }, 'Export failed');
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              message: `Export failed: ${error.message}`
+            }, null, 2)
+          }
+        ]
+      };
+    }
   }
 }

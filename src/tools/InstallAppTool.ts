@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SimulatorManager } from '../simulatorManager.js';
+import { Devices } from '../utils/devices/Devices.js';
 import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from './validators.js';
 
@@ -20,9 +20,11 @@ export interface IInstallAppTool {
 }
 
 export class InstallAppTool implements IInstallAppTool {
-  constructor(
-    private simulatorManager = SimulatorManager
-  ) {}
+  private devices: Devices;
+
+  constructor(devices?: Devices) {
+    this.devices = devices || new Devices();
+  }
 
   getToolDefinition() {
     return {
@@ -51,13 +53,33 @@ export class InstallAppTool implements IInstallAppTool {
     
     logger.info({ appPath, deviceId }, 'Installing app');
     
-    await this.simulatorManager.installApp(appPath, deviceId);
+    let device;
+    try {
+      if (deviceId) {
+        device = await this.devices.find(deviceId);
+        if (!device) {
+          throw new Error(`Device not found: ${deviceId}`);
+        }
+      } else {
+        // Use booted device if no device specified
+        device = await this.devices.getBooted();
+        if (!device) {
+          throw new Error('No booted simulator found. Please boot a simulator first or specify a device ID.');
+        }
+      }
+      
+      await device.install(appPath);
+      logger.info({ appPath, deviceId: device.id }, 'App installed successfully');
+    } catch (error: any) {
+      logger.error({ error: error.message, appPath, deviceId }, 'Failed to install app');
+      throw error;
+    }
     
     return {
       content: [
         {
           type: 'text',
-          text: `Successfully installed app: ${appPath}`
+          text: `Successfully installed app: ${appPath} on ${device.name}`
         }
       ]
     };

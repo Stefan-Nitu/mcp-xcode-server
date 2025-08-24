@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SimulatorManager } from '../simulatorManager.js';
+import { Devices } from '../utils/devices/Devices.js';
 import { createModuleLogger } from '../logger.js';
 import { timeIntervalSchema } from './validators.js';
 
@@ -26,9 +26,11 @@ export interface IGetDeviceLogsTool {
 }
 
 export class GetDeviceLogsTool implements IGetDeviceLogsTool {
-  constructor(
-    private simulatorManager = SimulatorManager
-  ) {}
+  private devices: Devices;
+
+  constructor(devices?: Devices) {
+    this.devices = devices || new Devices();
+  }
 
   getToolDefinition() {
     return {
@@ -61,7 +63,21 @@ export class GetDeviceLogsTool implements IGetDeviceLogsTool {
     
     logger.debug({ deviceId, predicate, last }, 'Getting device logs');
     
-    const logs = await this.simulatorManager.getDeviceLogs(deviceId, predicate, last);
+    let device;
+    if (deviceId) {
+      device = await this.devices.find(deviceId);
+      if (!device) {
+        throw new Error(`Device not found: ${deviceId}`);
+      }
+    } else {
+      // Use booted device if no device specified
+      device = await this.devices.getBooted();
+      if (!device) {
+        throw new Error('No booted simulator found. Please boot a simulator first or specify a device ID.');
+      }
+    }
+    
+    const logs = await device.logs(predicate, last);
     
     return {
       content: [
