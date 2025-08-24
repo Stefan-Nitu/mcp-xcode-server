@@ -3,42 +3,56 @@
 ## Overview
 This document tracks the testing and validation status of all tools in the MCP Xcode Server.
 
+**Current Status:**
+- ✅ **9 tools validated** with comprehensive e2e tests and new architecture
+- ⏳ **12 tools pending** validation or e2e test creation
+
 ## Validation Status
 
 ### ✅ Validated Tools
 These tools have been thoroughly tested with comprehensive e2e tests and refactored for better architecture:
 
-1. **BuildTool** ✅
+1. **BuildXcodeTool** ✅
    - Status: Validated
-   - Test file: `src/__tests__/e2e/build-project.e2e.test.ts`
-   - Notes: Comprehensive tests for Xcode projects, workspaces, and SPM packages
+   - Test file: `src/__tests__/e2e/build-xcode.e2e.test.ts`
+   - Notes: Comprehensive tests for Xcode projects and workspaces, uses new Xcode utility architecture
 
-2. **CleanBuildTool** ✅
+2. **BuildSwiftPackageTool** ✅
+   - Status: Validated
+   - Test file: `src/__tests__/e2e/build-swift-package.e2e.test.ts`
+   - Notes: Tests SPM package building with new SwiftPackage utility architecture
+
+3. **RunXcodeTool** ✅
+   - Status: Validated
+   - Test file: `src/__tests__/e2e/run-xcode.e2e.test.ts`
+   - Notes: Refactored to use new Devices and Xcode utilities, handles all platforms
+
+4. **RunSwiftPackageTool** ✅
+   - Status: Validated
+   - Test file: `src/__tests__/e2e/run-swift-package.e2e.test.ts`
+   - Notes: Tests SPM executable running with comprehensive e2e tests
+
+5. **CleanBuildTool** ✅
    - Status: Validated
    - Test file: `src/__tests__/e2e/clean-build.e2e.test.ts`
    - Notes: Tests cleaning of build artifacts, DerivedData, and test results
 
-3. **InstallAppTool** ✅
+6. **InstallAppTool** ✅
    - Status: Validated
    - Test file: `src/__tests__/e2e/install-app.e2e.test.ts`
    - Notes: Tests app installation on simulators with real built apps
 
-4. **RunProjectTool** ✅
-   - Status: Validated
-   - Test file: `src/__tests__/e2e/run-project.e2e.test.ts`
-   - Notes: Refactored to use composition pattern, handles all platforms
-
-5. **ListSchemesTool** ✅
+7. **ListSchemesTool** ✅
    - Status: Validated
    - Test file: `src/__tests__/e2e/list-schemes.e2e.test.ts`
    - Notes: Self-contained implementation with comprehensive tests
 
-6. **ListSimulatorsTool** ✅
+8. **ListSimulatorsTool** ✅
    - Status: Validated
    - Test file: `src/__tests__/e2e/list-simulators.e2e.test.ts`
    - Notes: Self-contained implementation, handles dynamic simulator configurations
 
-7. **BootSimulatorTool** ✅
+9. **BootSimulatorTool** ✅
    - Status: Validated
    - Test file: `src/__tests__/e2e/boot-simulator.e2e.test.ts`
    - Notes: Self-contained implementation, comprehensive e2e tests
@@ -46,75 +60,65 @@ These tools have been thoroughly tested with comprehensive e2e tests and refacto
 ### ⏳ Pending Validation
 These tools need comprehensive e2e testing and potential refactoring:
 
-8. **ShutdownSimulatorTool** ⏳
-   - Status: Pending
-   - Test file: Partial coverage in `simulator-tools.e2e.test.ts`
-   - Notes: Needs dedicated e2e test file
-
-9. **ViewSimulatorScreenTool** ⏳
-   - Status: Pending
-   - Test file: Partial coverage in `simulator-tools.e2e.test.ts`
-   - Notes: Needs dedicated e2e test file
-
-10. **TestProjectTool** ⏳
+10. **TestXcodeTool** ⏳
     - Status: Pending
-    - Test file: `src/__tests__/e2e/test-project.e2e.test.ts`
-    - Notes: Has tests but needs validation for refactoring
+    - Test file: `src/__tests__/e2e/test-xcode.e2e.test.ts`
+    - Notes: Has comprehensive e2e tests with new architecture but not yet validated
 
-11. **TestSPMModuleTool** ⏳
+11. **TestSwiftPackageTool** ⏳
     - Status: Pending
-    - Test file: `src/__tests__/e2e/test-spm-module.e2e.test.ts`
-    - Notes: Has tests but needs validation for refactoring
+    - Test file: `src/__tests__/e2e/test-swift-package.e2e.test.ts`
+    - Notes: Has comprehensive e2e tests but not yet validated
 
-12. **ArchiveProjectTool** ⏳
+12. **ShutdownSimulatorTool** ⏳
     - Status: Pending
-    - Test file: None
-    - Notes: Needs e2e tests
+    - Test file: Partial coverage
+    - Notes: Needs dedicated e2e test file
 
-13. **ExportIPATool** ⏳
+13. **ViewSimulatorScreenTool** ⏳
+    - Status: Pending
+    - Test file: Partial coverage
+    - Notes: Needs dedicated e2e test file
+
+14. **ArchiveProjectTool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-14. **GetBuildSettingsTool** ⏳
+15. **ExportIPATool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-15. **GetProjectInfoTool** ⏳
+16. **GetBuildSettingsTool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-16. **ListTargetsTool** ⏳
+17. **GetProjectInfoTool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-17. **UninstallAppTool** ⏳
+18. **ListTargetsTool** ⏳
+    - Status: Pending
+    - Test file: None
+    - Notes: Needs e2e tests
+
+19. **UninstallAppTool** ⏳
     - Status: Pending
     - Test file: `src/__tests__/e2e/uninstall-app.e2e.test.ts`
     - Notes: Has tests but needs validation for refactoring
 
-18. **GetDeviceLogsTool** ⏳
+20. **GetDeviceLogsTool** ⏳
     - Status: Pending
-    - Test file: Partial coverage in `simulator-tools.e2e.test.ts`
+    - Test file: Partial coverage
     - Notes: Needs dedicated e2e test file
 
-19. **ManageDependenciesTool** ⏳
+21. **ManageDependenciesTool** ⏳
     - Status: Pending
-    - Test file: `src/__tests__/e2e/manage-dependencies.e2e.test.ts`
-    - Notes: Has tests but needs validation for refactoring
-
-20. **BuildSwiftPackageTool** ⏳
-    - Status: Pending
-    - Test file: `src/__tests__/e2e/build-swift-package.e2e.test.ts`
-    - Notes: New tool, has comprehensive e2e and unit tests but not yet validated in production
-
-21. **RunSwiftPackageTool** ⏳
-    - Status: Pending
-    - Test file: `src/__tests__/e2e/run-swift-package.e2e.test.ts`
-    - Notes: New tool, has comprehensive e2e and unit tests but not yet validated in production
+    - Test file: None currently
+    - Notes: Needs e2e tests for dependency management operations
 
 ## Testing Guidelines
 
