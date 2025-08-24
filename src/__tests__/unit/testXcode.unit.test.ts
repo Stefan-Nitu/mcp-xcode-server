@@ -1,228 +1,333 @@
 /**
  * Unit tests for TestXcodeTool
- * Tests the behavior of running tests for Xcode projects
+ * Tests behavior with mocked dependencies
  */
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { TestXcodeTool } from '../../tools/TestXcodeTool.js';
+import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 import { Platform } from '../../types.js';
+import * as fs from 'fs';
+import * as platformHandler from '../../platformHandler.js';
 
-describe('TestXcodeTool', () => {
+// Mock the modules
+jest.mock('fs', () => ({
+  existsSync: jest.fn()
+}));
+
+jest.mock('../../platformHandler.js', () => ({
+  PlatformHandler: {
+    needsSimulator: jest.fn()
+  }
+}));
+
+describe('TestXcodeTool Unit Tests', () => {
   let tool: TestXcodeTool;
-
-  // Mock Devices
-  const mockDevices = {
-    find: jest.fn()
-  };
-
+  const mockExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>;
+  const mockNeedsSimulator = platformHandler.PlatformHandler.needsSimulator as jest.MockedFunction<typeof platformHandler.PlatformHandler.needsSimulator>;
+  
+  // Create mock XcodeProject with proper instanceof support
+  const mockTest = jest.fn<(options: any) => Promise<any>>();
+  const mockXcodeProject = Object.create(XcodeProject.prototype);
+  mockXcodeProject.test = mockTest;
+  mockXcodeProject.path = '/test/project.xcodeproj';
+  
   // Mock Xcode
   const mockXcode = {
-    open: jest.fn()
+    open: jest.fn<(path: string) => Promise<any>>()
+  };
+  
+  // Mock Device
+  const mockDevice = {
+    id: 'mock-device-id',
+    name: 'Mock Device',
+    ensureBooted: jest.fn<() => Promise<void>>()
+  };
+  
+  // Mock Devices
+  const mockDevices = {
+    find: jest.fn<(nameOrId: string) => Promise<any>>()
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    tool = new TestXcodeTool(mockDevices as any, mockXcode as any);
+    tool = new TestXcodeTool(
+      mockDevices as any,
+      mockXcode as any
+    );
   });
 
-  describe('tool definition', () => {
+  describe('Tool Definition', () => {
     test('should provide correct tool definition', () => {
       const definition = tool.getToolDefinition();
       
       expect(definition.name).toBe('test_xcode');
-      expect(definition.description).toContain('Run tests');
+      expect(definition.description).toBe('Run tests for an Xcode project or workspace');
       expect(definition.inputSchema.required).toEqual(['projectPath', 'scheme']);
+      expect(definition.inputSchema.properties.platform.enum).toEqual(['iOS', 'macOS', 'tvOS', 'watchOS', 'visionOS']);
+      expect(definition.inputSchema.properties.platform.default).toBe('iOS');
+      expect(definition.inputSchema.properties.configuration.default).toBe('Debug');
     });
   });
 
-  describe('when running tests successfully', () => {
-    test('should report passed tests with correct summary', async () => {
-      const mockXcodeProject = {
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: 'Test output here',
-          passed: 10,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockXcodeProject);
-
-      const result = await tool.execute({
-        projectPath: '/test/project.xcodeproj',
-        scheme: 'MyScheme',
-        platform: 'iOS'
+  describe('Test Execution', () => {
+    test('should run tests successfully', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(false);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'All tests passed',
+        passed: 10,
+        failed: 0
       });
 
-      expect(result.content[0].text).toContain('Tests passed: 10 passed, 0 failed');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Test output here');
-    });
-  });
-
-  describe('when tests fail', () => {
-    test('should report failed tests with failure count', async () => {
-      const mockXcodeProject = {
-        test: jest.fn().mockResolvedValue({
-          success: false,
-          output: 'Test failures detected',
-          passed: 8,
-          failed: 2
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockXcodeProject);
-
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
         scheme: 'MyScheme',
-        platform: 'iOS'
+        platform: 'macOS'
+      });
+
+      expect(mockTest).toHaveBeenCalledWith({
+        scheme: 'MyScheme',
+        configuration: 'Debug',
+        platform: 'macOS',
+        deviceId: undefined,
+        testTarget: undefined,
+        testFilter: undefined
+      });
+      
+      expect(result.content[0].text).toContain('Tests passed: 10 passed, 0 failed');
+      expect(result.content[0].text).toContain('Platform: macOS');
+    });
+
+    test('should handle test failures', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(false);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockTest.mockResolvedValue({
+        success: false,
+        output: 'Test failures detected',
+        passed: 8,
+        failed: 2
+      });
+
+      const result = await tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme'
       });
 
       expect(result.content[0].text).toContain('Tests failed: 8 passed, 2 failed');
       expect(result.content[0].text).toContain('Test failures detected');
     });
-  });
 
-  describe('when using test filters', () => {
-    test('should pass test target to underlying test method', async () => {
-      const mockXcodeProject = {
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: '',
-          passed: 5,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockXcodeProject);
-
-      const result = await tool.execute({
-        projectPath: '/test/project.xcodeproj',
-        scheme: 'MyScheme',
-        platform: 'iOS',
-        testTarget: 'MyAppTests'
+    test('should boot simulator for iOS tests with deviceId', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(true);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.find.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'Tests passed',
+        passed: 5,
+        failed: 0
       });
-
-      expect(mockXcodeProject.test).toHaveBeenCalledWith(
-        expect.objectContaining({
-          testTarget: 'MyAppTests'
-        })
-      );
-      expect(result.content[0].text).toContain('Test Target: MyAppTests');
-    });
-
-    test('should pass test filter to underlying test method', async () => {
-      const mockXcodeProject = {
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: '',
-          passed: 1,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockXcodeProject);
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
         scheme: 'MyScheme',
         platform: 'iOS',
-        testFilter: 'testSpecificMethod'
+        deviceId: 'my-device'
       });
 
-      expect(mockXcodeProject.test).toHaveBeenCalledWith(
-        expect.objectContaining({
-          testFilter: 'testSpecificMethod'
-        })
-      );
-    });
-  });
-
-  describe('when using simulators', () => {
-    test('should boot simulator for iOS platform when device specified', async () => {
-      const mockDevice = {
-        id: 'device-123',
-        ensureBooted: jest.fn().mockResolvedValue(undefined)
-      };
-      
-      const mockXcodeProject = {
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: '',
-          passed: 10,
-          failed: 0
-        })
-      };
-      
-      (mockDevices.find as jest.Mock).mockResolvedValue(mockDevice);
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockXcodeProject);
-
-      await tool.execute({
-        projectPath: '/test/project.xcodeproj',
-        scheme: 'MyScheme',
-        platform: 'iOS',
-        deviceId: 'iPhone 15'
-      });
-
-      expect(mockDevices.find).toHaveBeenCalledWith('iPhone 15');
+      expect(mockDevices.find).toHaveBeenCalledWith('my-device');
       expect(mockDevice.ensureBooted).toHaveBeenCalled();
-      expect(mockXcodeProject.test).toHaveBeenCalledWith(
+      expect(mockTest).toHaveBeenCalledWith(
         expect.objectContaining({
-          deviceId: 'device-123'
+          deviceId: 'mock-device-id'
+        })
+      );
+    });
+
+    test('should pass test target and filter', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(false);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'Filtered tests passed',
+        passed: 3,
+        failed: 0
+      });
+
+      const result = await tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
+        testTarget: 'MyAppTests',
+        testFilter: 'testLogin'
+      });
+
+      expect(mockTest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          testTarget: 'MyAppTests',
+          testFilter: 'testLogin'
+        })
+      );
+      
+      expect(result.content[0].text).toContain('Test Target: MyAppTests');
+      expect(result.content[0].text).toContain('Filter: testLogin');
+    });
+
+    test('should use Release configuration', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(false);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'Tests passed',
+        passed: 10,
+        failed: 0
+      });
+
+      await tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
+        configuration: 'Release'
+      });
+
+      expect(mockTest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: 'Release'
         })
       );
     });
   });
 
-  describe('when project is not found', () => {
-    test('should return error message', async () => {
-      (mockXcode.open as jest.Mock).mockRejectedValue(new Error('Project path does not exist: /bad/path'));
+  describe('Error Handling', () => {
+    test('should handle project not existing', async () => {
+      mockExistsSync.mockReturnValue(false);
 
       const result = await tool.execute({
-        projectPath: '/bad/path',
+        projectPath: '/non/existent/project.xcodeproj',
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed');
-      expect(result.content[0].text).toContain('Project path does not exist');
+      expect(result.content[0].text).toContain('Test execution failed: Project path does not exist');
     });
-  });
 
-  describe('when project is a Swift package', () => {
-    test('should return error for wrong project type', async () => {
-      const mockSwiftPackage = { /* not an XcodeProject */ };
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockSwiftPackage);
+    test('should handle non-Xcode project', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockXcode.open.mockResolvedValue({ type: 'swift-package' });
 
       const result = await tool.execute({
         projectPath: '/test/Package.swift',
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Not an Xcode project or workspace');
+      expect(result.content[0].text).toContain('Test execution failed: Not an Xcode project or workspace');
     });
-  });
 
-  describe('when build fails before tests run', () => {
-    test('should return build error', async () => {
-      const mockXcodeProject = {
-        test: jest.fn().mockResolvedValue({
-          success: false,
-          output: 'Build failed: missing dependency',
-          passed: 0,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockXcodeProject);
+    test('should handle device not found', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(true);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.find.mockResolvedValue(null);
+
+      const result = await tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
+        platform: 'iOS',
+        deviceId: 'non-existent'
+      });
+
+      expect(result.content[0].text).toContain('Test execution failed: Device not found: non-existent');
+    });
+
+    test('should handle build/setup errors', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(false);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockTest.mockResolvedValue({
+        success: false,
+        output: 'Build failed: Missing dependency',
+        passed: 0,
+        failed: 0
+      });
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed');
-      expect(result.content[0].text).toContain('Build failed: missing dependency');
+      expect(result.content[0].text).toContain('Test execution failed: Build failed: Missing dependency');
+    });
+
+    test('should handle test method throwing error', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(false);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      
+      const error = new Error('Unexpected test error') as any;
+      error.stdout = 'Build output...';
+      error.stderr = 'Error details...';
+      mockTest.mockRejectedValue(error);
+
+      const result = await tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme'
+      });
+
+      expect(result.content[0].text).toContain('Test execution failed: Unexpected test error');
+      expect(result.content[0].text).toContain('Build output...');
+    });
+  });
+
+  describe('Input Validation', () => {
+    test('should reject invalid platform', async () => {
+      await expect(tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
+        platform: 'Android'
+      })).rejects.toThrow('Invalid enum value');
+    });
+
+    test('should accept custom configuration', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(false);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'Tests passed',
+        passed: 10,
+        failed: 0
+      });
+
+      await tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
+        configuration: 'Beta'
+      });
+
+      expect(mockTest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: 'Beta'
+        })
+      );
+    });
+
+    test('should reject path traversal attempts', async () => {
+      await expect(tool.execute({
+        projectPath: '../../../etc/passwd',
+        scheme: 'MyScheme'
+      })).rejects.toThrow('Path traversal');
+    });
+
+    test('should reject command injection attempts', async () => {
+      await expect(tool.execute({
+        projectPath: '/test/project.xcodeproj; rm -rf /',
+        scheme: 'MyScheme'
+      })).rejects.toThrow('Command injection');
     });
   });
 });

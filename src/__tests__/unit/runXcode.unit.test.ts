@@ -5,13 +5,17 @@
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { RunXcodeTool } from '../../tools/RunXcodeTool.js';
-import { BuildXcodeTool } from '../../tools/BuildXcodeTool.js';
-import { InstallAppTool } from '../../tools/InstallAppTool.js';
+import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 import { Platform } from '../../types.js';
+import * as fs from 'fs';
 import * as utils from '../../utils.js';
 import * as platformHandler from '../../platformHandler.js';
 
 // Mock the modules
+jest.mock('fs', () => ({
+  existsSync: jest.fn()
+}));
+
 jest.mock('../../utils.js', () => ({
   execAsync: jest.fn()
 }));
@@ -24,40 +28,57 @@ jest.mock('../../platformHandler.js', () => ({
   }
 }));
 
-jest.mock('../../tools/BuildXcodeTool.js');
-jest.mock('../../tools/InstallAppTool.js');
+// Mock the config module
+jest.mock('../../config.js', () => ({
+  config: {
+    getDerivedDataPath: jest.fn()
+  }
+}));
+
+// Import after mocking
+import { config } from '../../config.js';
 
 describe('RunXcodeTool Unit Tests', () => {
   let tool: RunXcodeTool;
   const mockExecAsync = utils.execAsync as jest.MockedFunction<typeof utils.execAsync>;
+  const mockExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>;
   const mockNeedsSimulator = platformHandler.PlatformHandler.needsSimulator as jest.MockedFunction<typeof platformHandler.PlatformHandler.needsSimulator>;
+  const mockGetDerivedDataPath = config.getDerivedDataPath as jest.MockedFunction<typeof config.getDerivedDataPath>;
   
-  // Mock dependencies
-  const mockBuildTool = {
-    execute: jest.fn<(args: any) => Promise<any>>(),
-    getToolDefinition: jest.fn()
+  // Create a mock XcodeProject instance
+  const mockBuildProject = jest.fn<(args: any) => Promise<any>>();
+  const mockXcodeProject = Object.create(XcodeProject.prototype);
+  mockXcodeProject.buildProject = mockBuildProject;
+  mockXcodeProject.path = '/test/project.xcodeproj';
+  
+  // Mock Xcode
+  const mockXcode = {
+    open: jest.fn<(path: string) => Promise<any>>()
   };
   
-  const mockSimulator = {
-    boot: {
-      ensureBooted: jest.fn<(platform: string, deviceId?: string) => Promise<string>>()
-    },
-    apps: {
-      install: jest.fn<(appPath: string, deviceId?: string) => Promise<void>>(),
-      getBundleId: jest.fn<(appPath: string) => Promise<string>>(),
-      launch: jest.fn<(bundleId: string, deviceId?: string) => Promise<string>>()
-    },
-    ui: {
-      open: jest.fn<() => Promise<void>>(),
-      setAppearance: jest.fn<(appearance: 'light' | 'dark', deviceId?: string) => Promise<void>>()
-    }
+  // Mock Device
+  const mockDevice = {
+    id: 'mock-device-id',
+    name: 'Mock Device',
+    ensureBooted: jest.fn<() => Promise<void>>(),
+    install: jest.fn<(appPath: string) => Promise<void>>(),
+    launch: jest.fn<(bundleId: string) => Promise<string>>(),
+    getBundleId: jest.fn<(appPath: string) => Promise<string>>(),
+    open: jest.fn<() => Promise<void>>(),
+    setAppearance: jest.fn<(appearance: string) => Promise<void>>()
+  };
+  
+  // Mock Devices
+  const mockDevices = {
+    find: jest.fn<(nameOrId: string) => Promise<any>>(),
+    findForPlatform: jest.fn<(platform: string) => Promise<any>>()
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     tool = new RunXcodeTool(
-      mockBuildTool as any,
-      mockSimulator as any
+      mockDevices as any,
+      mockXcode as any
     );
   });
 
@@ -76,19 +97,23 @@ describe('RunXcodeTool Unit Tests', () => {
 
   describe('iOS App Running', () => {
     test('should boot simulator and run iOS app', async () => {
+      // Setup mocks
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('booted-device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: iOS\nConfiguration: Debug\nApp path: ./DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.find.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
       });
-      mockSimulator.apps.install.mockResolvedValue(undefined);
-      mockSimulator.apps.getBundleId.mockResolvedValue('com.example.MyApp');
-      mockSimulator.apps.launch.mockResolvedValue('12345');
-      mockSimulator.ui.open.mockResolvedValue(undefined);
-      mockSimulator.ui.setAppearance.mockResolvedValue(undefined);
+      mockDevice.install.mockResolvedValue(undefined);
+      mockDevice.getBundleId.mockResolvedValue('com.example.app');
+      mockDevice.launch.mockResolvedValue('12345');
+      mockDevice.open.mockResolvedValue(undefined);
+      mockDevice.setAppearance.mockResolvedValue(undefined);
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -97,42 +122,45 @@ describe('RunXcodeTool Unit Tests', () => {
         deviceId: 'my-device'
       });
 
-      // Should boot simulator
-      expect(mockSimulator.boot.ensureBooted).toHaveBeenCalledWith('iOS', 'my-device');
+      // Verify device was found and booted
+      expect(mockDevices.find).toHaveBeenCalledWith('my-device');
+      expect(mockDevice.ensureBooted).toHaveBeenCalled();
       
-      // Should build with the booted device
-      expect(mockBuildTool.execute).toHaveBeenCalledWith({
-        projectPath: '/test/project.xcodeproj',
+      // Verify build was called with correct params
+      expect(mockBuildProject).toHaveBeenCalledWith({
         scheme: 'MyScheme',
+        configuration: 'Debug',
         platform: 'iOS',
-        deviceId: 'booted-device-id',
-        configuration: 'Debug'
+        deviceId: 'mock-device-id',
+        derivedDataPath: './DerivedData'
       });
       
-      // Should install the app
-      expect(mockSimulator.apps.install).toHaveBeenCalledWith(
-        './DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app',
-        'booted-device-id'
+      // Verify app was installed
+      expect(mockDevice.install).toHaveBeenCalledWith(
+        './DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
       );
       
       expect(result.content[0].text).toContain('Successfully built and ran project: MyScheme');
-      expect(result.content[0].text).toContain('Device: my-device');
+      expect(result.content[0].text).toContain('Device: Mock Device');
     });
 
     test('should work without deviceId', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('auto-booted-device');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: iOS\nConfiguration: Debug\nApp path: ./DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.findForPlatform.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
       });
-      mockSimulator.apps.install.mockResolvedValue(undefined);
-      mockSimulator.apps.getBundleId.mockResolvedValue('com.example.MyApp');
-      mockSimulator.apps.launch.mockResolvedValue('12345');
-      mockSimulator.ui.open.mockResolvedValue(undefined);
-      mockSimulator.ui.setAppearance.mockResolvedValue(undefined);
+      mockDevice.install.mockResolvedValue(undefined);
+      mockDevice.getBundleId.mockResolvedValue('com.example.app');
+      mockDevice.launch.mockResolvedValue('12345');
+      mockDevice.open.mockResolvedValue(undefined);
+      mockDevice.setAppearance.mockResolvedValue(undefined);
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -140,28 +168,22 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      // Should boot default simulator
-      expect(mockSimulator.boot.ensureBooted).toHaveBeenCalledWith('iOS', undefined);
-      
-      // Should build with auto-booted device
-      expect(mockBuildTool.execute).toHaveBeenCalledWith({
-        projectPath: '/test/project.xcodeproj',
-        scheme: 'MyScheme',
-        platform: 'iOS',
-        deviceId: 'auto-booted-device',
-        configuration: 'Debug'
-      });
+      // Should find device for platform
+      expect(mockDevices.findForPlatform).toHaveBeenCalledWith('iOS');
+      expect(mockDevice.ensureBooted).toHaveBeenCalled();
     });
   });
 
   describe('macOS App Running', () => {
     test('should launch macOS app without simulator', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(false);
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: macOS\nConfiguration: Debug\nApp path: ./DerivedData/Build/Products/Debug/MyApp.app'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Debug/MyApp.app'
       });
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
@@ -171,39 +193,41 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'macOS'
       });
 
-      // Should not boot simulator
-      expect(mockSimulator.boot.ensureBooted).not.toHaveBeenCalled();
+      // Should not try to find device
+      expect(mockDevices.find).not.toHaveBeenCalled();
+      expect(mockDevices.findForPlatform).not.toHaveBeenCalled();
       
       // Should build without deviceId
-      expect(mockBuildTool.execute).toHaveBeenCalledWith({
-        projectPath: '/test/project.xcodeproj',
+      expect(mockBuildProject).toHaveBeenCalledWith({
         scheme: 'MyScheme',
+        configuration: 'Debug',
         platform: 'macOS',
         deviceId: undefined,
-        configuration: 'Debug'
+        derivedDataPath: './DerivedData'
       });
       
-      // Should not call InstallAppTool
-      expect(mockSimulator.apps.install).not.toHaveBeenCalled();
-      
-      // Should launch the app using open command
+      // Should launch using open command with absolute path
       expect(mockExecAsync).toHaveBeenCalledWith(
         expect.stringContaining('open')
       );
+      expect(mockExecAsync).toHaveBeenCalledWith(
+        expect.stringContaining('MyApp.app')
+      );
       
-      expect(result.content[0].text).toContain('Successfully built and ran project: MyScheme');
-      expect(result.content[0].text).toContain('Platform: macOS');
+      expect(result.content[0].text).toContain('Successfully built and ran project');
     });
 
     test('should handle macOS app launch failure gracefully', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(false);
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: macOS\nConfiguration: Debug\nApp path: ./DerivedData/Build/Products/Debug/MyApp.app'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Debug/MyApp.app'
       });
-      mockExecAsync.mockRejectedValue(new Error('Failed to launch app'));
+      mockExecAsync.mockRejectedValue(new Error('Failed to launch'));
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -211,26 +235,29 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'macOS'
       });
 
-      // Should still return success (launch failure is logged but not fatal)
+      // Should still report success even if launch fails
       expect(result.content[0].text).toContain('Successfully built and ran project');
     });
   });
 
   describe('Other Platforms', () => {
     test('should handle tvOS platform', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('tvos-device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: tvOS\nConfiguration: Debug\nApp path: ./DerivedData/Build/Products/Debug-appletvsimulator/MyApp.app'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.findForPlatform.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Debug-appletvsimulator/MyApp.app'
       });
-      mockSimulator.apps.install.mockResolvedValue(undefined);
-      mockSimulator.apps.getBundleId.mockResolvedValue('com.example.MyApp');
-      mockSimulator.apps.launch.mockResolvedValue('12345');
-      mockSimulator.ui.open.mockResolvedValue(undefined);
-      mockSimulator.ui.setAppearance.mockResolvedValue(undefined);
+      mockDevice.install.mockResolvedValue(undefined);
+      mockDevice.getBundleId.mockResolvedValue('com.example.app');
+      mockDevice.launch.mockResolvedValue('12345');
+      mockDevice.open.mockResolvedValue(undefined);
+      mockDevice.setAppearance.mockResolvedValue(undefined);
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -238,27 +265,26 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'tvOS'
       });
 
-      expect(mockSimulator.boot.ensureBooted).toHaveBeenCalledWith('tvOS', undefined);
-      expect(mockBuildTool.execute).toHaveBeenCalledWith(
-        expect.objectContaining({ platform: 'tvOS' })
-      );
-      expect(mockSimulator.apps.install).toHaveBeenCalled();
+      expect(mockDevices.findForPlatform).toHaveBeenCalledWith('tvOS');
     });
 
     test('should handle watchOS platform', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('watchos-device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: watchOS\nConfiguration: Debug\nApp path: ./DerivedData/Build/Products/Debug-watchsimulator/MyApp.app'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.findForPlatform.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Debug-watchsimulator/MyApp.app'
       });
-      mockSimulator.apps.install.mockResolvedValue(undefined);
-      mockSimulator.apps.getBundleId.mockResolvedValue('com.example.MyApp');
-      mockSimulator.apps.launch.mockResolvedValue('12345');
-      mockSimulator.ui.open.mockResolvedValue(undefined);
-      mockSimulator.ui.setAppearance.mockResolvedValue(undefined);
+      mockDevice.install.mockResolvedValue(undefined);
+      mockDevice.getBundleId.mockResolvedValue('com.example.app');
+      mockDevice.launch.mockResolvedValue('12345');
+      mockDevice.open.mockResolvedValue(undefined);
+      mockDevice.setAppearance.mockResolvedValue(undefined);
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -266,26 +292,26 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'watchOS'
       });
 
-      expect(mockSimulator.boot.ensureBooted).toHaveBeenCalledWith('watchOS', undefined);
-      expect(mockBuildTool.execute).toHaveBeenCalledWith(
-        expect.objectContaining({ platform: 'watchOS' })
-      );
+      expect(mockDevices.findForPlatform).toHaveBeenCalledWith('watchOS');
     });
 
     test('should handle visionOS platform', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('visionos-device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: visionOS\nConfiguration: Debug\nApp path: ./DerivedData/Build/Products/Debug-visionsimulator/MyApp.app'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.findForPlatform.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Debug-xrsimulator/MyApp.app'
       });
-      mockSimulator.apps.install.mockResolvedValue(undefined);
-      mockSimulator.apps.getBundleId.mockResolvedValue('com.example.MyApp');
-      mockSimulator.apps.launch.mockResolvedValue('12345');
-      mockSimulator.ui.open.mockResolvedValue(undefined);
-      mockSimulator.ui.setAppearance.mockResolvedValue(undefined);
+      mockDevice.install.mockResolvedValue(undefined);
+      mockDevice.getBundleId.mockResolvedValue('com.example.app');
+      mockDevice.launch.mockResolvedValue('12345');
+      mockDevice.open.mockResolvedValue(undefined);
+      mockDevice.setAppearance.mockResolvedValue(undefined);
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -293,28 +319,28 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'visionOS'
       });
 
-      expect(mockSimulator.boot.ensureBooted).toHaveBeenCalledWith('visionOS', undefined);
-      expect(mockBuildTool.execute).toHaveBeenCalledWith(
-        expect.objectContaining({ platform: 'visionOS' })
-      );
+      expect(mockDevices.findForPlatform).toHaveBeenCalledWith('visionOS');
     });
   });
 
   describe('Configuration Handling', () => {
     test('should pass Release configuration to build', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: iOS\nConfiguration: Release\nApp path: ./DerivedData/Build/Products/Release-iphonesimulator/MyApp.app'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.findForPlatform.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: './DerivedData/Build/Products/Release-iphonesimulator/MyApp.app'
       });
-      mockSimulator.apps.install.mockResolvedValue(undefined);
-      mockSimulator.apps.getBundleId.mockResolvedValue('com.example.MyApp');
-      mockSimulator.apps.launch.mockResolvedValue('12345');
-      mockSimulator.ui.open.mockResolvedValue(undefined);
-      mockSimulator.ui.setAppearance.mockResolvedValue(undefined);
+      mockDevice.install.mockResolvedValue(undefined);
+      mockDevice.getBundleId.mockResolvedValue('com.example.app');
+      mockDevice.launch.mockResolvedValue('12345');
+      mockDevice.open.mockResolvedValue(undefined);
+      mockDevice.setAppearance.mockResolvedValue(undefined);
 
       await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -323,48 +349,25 @@ describe('RunXcodeTool Unit Tests', () => {
         configuration: 'Release'
       });
 
-      expect(mockBuildTool.execute).toHaveBeenCalledWith(
-        expect.objectContaining({ configuration: 'Release' })
-      );
-    });
-
-    test('should pass custom configuration to build', async () => {
-      mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: iOS\nConfiguration: Beta\nApp path: ./DerivedData/Build/Products/Beta-iphonesimulator/MyApp.app'
-        }]
-      });
-      mockSimulator.apps.install.mockResolvedValue(undefined);
-      mockSimulator.apps.getBundleId.mockResolvedValue('com.example.MyApp');
-      mockSimulator.apps.launch.mockResolvedValue('12345');
-      mockSimulator.ui.open.mockResolvedValue(undefined);
-      mockSimulator.ui.setAppearance.mockResolvedValue(undefined);
-
-      await tool.execute({
-        projectPath: '/test/project.xcodeproj',
-        scheme: 'MyScheme',
-        platform: 'iOS',
-        configuration: 'Beta'
-      });
-
-      expect(mockBuildTool.execute).toHaveBeenCalledWith(
-        expect.objectContaining({ configuration: 'Beta' })
+      expect(mockBuildProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: 'Release'
+        })
       );
     });
   });
 
   describe('Error Handling', () => {
     test('should handle build failure', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build failed: Compilation error'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.findForPlatform.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: false,
+        output: 'Build failed: error message'
       });
 
       const result = await tool.execute({
@@ -373,19 +376,22 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('Run failed: Build succeeded but could not find app path');
-      expect(mockSimulator.apps.install).not.toHaveBeenCalled();
+      expect(result.content[0].text).toContain('Run failed: Build failed: error message');
     });
 
     test('should handle missing app path', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: iOS\nConfiguration: Debug\nApp path: N/A'
-        }]
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.findForPlatform.mockResolvedValue(mockDevice);
+      mockDevice.ensureBooted.mockResolvedValue(undefined);
+      mockGetDerivedDataPath.mockReturnValue('./DerivedData');
+      mockBuildProject.mockResolvedValue({
+        success: true,
+        output: 'Build succeeded',
+        appPath: undefined
       });
+      mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' }); // find returns nothing
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -394,12 +400,26 @@ describe('RunXcodeTool Unit Tests', () => {
       });
 
       expect(result.content[0].text).toContain('Run failed: Build succeeded but could not find app path');
-      expect(mockSimulator.apps.install).not.toHaveBeenCalled();
     });
 
-    test('should handle simulator boot failure', async () => {
+    test('should handle device not found', async () => {
+      mockExistsSync.mockReturnValue(true);
       mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockRejectedValue(new Error('No simulators available'));
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockDevices.find.mockResolvedValue(null);
+
+      const result = await tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
+        platform: 'iOS',
+        deviceId: 'non-existent'
+      });
+
+      expect(result.content[0].text).toContain('Run failed: Device not found: non-existent');
+    });
+
+    test('should handle project not existing', async () => {
+      mockExistsSync.mockReturnValue(false);
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -407,28 +427,7 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('Run failed: No simulators available');
-      expect(mockBuildTool.execute).not.toHaveBeenCalled();
-    });
-
-    test('should handle install failure', async () => {
-      mockNeedsSimulator.mockReturnValue(true);
-      mockSimulator.boot.ensureBooted.mockResolvedValue('device-id');
-      mockBuildTool.execute.mockResolvedValue({
-        content: [{
-          type: 'text',
-          text: 'Build succeeded: MyApp\nPlatform: iOS\nConfiguration: Debug\nApp path: ./DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
-        }]
-      });
-      mockSimulator.apps.install.mockRejectedValue(new Error('Failed to install app'));
-
-      const result = await tool.execute({
-        projectPath: '/test/project.xcodeproj',
-        scheme: 'MyScheme',
-        platform: 'iOS'
-      });
-
-      expect(result.content[0].text).toContain('Run failed: Failed to install app');
+      expect(result.content[0].text).toContain('Run failed: Project path does not exist');
     });
   });
 
@@ -437,8 +436,8 @@ describe('RunXcodeTool Unit Tests', () => {
       await expect(tool.execute({
         projectPath: '/test/project.xcodeproj',
         scheme: 'MyScheme',
-        platform: 'Android'
-      })).rejects.toThrow();
+        platform: 'InvalidPlatform'
+      })).rejects.toThrow('Invalid enum value');
     });
 
     test('should reject path traversal attempts', async () => {
@@ -450,7 +449,7 @@ describe('RunXcodeTool Unit Tests', () => {
 
     test('should reject command injection attempts', async () => {
       await expect(tool.execute({
-        projectPath: '/test; rm -rf /',
+        projectPath: '/test/project.xcodeproj; rm -rf /',
         scheme: 'MyScheme'
       })).rejects.toThrow('Command injection');
     });

@@ -1,17 +1,24 @@
 /**
  * Unit tests for TestSwiftPackageTool
- * Tests the behavior of running tests for Swift packages
+ * Tests behavior with mocked dependencies
  */
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { TestSwiftPackageTool } from '../../tools/TestSwiftPackageTool.js';
+import { SwiftPackage } from '../../utils/projects/SwiftPackage.js';
 
-describe('TestSwiftPackageTool', () => {
+describe('TestSwiftPackageTool Unit Tests', () => {
   let tool: TestSwiftPackageTool;
-
+  
+  // Create mock SwiftPackage with proper instanceof support
+  const mockTest = jest.fn<(options: any) => Promise<any>>();
+  const mockSwiftPackage = Object.create(SwiftPackage.prototype);
+  mockSwiftPackage.test = mockTest;
+  mockSwiftPackage.path = '/test/MyPackage';
+  
   // Mock Xcode
   const mockXcode = {
-    open: jest.fn()
+    open: jest.fn<(path: string) => Promise<any>>()
   };
 
   beforeEach(() => {
@@ -19,209 +26,216 @@ describe('TestSwiftPackageTool', () => {
     tool = new TestSwiftPackageTool(mockXcode as any);
   });
 
-  describe('tool definition', () => {
+  describe('Tool Definition', () => {
     test('should provide correct tool definition', () => {
       const definition = tool.getToolDefinition();
       
       expect(definition.name).toBe('test_swift_package');
-      expect(definition.description).toContain('Run tests');
-      expect(definition.description).toContain('Swift Package');
+      expect(definition.description).toBe('Run tests for a Swift Package Manager package');
       expect(definition.inputSchema.required).toEqual(['packagePath']);
+      expect(definition.inputSchema.properties.configuration.enum).toEqual(['Debug', 'Release']);
+      expect(definition.inputSchema.properties.configuration.default).toBe('Debug');
     });
   });
 
-  describe('when running all tests successfully', () => {
-    test('should report passed tests with summary', async () => {
-      const mockSwiftPackage = {
-        path: '/test/MyPackage',
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: 'All tests passed',
-          passed: 25,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockSwiftPackage);
+  describe('Test Execution', () => {
+    test('should run all tests successfully', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'All tests passed',
+        passed: 15,
+        failed: 0
+      });
 
       const result = await tool.execute({
         packagePath: '/test/MyPackage'
       });
 
-      expect(result.content[0].text).toContain('Tests passed: 25 passed, 0 failed');
+      expect(mockXcode.open).toHaveBeenCalledWith('/test/MyPackage');
+      expect(mockTest).toHaveBeenCalledWith({
+        filter: undefined,
+        configuration: 'Debug'
+      });
+      
+      expect(result.content[0].text).toContain('Tests passed: 15 passed, 0 failed');
       expect(result.content[0].text).toContain('Package: MyPackage');
       expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('All tests passed');
+      expect(result.content[0].text).toContain('All tests');
     });
-  });
 
-  describe('when tests fail', () => {
-    test('should report failed tests with counts', async () => {
-      const mockSwiftPackage = {
-        path: '/test/MyPackage',
-        test: jest.fn().mockResolvedValue({
-          success: false,
-          output: 'Test Suite failed',
-          passed: 20,
-          failed: 5
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockSwiftPackage);
+    test('should run filtered tests', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'Filtered tests passed',
+        passed: 3,
+        failed: 0
+      });
 
       const result = await tool.execute({
         packagePath: '/test/MyPackage',
-        configuration: 'Release'
+        filter: 'MyPackageTests.testSpecificFeature'
       });
 
-      expect(result.content[0].text).toContain('Tests failed: 20 passed, 5 failed');
-      expect(result.content[0].text).toContain('Configuration: Release');
-      expect(result.content[0].text).toContain('Test Suite failed');
-    });
-  });
-
-  describe('when using test filters', () => {
-    test('should pass filter to test method', async () => {
-      const mockSwiftPackage = {
-        path: '/test/MyPackage',
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: '',
-          passed: 1,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockSwiftPackage);
-
-      const result = await tool.execute({
-        packagePath: '/test/MyPackage',
-        filter: 'MyTests.testSpecificFunction'
-      });
-
-      expect(mockSwiftPackage.test).toHaveBeenCalledWith({
-        filter: 'MyTests.testSpecificFunction',
+      expect(mockTest).toHaveBeenCalledWith({
+        filter: 'MyPackageTests.testSpecificFeature',
         configuration: 'Debug'
       });
-      expect(result.content[0].text).toContain('Filter: MyTests.testSpecificFunction');
-    });
-  });
-
-  describe('when using different configurations', () => {
-    test('should use Release configuration when specified', async () => {
-      const mockSwiftPackage = {
-        path: '/test/MyPackage',
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: '',
-          passed: 10,
-          failed: 0
-        })
-      };
       
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockSwiftPackage);
+      expect(result.content[0].text).toContain('Filter: MyPackageTests.testSpecificFeature');
+    });
 
-      await tool.execute({
+    test('should use Release configuration', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'Tests passed',
+        passed: 10,
+        failed: 0
+      });
+
+      const result = await tool.execute({
         packagePath: '/test/MyPackage',
         configuration: 'Release'
       });
 
-      expect(mockSwiftPackage.test).toHaveBeenCalledWith({
+      expect(mockTest).toHaveBeenCalledWith({
+        filter: undefined,
         configuration: 'Release'
       });
+      
+      expect(result.content[0].text).toContain('Configuration: Release');
     });
 
-    test('should default to Debug configuration', async () => {
-      const mockSwiftPackage = {
-        path: '/test/MyPackage',
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: '',
-          passed: 10,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockSwiftPackage);
+    test('should handle test failures', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockTest.mockResolvedValue({
+        success: false,
+        output: 'Test failures:\n- testExample failed\n- testPerformance failed',
+        passed: 8,
+        failed: 2
+      });
 
-      await tool.execute({
+      const result = await tool.execute({
         packagePath: '/test/MyPackage'
       });
 
-      expect(mockSwiftPackage.test).toHaveBeenCalledWith({
-        configuration: 'Debug'
+      expect(result.content[0].text).toContain('Tests failed: 8 passed, 2 failed');
+      expect(result.content[0].text).toContain('Test failures:');
+      expect(result.content[0].text).toContain('testExample failed');
+    });
+
+    test('should handle Package.swift path directly', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'Tests passed',
+        passed: 5,
+        failed: 0
       });
+
+      await tool.execute({
+        packagePath: '/test/MyPackage/Package.swift'
+      });
+
+      expect(mockXcode.open).toHaveBeenCalledWith('/test/MyPackage/Package.swift');
     });
   });
 
-  describe('when package is not found', () => {
-    test('should return error message', async () => {
-      (mockXcode.open as jest.Mock).mockRejectedValue(new Error('No Package.swift found at: /bad/path'));
-
-      const result = await tool.execute({
-        packagePath: '/bad/path'
-      });
-
-      expect(result.content[0].text).toContain('Test execution failed');
-      expect(result.content[0].text).toContain('No Package.swift found');
-    });
-  });
-
-  describe('when project is an Xcode project', () => {
-    test('should return error for wrong project type', async () => {
-      const mockXcodeProject = { /* not a SwiftPackage */ };
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockXcodeProject);
+  describe('Error Handling', () => {
+    test('should handle non-Swift package', async () => {
+      mockXcode.open.mockResolvedValue({ type: 'xcode-project' });
 
       const result = await tool.execute({
         packagePath: '/test/project.xcodeproj'
       });
 
-      expect(result.content[0].text).toContain('No Package.swift found');
+      expect(result.content[0].text).toContain('Test execution failed: No Package.swift found at: /test/project.xcodeproj');
     });
-  });
 
-  describe('when build fails before tests', () => {
-    test('should return build error', async () => {
-      const mockSwiftPackage = {
-        path: '/test/MyPackage',
-        test: jest.fn().mockResolvedValue({
-          success: false,
-          output: 'error: no such module "NonExistent"',
-          passed: 0,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockSwiftPackage);
+    test('should handle build/setup errors', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockTest.mockResolvedValue({
+        success: false,
+        output: 'error: no such module \'XCTest\'',
+        passed: 0,
+        failed: 0
+      });
 
       const result = await tool.execute({
         packagePath: '/test/MyPackage'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed');
-      expect(result.content[0].text).toContain('no such module');
+      expect(result.content[0].text).toContain('Test execution failed: error: no such module \'XCTest\'');
+    });
+
+    test('should handle test method throwing error', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      
+      const error = new Error('Failed to resolve dependencies');
+      mockTest.mockRejectedValue(error);
+
+      const result = await tool.execute({
+        packagePath: '/test/MyPackage'
+      });
+
+      expect(result.content[0].text).toContain('Test execution failed: Failed to resolve dependencies');
+    });
+
+    test('should handle Xcode.open throwing error', async () => {
+      const error = new Error('Package.swift not found');
+      mockXcode.open.mockRejectedValue(error);
+
+      const result = await tool.execute({
+        packagePath: '/test/NonExistent'
+      });
+
+      expect(result.content[0].text).toContain('Test execution failed: Package.swift not found');
     });
   });
 
-  describe('when handling Package.swift directly', () => {
-    test('should extract package name from path', async () => {
-      const mockSwiftPackage = {
-        path: '/test/packages/AwesomeKit',
-        test: jest.fn().mockResolvedValue({
-          success: true,
-          output: '',
-          passed: 15,
-          failed: 0
-        })
-      };
-      
-      (mockXcode.open as jest.Mock).mockResolvedValue(mockSwiftPackage);
+  describe('Input Validation', () => {
+    test('should reject invalid configuration', async () => {
+      await expect(tool.execute({
+        packagePath: '/test/MyPackage',
+        configuration: 'Invalid'
+      })).rejects.toThrow('Invalid enum value');
+    });
 
-      const result = await tool.execute({
-        packagePath: '/test/packages/AwesomeKit/Package.swift'
+    test('should reject path traversal attempts', async () => {
+      await expect(tool.execute({
+        packagePath: '../../../etc/passwd'
+      })).rejects.toThrow('Path traversal');
+    });
+
+    test('should reject command injection attempts', async () => {
+      await expect(tool.execute({
+        packagePath: '/test/MyPackage; rm -rf /'
+      })).rejects.toThrow('Command injection');
+    });
+
+    test('should accept valid paths', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockTest.mockResolvedValue({
+        success: true,
+        output: 'Tests passed',
+        passed: 1,
+        failed: 0
       });
 
-      expect(result.content[0].text).toContain('Package: AwesomeKit');
+      // Should not throw
+      await tool.execute({
+        packagePath: '/Users/test/Projects/MyPackage'
+      });
+
+      await tool.execute({
+        packagePath: './MyPackage'
+      });
+
+      await tool.execute({
+        packagePath: '/test/Package.swift'
+      });
     });
   });
 });
