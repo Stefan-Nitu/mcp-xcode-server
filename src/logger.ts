@@ -7,13 +7,15 @@ import pino from 'pino';
 
 // Environment-based configuration
 const isDevelopment = process.env.NODE_ENV !== 'production';
+const isTest = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID;
 const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
 
 // Create logger instance
 export const logger = pino({
   level: logLevel,
-  // Use pretty printing in development, JSON in production
-  transport: isDevelopment ? {
+  // Use pretty printing in development (but not in tests), JSON in production
+  // Tests need synchronous logging to avoid race conditions
+  transport: (isDevelopment && !isTest) ? {
     target: 'pino-pretty',
     options: {
       colorize: true,
@@ -50,7 +52,7 @@ export const createModuleLogger = (module: string) => {
   const moduleLogger = logger.child({ module });
   
   // In test environment, wrap methods to add test name dynamically
-  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+  if (isTest) {
     const methods = ['info', 'error', 'warn', 'debug', 'trace', 'fatal'] as const;
     
     methods.forEach(method => {
