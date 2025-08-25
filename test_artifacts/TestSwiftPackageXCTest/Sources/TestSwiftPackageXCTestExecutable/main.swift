@@ -1,7 +1,7 @@
 import Foundation
 
 // Simple executable for testing
-print("TestSPM Executable Running")
+print("TestSwiftPackageXCTestExecutable Executable Running")
 print("Arguments: \(CommandLine.arguments)")
 print("Current Date: \(Date())")
 

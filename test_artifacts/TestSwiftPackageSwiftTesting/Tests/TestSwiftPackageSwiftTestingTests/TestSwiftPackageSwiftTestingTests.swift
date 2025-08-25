@@ -1,10 +1,10 @@
 import Testing
-@testable import TestSPM
+@testable import TestSwiftPackageSwiftTesting
 
 @Test func example() async throws {
     // Simple test to verify the module can be imported and tested
-    let spm = TestSPM()
-    #expect(spm.text == "Hello, TestSPM!")
+    let spm = TestSwiftPackageSwiftTesting()
+    #expect(spm.text == "Hello, TestSwiftPackageSwiftTesting!")
 }
 
 @Test func testFailingTest() async throws {
