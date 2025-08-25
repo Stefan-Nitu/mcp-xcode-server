@@ -122,8 +122,27 @@ describe('TestSwiftPackageTool Unit Tests', () => {
       });
 
       expect(result.content[0].text).toContain('Tests failed: 8 passed, 2 failed');
-      expect(result.content[0].text).toContain('Test failures:');
-      expect(result.content[0].text).toContain('testExample failed');
+      expect(result.content[0].text).toContain('Test Results:');
+    });
+
+    test('should report failing test names when available', async () => {
+      mockXcode.open.mockResolvedValue(mockSwiftPackage);
+      mockTest.mockResolvedValue({
+        success: false,
+        output: 'Test Case \'TestSwiftPackageXCTestTests.testExample\' failed\nTest Case \'TestSwiftPackageXCTestTests.testPerformance\' failed',
+        passed: 8,
+        failed: 2,
+        failingTests: ['TestSwiftPackageXCTestTests.testExample', 'TestSwiftPackageXCTestTests.testPerformance']
+      });
+
+      const result = await tool.execute({
+        packagePath: '/test/MyPackage'
+      });
+
+      expect(result.content[0].text).toContain('Tests failed: 8 passed, 2 failed');
+      expect(result.content[0].text).toContain('Failing tests:');
+      expect(result.content[0].text).toContain('- TestSwiftPackageXCTestTests.testExample');
+      expect(result.content[0].text).toContain('- TestSwiftPackageXCTestTests.testPerformance');
     });
 
     test('should handle Package.swift path directly', async () => {

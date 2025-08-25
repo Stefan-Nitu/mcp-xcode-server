@@ -37,7 +37,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
   });
 
   afterAll(() => {
-    TestEnvironmentCleaner.killMacOSApp('TestSPM');
+    TestEnvironmentCleaner.killMacOSApp('TestSwiftPackageXCTest');
   });
 
   describe('Basic Execution', () => {
@@ -47,16 +47,16 @@ describe('RunSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'run_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
-            executable: 'TestSPMExecutable'
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
+            executable: 'TestSwiftPackageXCTestExecutable'
           }
         }
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Execution completed: TestSPMExecutable');
+      expect(text).toContain('Execution completed: TestSwiftPackageXCTestExecutable');
       expect(text).toContain('Configuration: Debug');
-      expect(text).toContain('TestSPM Executable Running');
+      expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
       expect(text).toContain('Execution completed successfully');
     }, 30000);
 
@@ -66,8 +66,8 @@ describe('RunSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'run_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
-            executable: 'TestSPMExecutable',
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
+            executable: 'TestSwiftPackageXCTestExecutable',
             configuration: 'Release'
           }
         }
@@ -75,7 +75,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
-      expect(text).toContain('TestSPM Executable Running');
+      expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
     }, 30000);
 
     test('should run from Package.swift path', async () => {
@@ -84,14 +84,14 @@ describe('RunSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'run_swift_package',
           arguments: {
-            packagePath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
-            executable: 'TestSPMExecutable'
+            packagePath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift'),
+            executable: 'TestSwiftPackageXCTestExecutable'
           }
         }
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('TestSPM Executable Running');
+      expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
     }, 30000);
   });
 
@@ -102,8 +102,8 @@ describe('RunSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'run_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
-            executable: 'TestSPMExecutable',
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
+            executable: 'TestSwiftPackageXCTestExecutable',
             arguments: ['test-arg']
           }
         }
@@ -120,8 +120,8 @@ describe('RunSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'run_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
-            executable: 'TestSPMExecutable',
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
+            executable: 'TestSwiftPackageXCTestExecutable',
             arguments: ['arg1', 'arg2', 'arg3']
           }
         }
@@ -158,7 +158,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'run_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
             executable: 'NonExistentExecutable'
           }
         }
@@ -175,8 +175,8 @@ describe('RunSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'run_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
-            executable: 'TestSPMExecutable',
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
+            executable: 'TestSwiftPackageXCTestExecutable',
             arguments: ['--fail']
           }
         }
@@ -218,7 +218,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'run_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
       }, CallToolResultSchema);
@@ -226,7 +226,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       // Should run the default executable (first one found)
       expect(text).toContain('Execution completed: default executable');
-      expect(text).toContain('TestSPM Executable Running');
+      expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
     }, 30000);
   });
 });

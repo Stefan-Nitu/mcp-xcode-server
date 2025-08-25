@@ -71,7 +71,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: projectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
@@ -97,7 +97,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: projectManager.schemes.xcodeProject,
             platform: 'iOS',
             deviceId: deviceName
@@ -118,7 +118,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: projectManager.schemes.xcodeProject,
             platform: 'macOS'
           }
@@ -140,7 +140,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: projectManager.schemes.xcodeProject,
             platform: 'tvOS'
           }
@@ -190,7 +190,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: projectManager.schemes.xcodeProject,
             platform: 'visionOS'
           }
@@ -210,7 +210,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: projectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Debug'
@@ -228,7 +228,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: projectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Release'
@@ -283,7 +283,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: 'InvalidScheme',
             platform: 'iOS'
           }
@@ -300,7 +300,7 @@ describe('RunXcodeTool E2E Tests', () => {
         params: {
           name: 'run_xcode',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             platform: 'iOS'
             // Missing required scheme parameter
           }

@@ -107,7 +107,7 @@ describe('InstallAppTool E2E Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath,
+            projectPath: projectManager.paths.xcodeProjectXCTestPath,
             scheme: projectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Debug'
@@ -358,7 +358,7 @@ describe('InstallAppTool E2E Tests', () => {
         params: {
           name: 'install_app',
           arguments: {
-            appPath: projectManager.paths.xcodeProjectPath // .xcodeproj instead of .app
+            appPath: projectManager.paths.xcodeProjectXCTestPath // .xcodeproj instead of .app
           }
         }
       }, CallToolResultSchema);

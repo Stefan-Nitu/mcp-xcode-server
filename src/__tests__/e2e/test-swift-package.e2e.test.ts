@@ -47,7 +47,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'test_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
       }, CallToolResultSchema);
@@ -65,7 +65,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'test_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
             configuration: 'Release'
           }
         }
@@ -82,7 +82,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'test_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
             filter: 'TestProjectTests'
           }
         }
@@ -94,7 +94,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
     }, 60000);
 
     test('should handle Package.swift path directly', async () => {
-      const packageSwiftPath = `${testProjectManager.paths.swiftPackageDir}/Package.swift`;
+      const packageSwiftPath = `${testProjectManager.paths.swiftPackageXCTestDir}/Package.swift`;
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -131,7 +131,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'test_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
             configuration: 'InvalidConfig'
           }
         }
@@ -141,6 +141,25 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       expect(text.toLowerCase()).toContain('validation error');
       expect(text).toMatch(/Debug.*Release/);
     }, 30000);
+
+    test('should properly report failing tests', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'test_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
+            filter: 'TestSwiftPackageXCTestTests.testFailingTest'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Filter: TestSwiftPackageXCTestTests.testFailingTest');
+      expect(text).toMatch(/Tests failed: 0 passed, 1 failed/);
+      expect(text).toContain('Failing tests:');
+      expect(text).toContain('testFailingTest');
+    }, 60000);
   });
 
   describe('Test Output', () => {
@@ -150,7 +169,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'test_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
       }, CallToolResultSchema);

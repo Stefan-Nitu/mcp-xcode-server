@@ -1,5 +1,6 @@
 import { execAsync } from '../../utils.js';
 import { createModuleLogger } from '../../logger.js';
+import { TestOutputParser } from '../testParsing/TestOutputParser.js';
 
 const logger = createModuleLogger('SwiftBuild');
 
@@ -139,6 +140,8 @@ export class SwiftBuild {
     
     logger.debug({ command }, 'Test command');
     
+    const parser = new TestOutputParser();
+    
     try {
       const { stdout, stderr } = await execAsync(command, {
         maxBuffer: 10 * 1024 * 1024
@@ -146,67 +149,26 @@ export class SwiftBuild {
       
       const output = stdout + (stderr ? `\n${stderr}` : '');
       
-      // Parse test results
-      let passed = 0;
-      let failed = 0;
-      const failingTests: string[] = [];
+      // Use the unified parser
+      const testResult = parser.parse(output);
       
-      // Look for test summary
-      const summaryMatch = output.match(/Test Suite .+ passed.+\n.+ (\d+) tests?.+ passed, (\d+) failed/);
-      if (summaryMatch) {
-        passed = parseInt(summaryMatch[1], 10);
-        failed = parseInt(summaryMatch[2], 10);
-      } else {
-        // Alternative parsing for individual test results
-        const passedMatches = output.match(/✓|passed/gi);
-        const failedMatches = output.match(/✗|failed/gi);
-        passed = passedMatches ? passedMatches.length : 0;
-        failed = failedMatches ? failedMatches.length : 0;
-      }
-      
-      // Extract failing test names
-      const failedTestMatches = output.matchAll(/Test Case '([^']+)' failed/g);
-      for (const match of failedTestMatches) {
-        failingTests.push(match[1]);
-      }
-      
-      logger.info({ packagePath, passed, failed }, 'Tests completed');
+      logger.info({ packagePath, ...testResult }, 'Tests completed');
       
       return {
-        success: failed === 0,
-        output,
-        passed,
-        failed,
-        failingTests: failingTests.length > 0 ? failingTests : undefined
+        ...testResult,
+        output
       };
     } catch (error: any) {
       logger.error({ error: error.message, packagePath }, 'Tests failed');
       
-      // Try to extract test counts from error output
+      // Parse error output
       const output = (error.stdout || '') + (error.stderr ? `\n${error.stderr}` : '');
-      
-      let passed = 0;
-      let failed = 0;
-      const failingTests: string[] = [];
-      
-      const summaryMatch = output.match(/Test Suite .+ failed.+\n.+ (\d+) tests?.+ passed, (\d+) failed/);
-      if (summaryMatch) {
-        passed = parseInt(summaryMatch[1], 10);
-        failed = parseInt(summaryMatch[2], 10);
-      }
-      
-      // Extract failing test names from error output
-      const failedTestMatches = output.matchAll(/Test Case '([^']+)' failed/g);
-      for (const match of failedTestMatches) {
-        failingTests.push(match[1]);
-      }
+      const testResult = parser.parse(output);
       
       return {
+        ...testResult,
         success: false,
-        output,
-        passed,
-        failed,
-        failingTests: failingTests.length > 0 ? failingTests : undefined
+        output
       };
     }
   }

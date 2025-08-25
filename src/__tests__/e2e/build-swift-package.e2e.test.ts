@@ -48,7 +48,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'build_swift_package',
           arguments: {
-            packagePath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift')
+            packagePath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift')
           }
         }
       }, CallToolResultSchema);
@@ -58,7 +58,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       expect(text).toContain('Configuration: Debug');
       
       // Verify .build directory was created (swift build output)
-      const buildDirExists = existsSync(join(testProjectManager.paths.swiftPackageDir, '.build'));
+      const buildDirExists = existsSync(join(testProjectManager.paths.swiftPackageXCTestDir, '.build'));
       expect(buildDirExists).toBe(true);
     }, 30000);
 
@@ -68,7 +68,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'build_swift_package',
           arguments: {
-            packagePath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
+            packagePath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift'),
             configuration: 'Release'
           }
         }
@@ -85,7 +85,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'build_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
       }, CallToolResultSchema);
@@ -103,8 +103,8 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'build_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
-            target: 'TestSPM'
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
+            target: 'TestSwiftPackageXCTest'
           }
         }
       }, CallToolResultSchema);
@@ -112,7 +112,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       // Either succeeds or fails if target doesn't exist
       if (text.includes('Build succeeded')) {
-        expect(text).toContain('Target: TestSPM');
+        expect(text).toContain('Target: TestSwiftPackageXCTest');
       } else {
         expect(text.toLowerCase()).toContain('error');
       }
@@ -124,8 +124,8 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'build_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
-            product: 'TestSPM'
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
+            product: 'TestSwiftPackageXCTest'
           }
         }
       }, CallToolResultSchema);
@@ -133,7 +133,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       // Either succeeds or fails if product doesn't exist
       if (text.includes('Build succeeded')) {
-        expect(text).toContain('Product: TestSPM');
+        expect(text).toContain('Product: TestSwiftPackageXCTest');
       } else {
         expect(text.toLowerCase()).toContain('error');
       }
@@ -187,7 +187,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'build_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
             target: 'NonExistentTarget'
           }
         }
@@ -204,7 +204,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         params: {
           name: 'build_swift_package',
           arguments: {
-            packagePath: testProjectManager.paths.swiftPackageDir,
+            packagePath: testProjectManager.paths.swiftPackageXCTestDir,
             product: 'NonExistentProduct'
           }
         }

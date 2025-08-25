@@ -16,7 +16,7 @@ describe('Xcode Sync Hook E2E', () => {
   const xcodePbxproj = join(xcodeProjectPath, 'TestProjectSwiftTesting.xcodeproj', 'project.pbxproj');
   const xcodePbxprojBackup = `${xcodePbxproj}.backup`;
   
-  const spmProjectPath = join(testArtifactsDir, 'TestSPM');
+  const spmProjectPath = join(testArtifactsDir, 'TestSwiftPackageXCTest');
   
   beforeAll(() => {
     // Build XcodeProjectModifier if needed
@@ -53,7 +53,7 @@ describe('Xcode Sync Hook E2E', () => {
       join(xcodeProjectPath, 'TestProjectSwiftTesting', 'FirstAdd.swift'),
       join(xcodeProjectPath, 'TestProjectSwiftTesting', 'File With Spaces.swift'),
       join(xcodeProjectPath, 'TestProjectSwiftTesting', 'test.xyz'),
-      join(spmProjectPath, 'Sources', 'TestSPM', 'TestFile.swift'),
+      join(spmProjectPath, 'Sources', 'TestSwiftPackageXCTest', 'TestFile.swift'),
     ];
     
     testFiles.forEach(file => {
@@ -181,7 +181,7 @@ describe('Xcode Sync Hook E2E', () => {
       const testContent = 'import Foundation\n\nstruct TestFile {}';
       
       // Create directories if needed
-      const sourceDir = join(spmProjectPath, 'Sources', 'TestSPM');
+      const sourceDir = join(spmProjectPath, 'Sources', 'TestSwiftPackageXCTest');
       if (!existsSync(sourceDir)) {
         mkdirSync(sourceDir, { recursive: true });
       }
@@ -212,7 +212,7 @@ describe('Xcode Sync Hook E2E', () => {
       expect(result).toContain('File is part of a Swift Package - skipping Xcode project sync');
       
       // If there's an .xcodeproj in SPM (shouldn't be), it shouldn't be modified
-      const spmXcodeProj = join(spmProjectPath, 'TestSPM.xcodeproj', 'project.pbxproj');
+      const spmXcodeProj = join(spmProjectPath, 'TestSwiftPackageXCTest.xcodeproj', 'project.pbxproj');
       if (existsSync(spmXcodeProj)) {
         const content = readFileSync(spmXcodeProj, 'utf-8');
         expect(content).not.toContain('TestFile.swift');

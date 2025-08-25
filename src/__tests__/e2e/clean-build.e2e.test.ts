@@ -57,7 +57,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Debug'
@@ -77,7 +77,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'clean_build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Debug',
@@ -139,7 +139,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
@@ -201,7 +201,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'test',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
@@ -270,7 +270,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
@@ -287,7 +287,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'clean_build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             cleanTarget: 'all',
             derivedDataPath: derivedDataPath
@@ -311,7 +311,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
@@ -326,7 +326,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'clean_build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: 'NonExistentScheme',
             cleanTarget: 'all',
             derivedDataPath: derivedDataPath
@@ -351,8 +351,8 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
-            scheme: testProjectManager.schemes.swiftPackage,
+            projectPath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift'),
+            scheme: testProjectManager.schemes.swiftPackageXCTest,
             platform: 'macOS'
           }
         }
@@ -362,7 +362,7 @@ describe('CleanBuildTool E2E Tests', () => {
       expect(buildText).toContain('Build succeeded');
       
       // SPM with swift build creates .build directory
-      const buildDir = join(testProjectManager.paths.swiftPackageDir, '.build');
+      const buildDir = join(testProjectManager.paths.swiftPackageXCTestDir, '.build');
       expect(existsSync(buildDir)).toBe(true);
       
       // Clean the .build directory using the clean-build tool
@@ -371,7 +371,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'clean_build',
           arguments: {
-            projectPath: join(testProjectManager.paths.swiftPackageDir, 'Package.swift'),
+            projectPath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift'),
             cleanTarget: 'build'
           }
         }
@@ -394,7 +394,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Release'
@@ -408,7 +408,7 @@ describe('CleanBuildTool E2E Tests', () => {
         params: {
           name: 'clean_build',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Release',

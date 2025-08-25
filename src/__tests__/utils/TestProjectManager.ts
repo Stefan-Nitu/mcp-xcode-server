@@ -8,7 +8,9 @@ const logger = createModuleLogger('TestProjectManager');
 export class TestProjectManager {
   private testArtifactsDir: string;
   private xcodeProjectPath: string;
-  private swiftPackagePath: string;
+  private xcodeProjectSwiftTestingPath: string;
+  private swiftPackageXCTestPath: string;
+  private swiftPackageSwiftTestingPath: string;
   private workspacePath: string;
   private watchOSProjectPath: string;
 
@@ -17,8 +19,15 @@ export class TestProjectManager {
     this.testArtifactsDir = resolve(process.cwd(), 'test_artifacts');
     
     // Set up paths to real test projects
+    // Xcode projects
     this.xcodeProjectPath = join(this.testArtifactsDir, 'TestProjectXCTest', 'TestProjectXCTest.xcodeproj');
-    this.swiftPackagePath = join(this.testArtifactsDir, 'TestSPM');
+    this.xcodeProjectSwiftTestingPath = join(this.testArtifactsDir, 'TestProjectSwiftTesting', 'TestProjectSwiftTesting.xcodeproj');
+    
+    // Swift packages
+    this.swiftPackageXCTestPath = join(this.testArtifactsDir, 'TestSwiftPackageXCTest');
+    this.swiftPackageSwiftTestingPath = join(this.testArtifactsDir, 'TestSwiftPackageSwiftTesting');
+    
+    // Workspace and other projects
     this.workspacePath = join(this.testArtifactsDir, 'Test.xcworkspace');
     this.watchOSProjectPath = join(this.testArtifactsDir, 'TestProjectWatchOS', 'TestProjectWatchOS.xcodeproj');
   }
@@ -26,11 +35,17 @@ export class TestProjectManager {
   get paths() {
     return {
       testProjectDir: this.testArtifactsDir,
-      xcodeProjectDir: join(this.testArtifactsDir, 'TestProjectXCTest'),
-      swiftPackageDir: this.swiftPackagePath,
+      // Xcode projects
+      xcodeProjectXCTestDir: join(this.testArtifactsDir, 'TestProjectXCTest'),
+      xcodeProjectXCTestPath: this.xcodeProjectPath,
+      xcodeProjectSwiftTestingDir: join(this.testArtifactsDir, 'TestProjectSwiftTesting'),
+      xcodeProjectSwiftTestingPath: this.xcodeProjectSwiftTestingPath,
+      // Swift packages
+      swiftPackageXCTestDir: this.swiftPackageXCTestPath, // Default to XCTest for backward compat
+      swiftPackageSwiftTestingDir: this.swiftPackageSwiftTestingPath,
+      // Other
       workspaceDir: this.testArtifactsDir,
       derivedDataPath: join(this.testArtifactsDir, 'DerivedData'),
-      xcodeProjectPath: this.xcodeProjectPath,
       workspacePath: this.workspacePath,
       watchOSProjectPath: this.watchOSProjectPath,
       watchOSProjectDir: join(this.testArtifactsDir, 'TestProjectWatchOS')
@@ -40,8 +55,10 @@ export class TestProjectManager {
   get schemes() {
     return {
       xcodeProject: 'TestProjectXCTest',
+      xcodeProjectSwiftTesting: 'TestProjectSwiftTesting',
       workspace: 'TestProjectXCTest',  // The workspace uses the same scheme
-      swiftPackage: 'TestSPM',  // SPM packages use their package name as the scheme
+      swiftPackageXCTest: 'TestSwiftPackageXCTest',
+      swiftPackageSwiftTesting: 'TestSwiftPackageSwiftTesting',
       watchOSProject: 'TestProjectWatchOS Watch App'  // The watchOS app scheme
     };
   }
@@ -52,6 +69,11 @@ export class TestProjectManager {
         app: 'TestProjectXCTest',
         unitTests: 'TestProjectXCTestTests',
         uiTests: 'TestProjectXCTestUITests'
+      },
+      xcodeProjectSwiftTesting: {
+        app: 'TestProjectSwiftTesting',
+        unitTests: 'TestProjectSwiftTestingTests',
+        uiTests: 'TestProjectSwiftTestingUITests'
       },
       watchOSProject: {
         app: 'TestProjectWatchOS Watch App',
@@ -84,7 +106,8 @@ export class TestProjectManager {
 
     // Clean .build directories (for SPM)
     const buildDirs = [
-      join(this.swiftPackagePath, '.build'),
+      join(this.swiftPackageXCTestPath, '.build'),
+      join(this.swiftPackageSwiftTestingPath, '.build'),
       join(this.testArtifactsDir, '.build')
     ];
 
@@ -131,7 +154,8 @@ export class TestProjectManager {
 
     // Clean test output files
     const testOutputFiles = [
-      join(this.swiftPackagePath, 'test-output.txt'),
+      join(this.swiftPackageXCTestPath, 'test-output.txt'),
+      join(this.swiftPackageSwiftTestingPath, 'test-output.txt'),
       join(this.testArtifactsDir, 'test-results.json')
     ];
 

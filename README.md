@@ -11,7 +11,7 @@ This MCP server enables AI assistants and development tools to interact with App
 ### Recent Improvements (v2.4.0)
 - **Unified Architecture**: Consolidated build and test operations into cohesive Xcode and SwiftPackage utility classes
 - **Enhanced Device Management**: Modular simulator device management with clean separation of concerns
-- **Improved Testing**: Better test framework support with behavior-focused testing
+- **Unified Test Parser**: Strategy pattern-based test output parsing supporting both XCTest and Swift Testing frameworks
 - **Security Enhancements**: Comprehensive input validation with command injection protection
 - **Better Error Messages**: More descriptive validation errors for better developer experience
 
@@ -357,10 +357,18 @@ The server uses a clean separation between device management and build operation
 - **`SimulatorInfo.ts`**: Device state and logging
 - **`SimulatorReset.ts`**: Device reset operations
 
-#### Build Operations (`utils/xcode/`)
+#### Build Operations (`utils/projects/`)
 - **`Xcode.ts`**: Factory for Xcode operations
 - **`XcodeProject.ts`**: Xcode project building and running
+- **`XcodeBuild.ts`**: Xcode build and test execution
 - **`SwiftPackage.ts`**: Swift Package Manager operations
+- **`SwiftBuild.ts`**: Swift package build and test execution
+
+#### Test Parsing (`utils/testParsing/`)
+- **`TestOutputParser.ts`**: Main parser using strategy pattern
+- **`XCTestParserStrategy.ts`**: Parser for XCTest framework output
+- **`SwiftTestingParserStrategy.ts`**: Parser for Swift Testing framework output
+- **`TestParserStrategy.ts`**: Strategy interface for test parsers
 
 ### Tool Architecture
 Each tool is a self-contained class in the `tools/` directory implementing the `Tool` interface:
@@ -443,12 +451,23 @@ Each tool is a self-contained class in the `tools/` directory implementing the `
 
 ## Test Framework Support
 
-The server automatically detects and properly parses output from:
+The server uses a unified test parser with strategy pattern to automatically detect and properly parse output from:
 
 - **XCTest**: Traditional Objective-C/Swift testing framework
+  - Parses `Test Suite` and `Test Case` output formats
+  - Supports both unit and UI tests
+  - Handles multiple test bundle summaries
+  
 - **Swift Testing**: New Swift 6.0+ testing framework with `@Test` annotations
+  - Parses the modern test output with symbols (◇, ✔, ✘)
+  - Supports async tests and test suites
+  - Compatible with Swift 6.0+ features
 
-Both frameworks are fully supported with accurate test counting and failure detection.
+Both frameworks are fully supported with:
+- Accurate test counting (passed/failed)
+- Failing test name extraction
+- Unified result format regardless of framework used
+- Automatic framework detection based on output patterns
 
 ## Requirements
 

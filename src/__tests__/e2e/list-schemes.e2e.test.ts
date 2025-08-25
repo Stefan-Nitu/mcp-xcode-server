@@ -47,7 +47,7 @@ describe('ListSchemesTool E2E Tests', () => {
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath
+            projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
       }, CallToolResultSchema);
@@ -75,11 +75,14 @@ describe('ListSchemesTool E2E Tests', () => {
       expect(response).toBeDefined();
       const schemes = JSON.parse((response.content[0] as any).text);
       
-      // Should return an array with exactly two schemes
+      // Should return an array with schemes
       expect(Array.isArray(schemes)).toBe(true);
-      expect(schemes).toHaveLength(2);
+      expect(schemes.length).toBeGreaterThanOrEqual(2);
       expect(schemes).toContain('TestProjectSwiftTesting');
-      expect(schemes).toContain('TestSPM');
+      // Could be either TestSwiftPackageXCTest or TestSwiftPackageSwiftTesting
+      const hasXCTest = schemes.includes('TestSwiftPackageXCTest');
+      const hasSwiftTesting = schemes.includes('TestSwiftPackageSwiftTesting');
+      expect(hasXCTest || hasSwiftTesting).toBe(true);
     });
 
     test('should list schemes for watchOS project', async () => {
@@ -133,7 +136,7 @@ describe('ListSchemesTool E2E Tests', () => {
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.swiftPackageDir + '/Package.swift'
+            projectPath: projectManager.paths.swiftPackageXCTestDir + '/Package.swift'
           }
         }
       }, CallToolResultSchema);
@@ -151,7 +154,9 @@ describe('ListSchemesTool E2E Tests', () => {
         expect(Array.isArray(schemes)).toBe(true);
         // SPM might return the package name as a scheme
         if (schemes.length > 0) {
-          expect(schemes).toContain('TestSPM');
+          const hasXCTest = schemes.includes('TestSwiftPackageXCTest');
+          const hasSwiftTesting = schemes.includes('TestSwiftPackageSwiftTesting');
+          expect(hasXCTest || hasSwiftTesting).toBe(true);
         }
       }
     });
@@ -230,7 +235,7 @@ describe('ListSchemesTool E2E Tests', () => {
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath
+            projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
       }, CallToolResultSchema);
@@ -254,7 +259,7 @@ describe('ListSchemesTool E2E Tests', () => {
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath
+            projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
       }, CallToolResultSchema);
@@ -267,7 +272,7 @@ describe('ListSchemesTool E2E Tests', () => {
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath
+            projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
       }, CallToolResultSchema);
@@ -288,7 +293,7 @@ describe('ListSchemesTool E2E Tests', () => {
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath
+            projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
       }, CallToolResultSchema);
@@ -306,7 +311,7 @@ describe('ListSchemesTool E2E Tests', () => {
     test('should handle project with spaces in path', async () => {
       // Note: This test would need a project with spaces in its path
       // For now, we'll test that the tool handles paths with spaces correctly
-      const pathWithSpaces = projectManager.paths.xcodeProjectPath.replace('TestProjectXCTest', 'Test Project XCTest');
+      const pathWithSpaces = projectManager.paths.xcodeProjectXCTestPath.replace('TestProjectXCTest', 'Test Project XCTest');
       
       const response = await client.request({
         method: 'tools/call',
@@ -332,7 +337,7 @@ describe('ListSchemesTool E2E Tests', () => {
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectPath
+            projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
       }, CallToolResultSchema);

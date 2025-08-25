@@ -47,7 +47,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
@@ -65,7 +65,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             platform: 'iOS'
           }
         }
@@ -84,7 +84,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Release'
@@ -118,7 +118,7 @@ describe('BuildXcodeTool E2E Tests', () => {
           params: {
             name: 'build_xcode',
             arguments: {
-              projectPath: testProjectManager.paths.xcodeProjectPath,
+              projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
               scheme: testProjectManager.schemes.xcodeProject,
               platform: 'iOS',
               deviceId: availableSimulator.udid
@@ -158,7 +158,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject
             // iOS is default platform
           }
@@ -176,7 +176,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'macOS'
           }
@@ -195,7 +195,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'tvOS'
           }
@@ -231,7 +231,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'visionOS'
           }
@@ -266,7 +266,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: 'NonExistentScheme',
             platform: 'iOS'
           }
@@ -284,7 +284,7 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Beta'

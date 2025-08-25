@@ -48,7 +48,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
@@ -67,7 +67,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             platform: 'iOS'
           }
         }
@@ -85,7 +85,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             configuration: 'Release'
@@ -104,7 +104,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             testTarget: testProjectManager.targets.xcodeProject.unitTests
@@ -126,7 +126,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             testFilter: testFilter
@@ -148,7 +148,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             testFilter: testFilter
@@ -171,7 +171,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS',
             testFilter: testFilter
@@ -210,7 +210,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: 'NonexistentScheme',
             platform: 'iOS'
           }
@@ -230,7 +230,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'tvOS'
           }
@@ -249,7 +249,7 @@ describe('TestXcodeTool E2E Tests', () => {
         params: {
           name: 'test_xcode',
           arguments: {
-            projectPath: testProjectManager.paths.xcodeProjectPath,
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'visionOS'
           }

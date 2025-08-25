@@ -41,7 +41,8 @@ describe('TestXcodeTool Unit Tests', () => {
   const mockDevice = {
     id: 'mock-device-id',
     name: 'Mock Device',
-    ensureBooted: jest.fn<() => Promise<void>>()
+    ensureBooted: jest.fn<() => Promise<void>>(),
+    open: jest.fn<() => Promise<void>>()
   };
   
   // Mock Devices
@@ -118,7 +119,8 @@ describe('TestXcodeTool Unit Tests', () => {
       });
 
       expect(result.content[0].text).toContain('Tests failed: 8 passed, 2 failed');
-      expect(result.content[0].text).toContain('Test failures detected');
+      // The output is now in the Test Results section
+      expect(result.content[0].text).toContain('Test Results:');
     });
 
     test('should boot simulator for iOS tests with deviceId', async () => {

@@ -4,8 +4,8 @@
 This document tracks the testing and validation status of all tools in the MCP Xcode Server.
 
 **Current Status:**
-- ✅ **9 tools validated** with comprehensive e2e tests and new architecture
-- ⏳ **12 tools pending** validation or e2e test creation
+- ✅ **10 tools validated** with comprehensive e2e tests and new architecture
+- ⏳ **11 tools pending** validation or e2e test creation
 
 ## Validation Status
 
@@ -57,13 +57,13 @@ These tools have been thoroughly tested with comprehensive e2e tests and refacto
    - Test file: `src/__tests__/e2e/boot-simulator.e2e.test.ts`
    - Notes: Self-contained implementation, comprehensive e2e tests
 
+10. **TestXcodeTool** ✅
+    - Status: Validated
+    - Test file: `src/__tests__/e2e/test-xcode.e2e.test.ts`
+    - Notes: Comprehensive e2e tests with new architecture, fully validated
+
 ### ⏳ Pending Validation
 These tools need comprehensive e2e testing and potential refactoring:
-
-10. **TestXcodeTool** ⏳
-    - Status: Pending
-    - Test file: `src/__tests__/e2e/test-xcode.e2e.test.ts`
-    - Notes: Has comprehensive e2e tests with new architecture but not yet validated
 
 11. **TestSwiftPackageTool** ⏳
     - Status: Pending
