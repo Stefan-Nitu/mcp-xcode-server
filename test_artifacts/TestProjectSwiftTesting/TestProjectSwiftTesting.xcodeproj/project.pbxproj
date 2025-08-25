@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F800DA642E576B6B00C9BDA2 /* TestSPM in Frameworks */ = {isa = PBXBuildFile; productRef = F800DA632E576B6B00C9BDA2 /* TestSPM */; };
+		F800DA642E576B6B00C9BDA2 /* TestSwiftPackageSwiftTesting in Frameworks */ = {isa = PBXBuildFile; productRef = F800DA632E576B6B00C9BDA2 /* TestSwiftPackageSwiftTesting */; };
 		F86986962E53D01A00123C68 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F869868E2E53D01A00123C68 /* Assets.xcassets */; };
 		F86986972E53D01A00123C68 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F869868F2E53D01A00123C68 /* ContentView.swift */; };
 		F86986982E53D01A00123C68 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86986902E53D01A00123C68 /* Item.swift */; };
@@ -60,7 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F800DA642E576B6B00C9BDA2 /* TestSPM in Frameworks */,
+				F800DA642E576B6B00C9BDA2 /* TestSwiftPackageSwiftTesting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -138,7 +138,7 @@
 			);
 			name = TestProjectSwiftTesting;
 			packageProductDependencies = (
-				F800DA632E576B6B00C9BDA2 /* TestSPM */,
+				F800DA632E576B6B00C9BDA2 /* TestSwiftPackageSwiftTesting */,
 			);
 			productName = TestProjectSwiftTesting;
 			productReference = F86985C72E52507700123C68 /* TestProjectSwiftTesting.app */;
@@ -223,7 +223,7 @@
 			mainGroup = F86985BE2E52507700123C68;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				F800DA622E576B6B00C9BDA2 /* XCLocalSwiftPackageReference "../TestSPM" */,
+				F800DA622E576B6B00C9BDA2 /* XCLocalSwiftPackageReference "../TestSwiftPackageSwiftTesting" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F86985C82E52507700123C68 /* Products */;
@@ -629,16 +629,16 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F800DA622E576B6B00C9BDA2 /* XCLocalSwiftPackageReference "../TestSPM" */ = {
+		F800DA622E576B6B00C9BDA2 /* XCLocalSwiftPackageReference "../TestSwiftPackageSwiftTesting" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../TestSPM;
+			relativePath = ../TestSwiftPackageSwiftTesting;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		F800DA632E576B6B00C9BDA2 /* TestSPM */ = {
+		F800DA632E576B6B00C9BDA2 /* TestSwiftPackageSwiftTesting */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = TestSPM;
+			productName = TestSwiftPackageSwiftTesting;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
