@@ -3,6 +3,7 @@ import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from './validators.js';
 import { Xcode } from '../utils/projects/Xcode.js';
 import { SwiftPackage } from '../utils/projects/SwiftPackage.js';
+import { XcodeError, XcodeErrorType } from '../utils/projects/XcodeErrors.js';
 import path from 'path';
 
 const logger = createModuleLogger('TestSwiftPackageTool');
@@ -80,26 +81,59 @@ export class TestSwiftPackageTool {
       
       // Format the results
       const summary = `Tests ${testResult.success ? 'passed' : 'failed'}: ${testResult.passed} passed, ${testResult.failed} failed`;
+      const failingTestsList = testResult.failingTests && testResult.failingTests.length > 0 
+        ? `\nFailing tests:\n${testResult.failingTests.map(t => `  - ${t}`).join('\n')}`
+        : '';
+      
+      // Extract just the relevant test results from output
+      const lines = testResult.output.split('\n');
+      const relevantLines: string[] = [];
+      let inTestResults = false;
+      
+      for (const line of lines) {
+        // Capture test suite results and failures
+        if (line.includes('Test Suite') || 
+            line.includes('Test Case') ||
+            line.includes('failed') ||
+            line.includes('passed') ||
+            line.includes('** TEST EXECUTE') ||
+            line.includes('error:') ||
+            line.includes('Testing failed:') ||
+            line.includes('Testing cancelled') ||
+            (inTestResults && line.trim())) {
+          relevantLines.push(line);
+          if (line.includes('Test Suite')) {
+            inTestResults = true;
+          }
+        }
+      }
+      
+      // Limit output to last 100 lines if still too long
+      const outputLines = relevantLines.slice(-100);
+      const truncated = relevantLines.length > 100;
       
       return {
         content: [
           {
             type: 'text',
-            text: `${summary}
+            text: `${summary}${failingTestsList}
 Package: ${path.basename(project.path)}
 Configuration: ${configuration}
 ${filter ? `Filter: ${filter}` : 'All tests'}
 
-Full output:
-${testResult.output}`
+Test Results:
+${truncated ? '... (output truncated)\n' : ''}${outputLines.join('\n')}`
           }
         ]
       };
     } catch (error: any) {
       logger.error({ error, packagePath }, 'Swift package tests failed');
       
-      // Return error with details
-      const errorMessage = error.message || 'Unknown test error';
+      // Handle XcodeError with context-specific message
+      let errorMessage = error.message || 'Unknown test error';
+      if (error instanceof XcodeError && error.type === XcodeErrorType.ProjectNotFound) {
+        errorMessage = `No Package.swift found at: ${error.path}`;
+      }
       
       return {
         content: [

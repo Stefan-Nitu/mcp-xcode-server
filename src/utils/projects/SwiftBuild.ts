@@ -125,6 +125,7 @@ export class SwiftBuild {
     output: string;
     passed: number;
     failed: number;
+    failingTests?: string[];
   }> {
     const { filter, configuration = 'Debug' } = options;
     
@@ -148,6 +149,7 @@ export class SwiftBuild {
       // Parse test results
       let passed = 0;
       let failed = 0;
+      const failingTests: string[] = [];
       
       // Look for test summary
       const summaryMatch = output.match(/Test Suite .+ passed.+\n.+ (\d+) tests?.+ passed, (\d+) failed/);
@@ -162,13 +164,20 @@ export class SwiftBuild {
         failed = failedMatches ? failedMatches.length : 0;
       }
       
+      // Extract failing test names
+      const failedTestMatches = output.matchAll(/Test Case '([^']+)' failed/g);
+      for (const match of failedTestMatches) {
+        failingTests.push(match[1]);
+      }
+      
       logger.info({ packagePath, passed, failed }, 'Tests completed');
       
       return {
         success: failed === 0,
         output,
         passed,
-        failed
+        failed,
+        failingTests: failingTests.length > 0 ? failingTests : undefined
       };
     } catch (error: any) {
       logger.error({ error: error.message, packagePath }, 'Tests failed');
@@ -178,6 +187,7 @@ export class SwiftBuild {
       
       let passed = 0;
       let failed = 0;
+      const failingTests: string[] = [];
       
       const summaryMatch = output.match(/Test Suite .+ failed.+\n.+ (\d+) tests?.+ passed, (\d+) failed/);
       if (summaryMatch) {
@@ -185,11 +195,18 @@ export class SwiftBuild {
         failed = parseInt(summaryMatch[2], 10);
       }
       
+      // Extract failing test names from error output
+      const failedTestMatches = output.matchAll(/Test Case '([^']+)' failed/g);
+      for (const match of failedTestMatches) {
+        failingTests.push(match[1]);
+      }
+      
       return {
         success: false,
         output,
         passed,
-        failed
+        failed,
+        failingTests: failingTests.length > 0 ? failingTests : undefined
       };
     }
   }

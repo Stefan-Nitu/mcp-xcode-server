@@ -6,3 +6,8 @@ import Testing
     let spm = TestSPM()
     #expect(spm.text == "Hello, TestSPM!")
 }
+
+@Test func testFailingTest() async throws {
+    // This test is designed to fail for MCP testing
+    #expect(1 == 2, "Test MCP failing test reporting")
+}

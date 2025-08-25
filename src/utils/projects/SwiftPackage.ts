@@ -69,6 +69,7 @@ export class SwiftPackage {
     output: string;
     passed: number;
     failed: number;
+    failingTests?: string[];
   }> {
     logger.info({ path: this.path, options }, 'Testing Swift package');
     
