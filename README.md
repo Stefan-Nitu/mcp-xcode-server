@@ -548,6 +548,17 @@ npm run test:integration  # Integration tests
 npm run test:coverage # With coverage report
 ```
 
+#### Test Artifacts
+The `test_artifacts/` directory contains real Xcode projects used for testing. **Important**: Any modifications to these test projects (e.g., adding test methods to `TestProjectXCTestTests.swift`) must be committed to Git. The test runner restores these projects to their pristine state before each test run, so uncommitted changes will be lost.
+
+Example:
+```bash
+# After modifying test files
+cd test_artifacts/TestProjectXCTest
+git add .
+git commit -m "Add test methods for filter testing"
+```
+
 ### Project Structure
 ```
 mcp-xcode/

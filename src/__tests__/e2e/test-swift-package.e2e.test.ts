@@ -3,13 +3,14 @@
  * Tests running tests for Swift packages
  */
 
-import { describe, test, expect, beforeAll, beforeEach, afterEach } from '@jest/globals';
+import { describe, test, expect, beforeAll, beforeEach, afterEach, afterAll } from '@jest/globals';
 import { execSync } from 'child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner.js';
 
 describe('TestSwiftPackageTool E2E Tests', () => {
   let client: Client;
@@ -29,8 +30,14 @@ describe('TestSwiftPackageTool E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
+  });
+
+  afterAll(() => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
   });
 
   describe('Running Swift Package Tests', () => {

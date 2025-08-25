@@ -11,6 +11,7 @@ import { ChildProcess, spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner.js';
 
 describe('UninstallApp Tool E2E', () => {
   let client: Client;
@@ -77,14 +78,7 @@ describe('UninstallApp Tool E2E', () => {
 
     // Shutdown booted simulators
     for (const deviceId of bootedSimulators) {
-      try {
-        execSync(`xcrun simctl shutdown "${deviceId}"`, {
-          encoding: 'utf8',
-          stdio: 'pipe'
-        });
-      } catch (error) {
-        // Simulator might already be shutdown
-      }
+      TestEnvironmentCleaner.resetSimulator(deviceId);
     }
     bootedSimulators.length = 0;
 
@@ -99,14 +93,7 @@ describe('UninstallApp Tool E2E', () => {
   afterAll(async () => {
     // Final cleanup of any remaining simulators
     for (const deviceId of bootedSimulators) {
-      try {
-        execSync(`xcrun simctl shutdown "${deviceId}"`, {
-          encoding: 'utf8',
-          stdio: 'pipe'
-        });
-      } catch (error) {
-        // Ignore errors
-      }
+      TestEnvironmentCleaner.resetSimulator(deviceId);
     }
 
     // Clean up test directory
@@ -177,10 +164,7 @@ describe('UninstallApp Tool E2E', () => {
     }
     
     // Boot the simulator
-    execSync(`xcrun simctl boot "${deviceId}"`, {
-      encoding: 'utf8',
-      stdio: 'pipe'
-    });
+    TestEnvironmentCleaner.bootSimulator(deviceId);
     
     bootedSimulators.push(deviceId);
     
@@ -474,9 +458,7 @@ describe('UninstallApp Tool E2E', () => {
     installedApps.set(deviceId, appId);
     
     // Shutdown device
-    execSync(`xcrun simctl shutdown "${deviceId}"`, {
-      encoding: 'utf8'
-    });
+    TestEnvironmentCleaner.shutdownAllSimulators();
     
     // Remove from booted list since we shut it down
     const index = bootedSimulators.indexOf(deviceId);

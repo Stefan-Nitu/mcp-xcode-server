@@ -59,6 +59,7 @@ export class XcodeProject {
     output: string;
     passed: number;
     failed: number;
+    failingTests?: string[];
   }> {
     logger.info({ path: this.path, options }, 'Testing Xcode project');
     

@@ -8,6 +8,7 @@ import { execSync } from 'child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner.js';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
 
 describe('BootSimulatorTool E2E Tests', () => {
@@ -20,21 +21,13 @@ describe('BootSimulatorTool E2E Tests', () => {
     execSync('npm run build', { cwd: process.cwd() });
     
     // Shutdown all simulators to start with clean state
-    try {
-      execSync('xcrun simctl shutdown all', { stdio: 'ignore' });
-    } catch {
-      // Ignore errors if no simulators are running
-    }
+    TestEnvironmentCleaner.shutdownAllSimulators();
   }, 120000);
   
   afterAll(() => {
     // Clean up: shutdown any simulators we booted
     bootedSimulators.forEach(deviceId => {
-      try {
-        execSync(`xcrun simctl shutdown "${deviceId}"`, { stdio: 'ignore' });
-      } catch {
-        // Ignore if already shutdown
-      }
+      TestEnvironmentCleaner.resetSimulator(deviceId);
     });
   });
   

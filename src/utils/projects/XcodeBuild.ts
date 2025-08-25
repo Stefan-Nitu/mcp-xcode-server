@@ -1,4 +1,5 @@
 import { execAsync } from '../../utils.js';
+import { spawn } from 'child_process';
 import { createModuleLogger } from '../../logger.js';
 import { Platform } from '../../types.js';
 import { PlatformHandler } from '../../platformHandler.js';
@@ -207,7 +208,7 @@ export class XcodeBuild {
     projectPath: string,
     isWorkspace: boolean,
     options: TestOptions = {}
-  ): Promise<{ success: boolean; output: string; passed: number; failed: number }> {
+  ): Promise<{ success: boolean; output: string; passed: number; failed: number; failingTests?: string[] }> {
     const {
       scheme,
       configuration = 'Debug',
@@ -243,64 +244,141 @@ export class XcodeBuild {
       command += ` -only-testing:${testFilter}`;
     }
     
+    // Disable parallel testing to avoid timeouts and multiple simulator instances
+    command += ' -parallel-testing-enabled NO';
+    
     command += ' test';
     
     logger.debug({ command }, 'Test command');
     
-    try {
-      const { stdout, stderr } = await execAsync(command, { 
-        maxBuffer: 50 * 1024 * 1024 
+    // Use spawn for streaming output to provide progress updates
+    return new Promise((resolve, reject) => {
+      const child = spawn('sh', ['-c', command]);
+      let output = '';
+      let passed = 0;
+      let failed = 0;
+      const failingTests: string[] = [];
+      let lastProgressTime = Date.now();
+      const progressInterval = 10000; // Log progress every 10 seconds
+      
+      // Stream stdout
+      child.stdout.on('data', (data) => {
+        const chunk = data.toString();
+        output += chunk;
+        
+        // Log progress for long-running tests
+        const now = Date.now();
+        if (now - lastProgressTime > progressInterval) {
+          logger.info('Tests still running... (preventing timeout)');
+          lastProgressTime = now;
+        }
+        
+        // Parse test progress
+        if (chunk.includes('Testing started')) {
+          logger.info('🚀 Tests starting...');
+        }
+        if (chunk.includes('Test suite') && chunk.includes('started')) {
+          const match = chunk.match(/Test suite '([^']+)'/);
+          if (match) {
+            logger.info({ suite: match[1] }, '📦 Test suite started');
+          }
+        }
+        if (chunk.includes('Test case') && chunk.includes('passed')) {
+          const match = chunk.match(/Test case '([^']+)'/);
+          if (match) {
+            logger.debug({ test: match[1] }, '✅ Test passed');
+          }
+        }
+        if (chunk.includes('Test case') && chunk.includes('failed')) {
+          const match = chunk.match(/Test case '([^']+)'/);
+          if (match) {
+            logger.warn({ test: match[1] }, '❌ Test failed');
+          }
+        }
       });
       
-      const output = stdout + (stderr ? `\n${stderr}` : '');
+      // Stream stderr
+      child.stderr.on('data', (data) => {
+        const chunk = data.toString();
+        output += '\n' + chunk;
+        
+        // xcodebuild outputs some normal progress to stderr, don't treat as error
+        if (chunk.includes('xcodebuild: error')) {
+          logger.error({ error: chunk.trim() }, 'Build/test error');
+        }
+      });
       
-      // Parse test results
-      let passed = 0;
-      let failed = 0;
+      // Handle completion
+      child.on('close', (code) => {
+        // Parse final test results from xcodebuild format
+        // When multiple test bundles run (UI tests + Unit tests), each has its own "All tests" summary
+        // We need to SUM them all to get the total counts
+        const allExecutedMatches = [...output.matchAll(/Test Suite 'All tests' (passed|failed).*?\n.*?Executed (\d+) tests?, with (\d+) failures?/gm)];
+        
+        if (allExecutedMatches.length > 0) {
+          // Sum all test results from all bundles
+          let totalTests = 0;
+          let totalFailed = 0;
+          
+          for (const match of allExecutedMatches) {
+            const tests = parseInt(match[2], 10);
+            const failures = parseInt(match[3], 10);
+            totalTests += tests;
+            totalFailed += failures;
+          }
+          
+          passed = totalTests - totalFailed;
+          failed = totalFailed;
+        } else {
+          // Fallback to counting individual test passes/failures
+          const passedMatches = output.match(/Test Case .* passed/g);
+          const failedMatches = output.match(/Test Case .* failed/g);
+          passed = passedMatches ? passedMatches.length : 0;
+          failed = failedMatches ? failedMatches.length : 0;
+        }
+        
+        // Extract failing test names
+        const failingTestMatches = output.match(/Test Case '-\[[\w\.]+ ([\w]+)\]' failed/g);
+        if (failingTestMatches) {
+          failingTestMatches.forEach(match => {
+            const testNameMatch = match.match(/Test Case '-\[[\w\.]+ ([\w]+)\]'/);
+            if (testNameMatch && testNameMatch[1]) {
+              failingTests.push(testNameMatch[1]);
+            }
+          });
+        }
+        
+        // Also look for "Failing tests:" section in output
+        const failingTestsSection = output.match(/Failing tests:\n([\s\S]*?)(?:\n\*\*|$)/);
+        if (failingTestsSection && failingTestsSection[1]) {
+          const lines = failingTestsSection[1].trim().split('\n');
+          lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed && !failingTests.includes(trimmed)) {
+              failingTests.push(trimmed);
+            }
+          });
+        }
+        
+        logger.info({ projectPath, passed, failed, failingTests, exitCode: code }, 'Tests completed');
+        
+        const result = {
+          success: code === 0,
+          output,
+          passed,
+          failed,
+          ...(failingTests.length > 0 && { failingTests })
+        };
+        
+        resolve(result);
+      });
       
-      const passedMatch = output.match(/(\d+) passed/);
-      if (passedMatch) {
-        passed = parseInt(passedMatch[1], 10);
-      }
-      
-      const failedMatch = output.match(/(\d+) failed/);
-      if (failedMatch) {
-        failed = parseInt(failedMatch[1], 10);
-      }
-      
-      logger.info({ projectPath, passed, failed }, 'Tests completed');
-      
-      return {
-        success: failed === 0,
-        output,
-        passed,
-        failed
-      };
-    } catch (error: any) {
-      logger.error({ error: error.message, projectPath }, 'Tests failed');
-      
-      // Try to extract test counts even from failure
-      const output = error.stdout || '';
-      let passed = 0;
-      let failed = 0;
-      
-      const passedMatch = output.match(/(\d+) passed/);
-      if (passedMatch) {
-        passed = parseInt(passedMatch[1], 10);
-      }
-      
-      const failedMatch = output.match(/(\d+) failed/);
-      if (failedMatch) {
-        failed = parseInt(failedMatch[1], 10);
-      }
-      
-      return {
-        success: false,
-        output,
-        passed,
-        failed
-      };
-    }
+      // Handle errors
+      child.on('error', (error) => {
+        logger.error({ error: error.message, projectPath }, 'Failed to spawn test process');
+        reject(new Error(`Failed to run tests: ${error.message}`));
+      });
+    });
   }
   
   /**

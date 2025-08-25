@@ -329,5 +329,29 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       })).rejects.toThrow('Command injection');
     });
+
+    test('should display failing test names when available', async () => {
+      mockExistsSync.mockReturnValue(true);
+      mockNeedsSimulator.mockReturnValue(false);
+      mockXcode.open.mockResolvedValue(mockXcodeProject);
+      mockTest.mockResolvedValue({
+        success: false,
+        output: 'Test Case \'-[TestProjectXCTestTests.TestProjectXCTestTests testFailingTest]\' failed',
+        passed: 7,
+        failed: 1,
+        failingTests: ['testFailingTest', 'testAnotherFailure']
+      });
+
+      const result = await tool.execute({
+        projectPath: '/test/project.xcodeproj',
+        scheme: 'MyScheme',
+        platform: 'iOS'
+      });
+
+      expect(result.content[0].text).toContain('Tests failed: 7 passed, 1 failed');
+      expect(result.content[0].text).toContain('Failing tests:');
+      expect(result.content[0].text).toContain('- testFailingTest');
+      expect(result.content[0].text).toContain('- testAnotherFailure');
+    });
   });
 });

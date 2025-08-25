@@ -10,6 +10,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../utils/TestProjectManager';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers';
 import { createModuleLogger } from '../../logger';
 
@@ -33,20 +34,7 @@ describe('RunXcodeTool E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
-    // Shutdown simulators instead of reset (erase) to avoid slow test cleanup
-    try {
-      execSync('xcrun simctl shutdown all', { stdio: 'ignore' });
-    } catch {
-      // Ignore errors
-    }
-    
-    // Close any macOS test apps that may be running
-    try {
-      // Kill the test app if it's running (TestProjectXCTest is the macOS app name)
-      execSync('pkill -f TestProjectXCTest', { stdio: 'ignore' });
-    } catch {
-      // Ignore if not running
-    }
+    TestEnvironmentCleaner.cleanupTestEnvironment();
     
     await cleanupClientAndTransport(client, transport);
     projectManager.cleanup();
@@ -88,7 +76,7 @@ describe('RunXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');

@@ -10,6 +10,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner.js';
 
 describe('BuildXcodeTool E2E Tests', () => {
   let client: Client;
@@ -29,8 +30,14 @@ describe('BuildXcodeTool E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
+  });
+
+  afterAll(() => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
   });
 
   describe('Xcode Project Builds', () => {

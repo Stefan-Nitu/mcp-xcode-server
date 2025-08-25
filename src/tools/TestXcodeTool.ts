@@ -103,10 +103,12 @@ export class TestXcodeTool {
       
       // Boot simulator if needed (tests always need a real simulator, not generic)
       let bootedDeviceId = deviceId;
+      let device = null;
+      
       if (PlatformHandler.needsSimulator(platform)) {
         if (deviceId) {
           // User specified a device
-          const device = await this.devices.find(deviceId);
+          device = await this.devices.find(deviceId);
           if (!device) {
             throw new Error(`Device not found: ${deviceId}`);
           }
@@ -114,7 +116,7 @@ export class TestXcodeTool {
           bootedDeviceId = device.id;
         } else {
           // No device specified, find one for the platform
-          const device = await this.devices.findForPlatform(platform);
+          device = await this.devices.findForPlatform(platform);
           if (!device) {
             throw new Error(`No available simulator for platform: ${platform}`);
           }
@@ -122,6 +124,9 @@ export class TestXcodeTool {
           bootedDeviceId = device.id;
           logger.info({ deviceId: device.id, deviceName: device.name }, 'Using auto-selected device for tests');
         }
+        
+        // Open the Simulator app (handles test environment)
+        await device.open();
       }
       
       // Run tests using XcodeProject
@@ -141,28 +146,67 @@ export class TestXcodeTool {
       
       // Format the results
       const summary = `Tests ${testResult.success ? 'passed' : 'failed'}: ${testResult.passed} passed, ${testResult.failed} failed`;
+      const failingTestsList = testResult.failingTests && testResult.failingTests.length > 0 
+        ? `\nFailing tests:\n${testResult.failingTests.map(t => `  - ${t}`).join('\n')}`
+        : '';
+      
+      // Extract just the relevant test results from output
+      const lines = testResult.output.split('\n');
+      const relevantLines: string[] = [];
+      let inTestResults = false;
+      
+      for (const line of lines) {
+        // Capture test suite results and failures
+        if (line.includes('Test Suite') || 
+            line.includes('Test Case') ||
+            line.includes('failed') ||
+            line.includes('passed') ||
+            line.includes('** TEST EXECUTE') ||
+            line.includes('error:') ||
+            line.includes('Testing failed:') ||
+            line.includes('Testing cancelled') ||
+            (inTestResults && line.trim())) {
+          relevantLines.push(line);
+          if (line.includes('Test Suite')) {
+            inTestResults = true;
+          }
+        }
+      }
+      
+      // Limit output to last 100 lines if still too long
+      const outputLines = relevantLines.slice(-100);
+      const truncated = relevantLines.length > 100;
       
       return {
         content: [
           {
             type: 'text',
-            text: `${summary}
+            text: `${summary}${failingTestsList}
 Platform: ${platform}
 Configuration: ${configuration}
 ${testTarget ? `Test Target: ${testTarget}` : 'All tests in scheme'}
 ${testFilter ? `Filter: ${testFilter}` : ''}
 
-Full output:
-${testResult.output}`
+Test Results:
+${truncated ? '... (output truncated)\n' : ''}${outputLines.join('\n')}`
           }
         ]
       };
     } catch (error: any) {
       logger.error({ error, projectPath, scheme, platform }, 'Tests failed');
       
-      // Return error with full output if available
+      // Return error with truncated output
       const errorMessage = error.message || 'Unknown test error';
-      const output = error.stdout || error.stderr || '';
+      let output = error.stdout || error.stderr || '';
+      
+      // Truncate output if too long
+      if (output.length > 5000) {
+        const lines = output.split('\n');
+        // Keep first 20 and last 30 lines for context
+        const firstLines = lines.slice(0, 20);
+        const lastLines = lines.slice(-30);
+        output = [...firstLines, '\n... (output truncated) ...\n', ...lastLines].join('\n');
+      }
       
       return {
         content: [

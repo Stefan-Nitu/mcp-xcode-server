@@ -12,6 +12,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner.js';
 
 describe('BuildSwiftPackageTool E2E Tests', () => {
   let client: Client;
@@ -34,6 +35,10 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
   afterEach(async () => {
     await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
+  });
+
+  afterAll(() => {
+    TestEnvironmentCleaner.killTestProjectApp();
   });
 
   describe('Basic SPM Builds', () => {

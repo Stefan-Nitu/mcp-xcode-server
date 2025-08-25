@@ -46,6 +46,20 @@ export class TestProjectManager {
     };
   }
 
+  get targets() {
+    return {
+      xcodeProject: {
+        app: 'TestProjectXCTest',
+        unitTests: 'TestProjectXCTestTests',
+        uiTests: 'TestProjectXCTestUITests'
+      },
+      watchOSProject: {
+        app: 'TestProjectWatchOS Watch App',
+        tests: 'TestProjectWatchOS Watch AppTests'
+      }
+    };
+  }
+
   async setup() {
     // Clean up any leftover build artifacts before starting
     this.cleanBuildArtifacts();

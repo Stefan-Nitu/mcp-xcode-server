@@ -10,6 +10,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../utils/TestProjectManager';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers';
 
 describe('InstallAppTool E2E Tests', () => {
@@ -40,11 +41,7 @@ describe('InstallAppTool E2E Tests', () => {
   afterAll(() => {
     // Shutdown simulators
     bootedSimulators.forEach(deviceId => {
-      try {
-        execSync(`xcrun simctl shutdown "${deviceId}"`, { stdio: 'ignore' });
-      } catch {
-        // Ignore errors
-      }
+      TestEnvironmentCleaner.resetSimulator(deviceId);
     });
     
     // Clean up using project manager
@@ -157,7 +154,7 @@ describe('InstallAppTool E2E Tests', () => {
       if (iosDevices.length === 0) return null;
       
       const device = iosDevices[0];
-      execSync(`xcrun simctl boot "${device.udid}"`, { stdio: 'ignore' });
+      TestEnvironmentCleaner.bootSimulator(device.udid);
       bootedSimulators.push(device.udid);
       
       // Wait for boot
@@ -394,11 +391,7 @@ describe('InstallAppTool E2E Tests', () => {
 
     test('should handle no booted devices', async () => {
       // Shutdown all simulators
-      try {
-        execSync('xcrun simctl shutdown all', { stdio: 'ignore' });
-      } catch {
-        // Ignore errors
-      }
+      TestEnvironmentCleaner.shutdownAllSimulators();
       
       if (!testApp1Path) {
         throw new Error('Test app not built');
@@ -465,7 +458,7 @@ describe('InstallAppTool E2E Tests', () => {
       
       // Boot if needed
       if (availableDevice.state !== 'Booted') {
-        execSync(`xcrun simctl boot "${availableDevice.udid}"`, { stdio: 'ignore' });
+        TestEnvironmentCleaner.bootSimulator(availableDevice.udid);
         bootedSimulators.push(availableDevice.udid);
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
