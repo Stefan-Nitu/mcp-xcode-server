@@ -25,7 +25,46 @@ export class TestOutputParser {
    * @returns Parsed test results
    */
   parse(output: string): TestResult {
-    // Try each strategy in order
+    // Check if both frameworks are present in the output
+    const hasXCTest = output.includes('Test Suite') || output.includes('Executed') || output.includes('** TEST');
+    const hasSwiftTesting = output.includes('◇') || output.includes('✔') || output.includes('✘');
+    
+    if (hasXCTest && hasSwiftTesting) {
+      // Both frameworks ran, we need to combine results
+      // Parse with both strategies and combine
+      logger.debug('Both test frameworks detected, combining results');
+      
+      const xcTestResult = new XCTestParserStrategy().parse(output);
+      const swiftTestingResult = new SwiftTestingParserStrategy().parse(output);
+      
+      // If Swift Testing reports 0 tests, it means no Swift Testing tests exist
+      // Use only XCTest results in that case
+      if (swiftTestingResult.passed === 0 && swiftTestingResult.failed === 0) {
+        logger.debug('Swift Testing found no tests, using XCTest results only');
+        return xcTestResult;
+      }
+      
+      // If XCTest reports 0 tests, use only Swift Testing results
+      if (xcTestResult.passed === 0 && xcTestResult.failed === 0) {
+        logger.debug('XCTest found no tests, using Swift Testing results only');
+        return swiftTestingResult;
+      }
+      
+      // Both have tests, combine the results
+      const combinedFailingTests = [
+        ...(xcTestResult.failingTests || []),
+        ...(swiftTestingResult.failingTests || [])
+      ];
+      
+      return {
+        success: xcTestResult.success && swiftTestingResult.success,
+        passed: xcTestResult.passed + swiftTestingResult.passed,
+        failed: xcTestResult.failed + swiftTestingResult.failed,
+        failingTests: combinedFailingTests.length > 0 ? combinedFailingTests : undefined
+      };
+    }
+    
+    // Only one framework present, use the appropriate strategy
     for (const strategy of this.strategies) {
       if (strategy.canParse(output)) {
         logger.debug({ strategy: strategy.constructor.name }, 'Using parser strategy');

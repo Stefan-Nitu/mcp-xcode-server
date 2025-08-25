@@ -26,28 +26,17 @@ export class XCTestParserStrategy implements TestParserStrategy {
     const failingTests: string[] = [];
     
     // Try to find the test summary (most reliable)
-    // When multiple test bundles run (UI tests + Unit tests), each has its own summary
-    // We need to SUM them all to get the total counts
-    // Look for patterns like:
-    // "Test Suite 'MyTests' passed/failed ... Executed X tests, with Y failures"
-    const allExecutedMatches = [...output.matchAll(/Executed (\d+) tests?, with (\d+) failures?/gm)];
+    // Look for the top-level summary: "Test Suite 'All tests'" or "Test Suite 'Selected tests'"
+    const topLevelSummary = output.match(/Test Suite '(?:All tests|Selected tests)' (?:passed|failed).*?\n.*?Executed (\d+) tests?, with (\d+) failures?/);
     
-    if (allExecutedMatches.length > 0) {
-      // Sum all test results from all bundles
-      let totalTests = 0;
-      let totalFailed = 0;
+    if (topLevelSummary) {
+      // Use the top-level summary
+      const tests = parseInt(topLevelSummary[1], 10);
+      const failures = parseInt(topLevelSummary[2], 10);
+      passed = tests - failures;
+      failed = failures;
       
-      for (const match of allExecutedMatches) {
-        const tests = parseInt(match[1], 10);
-        const failures = parseInt(match[2], 10);
-        totalTests += tests;
-        totalFailed += failures;
-      }
-      
-      passed = totalTests - totalFailed;
-      failed = totalFailed;
-      
-      logger.debug({ totalTests, passed, failed, bundles: allExecutedMatches.length }, 'Parsed XCTest summaries');
+      logger.debug({ totalTests: tests, passed, failed }, 'Parsed XCTest top-level summary');
     } else {
       // Fallback: Count individual test passes/failures
       const passedMatches = output.match(/Test Case .* passed/g);

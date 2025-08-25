@@ -40,8 +40,8 @@ describe('TestSwiftPackageTool E2E Tests', () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
   });
 
-  describe('Running Swift Package Tests', () => {
-    test('should run all tests in a Swift package', async () => {
+  describe('Running Swift Package Tests with XCTest', () => {
+    test('should run all tests in XCTest package', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -83,13 +83,13 @@ describe('TestSwiftPackageTool E2E Tests', () => {
           name: 'test_swift_package',
           arguments: {
             packagePath: testProjectManager.paths.swiftPackageXCTestDir,
-            filter: 'TestProjectTests'
+            filter: 'TestSwiftPackageXCTestTests'
           }
         }
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Filter: TestProjectTests');
+      expect(text).toContain('Filter: TestSwiftPackageXCTestTests');
       expect(text).toMatch(/Tests (passed|failed)/);
     }, 60000);
 
@@ -175,9 +175,65 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Full output:');
+      expect(text).toContain('Test Results:');
       // Swift test output typically includes these
       expect(text).toMatch(/(Test Suite|test|XCT|swift test)/i);
+    }, 60000);
+  });
+
+  describe('Running Swift Package Tests with Swift Testing', () => {
+    test('should run all tests in Swift Testing package', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'test_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageSwiftTestingDir
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toContain('Package:');
+      expect(text).toMatch(/\d+ passed, \d+ failed/);
+      expect(text).toContain('Configuration: Debug');
+    }, 60000);
+
+    test('should parse Swift Testing output correctly', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'test_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageSwiftTestingDir,
+            filter: 'testExample' // Run a specific test
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Filter: testExample');
+      expect(text).toMatch(/Tests (passed|failed)/);
+      // The parser should correctly identify Swift Testing output
+      expect(text).toMatch(/\d+ passed/);
+    }, 60000);
+
+    test('should handle Swift Testing with Release configuration', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'test_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageSwiftTestingDir,
+            configuration: 'Release'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Configuration: Release');
+      expect(text).toMatch(/Tests (passed|failed)/);
     }, 60000);
   });
 });

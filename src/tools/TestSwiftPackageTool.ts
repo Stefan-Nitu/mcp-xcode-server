@@ -74,8 +74,10 @@ export class TestSwiftPackageTool {
         configuration
       });
       
-      if (!testResult.success && testResult.failed === 0 && testResult.passed === 0) {
+      if (!testResult.success && testResult.failed === 0 && testResult.passed === 0 && 
+          testResult.output.toLowerCase().includes('error')) {
         // Build or setup error, not test failures
+        // But allow cases where filter matched no tests
         throw new Error(testResult.output);
       }
       

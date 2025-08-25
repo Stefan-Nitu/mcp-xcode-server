@@ -40,7 +40,7 @@ describe('TestXcodeTool E2E Tests', () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
   });
 
-  describe('Running Xcode Project Tests', () => {
+  describe('Running Xcode Project Tests with XCTest', () => {
 
     test('should run tests for iOS project with scheme', async () => {
       const response = await client.request({
@@ -279,6 +279,46 @@ describe('TestXcodeTool E2E Tests', () => {
       expect(text).toBeDefined();
       expect(text).toContain('Platform: watchOS');
       expect(text).toMatch(/Tests (passed|failed)/);
+    }, 180000);
+  });
+
+  describe('Running Xcode Project Tests with Swift Testing', () => {
+    test('should run tests for Swift Testing project', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'test_xcode',
+          arguments: {
+            projectPath: testProjectManager.paths.xcodeProjectSwiftTestingPath,
+            scheme: testProjectManager.schemes.xcodeProjectSwiftTesting,
+            platform: 'iOS'
+          }
+        }
+      }, CallToolResultSchema, { timeout: 180000 });
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toContain('Platform: iOS');
+      expect(text).toMatch(/\d+ passed, \d+ failed/);
+    }, 180000);
+
+    test('should run Swift Testing project with both passing and failing tests', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'test_xcode',
+          arguments: {
+            projectPath: testProjectManager.paths.xcodeProjectSwiftTestingPath,
+            scheme: testProjectManager.schemes.xcodeProjectSwiftTesting,
+            platform: 'iOS'
+          }
+        }
+      }, CallToolResultSchema, { timeout: 180000 });
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toMatch(/Tests (passed|failed)/);
+      // Should show test results (may have failures from testFailingTest)
+      expect(text).toMatch(/\d+ passed/);
     }, 180000);
   });
 });
