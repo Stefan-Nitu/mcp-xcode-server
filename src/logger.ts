@@ -13,15 +13,15 @@ const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
 // Create logger instance
 export const logger = pino({
   level: logLevel,
-  // Use pretty printing in development (but not in tests), JSON in production
-  // Tests need synchronous logging to avoid race conditions
-  transport: (isDevelopment && !isTest) ? {
+  // Use pretty printing in development, JSON in production
+  transport: isDevelopment ? {
     target: 'pino-pretty',
     options: {
       colorize: true,
       ignore: 'pid,hostname',
       translateTime: 'SYS:standard',
-      singleLine: false
+      singleLine: false,
+      sync: true  // Make pino-pretty synchronous to avoid race conditions in tests
     }
   } : undefined,
   // Add metadata to all logs
