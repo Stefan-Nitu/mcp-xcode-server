@@ -302,7 +302,7 @@ describe('TestXcodeTool E2E Tests', () => {
       expect(text).toMatch(/\d+ passed, \d+ failed/);
     }, 180000);
 
-    test('should run Swift Testing project with both passing and failing tests', async () => {
+    test('should properly report Swift Testing failures', async () => {
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -316,9 +316,11 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text).toMatch(/Tests (passed|failed)/);
-      // Should show test results (may have failures from testFailingTest)
-      expect(text).toMatch(/\d+ passed/);
+      // Should report test failure since we have testFailingTest
+      expect(text).toContain('Tests failed');
+      expect(text).toMatch(/1 passed, 1 failed/);
+      expect(text).toContain('Failing tests:');
+      expect(text).toContain('testFailingTest');
     }, 180000);
   });
 });
