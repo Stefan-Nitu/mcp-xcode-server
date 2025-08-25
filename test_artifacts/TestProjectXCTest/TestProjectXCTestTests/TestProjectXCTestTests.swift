@@ -32,7 +32,7 @@ final class TestProjectXCTestTests: XCTestCase {
         }
     }
     
-    func targetForFilterTest() throws {
+    func testTargetForFilter() throws {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct results.
         // Any test you write for XCTest can be annotated as throws and async.
@@ -40,7 +40,7 @@ final class TestProjectXCTestTests: XCTestCase {
         // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
     }
     
-    func failingTest() throws {
+    func testFailingTest() throws {
         XCTFail("Test MCP failing test reporting")
     }
 
