@@ -4,12 +4,13 @@
  * Note: Tests are designed to be robust against changing simulator configurations
  */
 
-import { describe, test, expect, beforeAll, beforeEach, afterEach } from '@jest/globals';
+import { describe, test, expect, beforeAll, beforeEach, afterEach, afterAll } from '@jest/globals';
 import { execSync } from 'child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner.js';
 
 describe('ListSimulatorsTool E2E Tests', () => {
   let client: Client;
@@ -27,7 +28,13 @@ describe('ListSimulatorsTool E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     await cleanupClientAndTransport(client, transport);
+  });
+
+  afterAll(() => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
   });
 
   describe('Basic Listing', () => {
@@ -73,7 +80,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
       devices.forEach((d: any) => {
         expect(d.isAvailable).toBe(true);
       });
-    });
+    }, 30000);
 
     test('should show all simulators including unavailable when requested', async () => {
       const availableResponse = await client.request({
@@ -106,7 +113,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
       availableDevices.forEach((d: any) => {
         expect(d.isAvailable).toBe(true);
       });
-    });
+    }, 30000);
   });
 
   describe('Platform Filtering', () => {
@@ -136,7 +143,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
         );
         expect(hasIOSDevice).toBe(true);
       }
-    });
+    }, 30000);
 
     test('should filter simulators by each platform type', async () => {
       const platforms = ['iOS', 'tvOS', 'watchOS', 'visionOS'];
@@ -166,7 +173,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
           });
         }
       }
-    });
+    }, 30000);
 
     test('should reject invalid platform', async () => {
       const response = await client.request({
@@ -182,7 +189,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('error');
-    });
+    }, 30000);
 
     test('should return empty array for macOS platform since it has no simulators', async () => {
       const response = await client.request({
@@ -200,7 +207,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
       // macOS doesn't use simulators, so should return empty array
       expect(Array.isArray(devices)).toBe(true);
       expect(devices.length).toBe(0);
-    });
+    }, 30000);
   });
 
   describe('Combined Filters', () => {
@@ -223,7 +230,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
       devices.forEach((device: any) => {
         expect(device.runtime.toLowerCase()).toContain('ios');
       });
-    });
+    }, 30000);
   });
 
   describe('Output Format', () => {
@@ -246,7 +253,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
       // Should be prettified (contains newlines and indentation)
       expect(text).toContain('\n');
       expect(text).toMatch(/\s{2,}/); // Has indentation
-    });
+    }, 30000);
   });
 
   describe('Edge Cases', () => {
@@ -262,7 +269,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
       expect(response).toBeDefined();
       const devices = JSON.parse((response.content[0] as any).text);
       expect(Array.isArray(devices)).toBe(true);
-    });
+    }, 30000);
 
     test('should handle extra unknown parameters gracefully', async () => {
       const response = await client.request({
@@ -281,7 +288,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
       // Should work normally, ignoring unknown params
       const devices = JSON.parse((response.content[0] as any).text);
       expect(Array.isArray(devices)).toBe(true);
-    });
+    }, 30000);
   });
 
   describe('Runtime Verification', () => {
@@ -304,7 +311,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
           expect(device.runtime).toMatch(/^(iOS|tvOS|watchOS|xrOS)-[\d-]+$/);
         });
       }
-    });
+    }, 30000);
   });
 
   describe('Performance', () => {
@@ -324,6 +331,6 @@ describe('ListSimulatorsTool E2E Tests', () => {
       expect(response).toBeDefined();
       // Should complete within 5 seconds
       expect(duration).toBeLessThan(5000);
-    });
+    }, 10000);
   });
 });

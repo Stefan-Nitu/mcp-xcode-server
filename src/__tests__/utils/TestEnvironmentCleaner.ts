@@ -44,8 +44,64 @@ export class TestEnvironmentCleaner {
   }
 
   /**
+   * Clean DerivedData and SPM build artifacts for test projects
+   */
+  static cleanDerivedData(): void {
+    try {
+      // Clean MCP-Xcode DerivedData location (where our tests actually write)
+      execSync('rm -rf ~/Library/Developer/Xcode/DerivedData/MCP-Xcode/TestProjectSwiftTesting', { 
+        shell: '/bin/bash',
+        stdio: 'ignore' 
+      });
+      
+      execSync('rm -rf ~/Library/Developer/Xcode/DerivedData/MCP-Xcode/TestProjectXCTest', { 
+        shell: '/bin/bash',
+        stdio: 'ignore' 
+      });
+      
+      execSync('rm -rf ~/Library/Developer/Xcode/DerivedData/MCP-Xcode/TestSwiftPackage*', { 
+        shell: '/bin/bash',
+        stdio: 'ignore' 
+      });
+      
+      // Also clean standard Xcode DerivedData locations (in case xcodebuild uses them directly)
+      execSync('rm -rf ~/Library/Developer/Xcode/DerivedData/TestProjectSwiftTesting-*', { 
+        shell: '/bin/bash',
+        stdio: 'ignore' 
+      });
+      
+      execSync('rm -rf ~/Library/Developer/Xcode/DerivedData/TestProjectXCTest-*', { 
+        shell: '/bin/bash',
+        stdio: 'ignore' 
+      });
+      
+      execSync('rm -rf ~/Library/Developer/Xcode/DerivedData/TestSwiftPackage-*', { 
+        shell: '/bin/bash',
+        stdio: 'ignore' 
+      });
+      
+      // Clean SPM .build directories in test artifacts
+      const testArtifactsDir = process.cwd() + '/test_artifacts';
+      execSync(`find ${testArtifactsDir} -name .build -type d -exec rm -rf {} + 2>/dev/null || true`, {
+        shell: '/bin/bash',
+        stdio: 'ignore'
+      });
+      
+      // Clean .swiftpm directories
+      execSync(`find ${testArtifactsDir} -name .swiftpm -type d -exec rm -rf {} + 2>/dev/null || true`, {
+        shell: '/bin/bash',
+        stdio: 'ignore'
+      });
+      
+      logger.debug('DerivedData and SPM build artifacts cleaned for test projects');
+    } catch (error) {
+      logger.debug('DerivedData cleanup failed or nothing to clean (normal)');
+    }
+  }
+
+  /**
    * Full cleanup of test environment
-   * Shuts down simulators and kills test apps
+   * Shuts down simulators, kills test apps, and cleans DerivedData
    */
   static cleanupTestEnvironment(): void {
     logger.debug('Cleaning up test environment');
@@ -56,6 +112,9 @@ export class TestEnvironmentCleaner {
     // Kill any running test apps
     this.killTestProjectApp();
     
+    // Clean DerivedData for test projects
+    this.cleanDerivedData();
+    
     logger.debug('Test environment cleanup complete');
   }
 
@@ -65,10 +124,11 @@ export class TestEnvironmentCleaner {
    */
   static resetSimulator(deviceId: string): void {
     try {
-      execSync(`xcrun simctl erase "${deviceId}"`, { stdio: 'ignore' });
+      execSync(`xcrun simctl erase "${deviceId}"`);
       logger.debug({ deviceId }, 'Simulator erased');
-    } catch (error) {
-      logger.warn({ deviceId, error }, 'Failed to erase simulator');
+    } catch (error: any) {
+      // Log the actual error message for debugging
+      logger.warn({ deviceId, error: error.message, stderr: error.stderr?.toString() }, 'Failed to erase simulator');
     }
   }
 

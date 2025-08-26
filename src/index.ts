@@ -170,13 +170,17 @@ class XcodeServer {
 const server = new XcodeServer();
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('Received SIGTERM, shutting down gracefully');
+  // Give logger time to flush
+  await new Promise(resolve => setTimeout(resolve, 100));
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('Received SIGINT, shutting down gracefully');
+  // Give logger time to flush
+  await new Promise(resolve => setTimeout(resolve, 100));
   process.exit(0);
 });
 

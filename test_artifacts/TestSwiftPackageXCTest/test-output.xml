@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<testsuites>
+<testsuite name="TestResults" errors="0" tests="2" failures="1" time="0.120498084">
+<testcase classname="TestSwiftPackageXCTestTests.TestSwiftPackageXCTestTests" name="testExample" time="0.060256667">
+</testcase>
+<testcase classname="TestSwiftPackageXCTestTests.TestSwiftPackageXCTestTests" name="testFailingTest" time="0.060241417">
+<failure message="failed"></failure>
+</testcase>
+</testsuite>
+</testsuites>

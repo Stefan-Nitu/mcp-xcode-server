@@ -10,6 +10,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../utils/TestProjectManager';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner';
 
 describe('ListSchemesTool E2E Tests', () => {
   let client: Client;
@@ -26,6 +27,8 @@ describe('ListSchemesTool E2E Tests', () => {
   }, 60000);
   
   afterAll(() => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     // Clean up using project manager
     projectManager.cleanup();
   });
@@ -37,7 +40,10 @@ describe('ListSchemesTool E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     await cleanupClientAndTransport(client, transport);
+    projectManager.cleanup();
   });
 
   describe('Xcode Project Schemes', () => {
@@ -130,7 +136,9 @@ describe('ListSchemesTool E2E Tests', () => {
   });
 
   describe('Swift Package Schemes', () => {
-    test('should list schemes for Swift package', async () => {
+    test('should return error for Swift packages since they do not have schemes', async () => {
+      // Swift packages have targets and products, not schemes
+      // xcodebuild -list doesn't work with Package.swift files
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -144,21 +152,10 @@ describe('ListSchemesTool E2E Tests', () => {
       expect(response).toBeDefined();
       const content = (response.content[0] as any).text;
       
-      // Swift packages don't have traditional Xcode schemes
-      // The tool should either return an empty array or an error message
-      if (content.includes('error') || content.includes('Error')) {
-        // Expected - SPM packages don't have schemes in the same way
-        expect(content.toLowerCase()).toContain('package');
-      } else {
-        const schemes = JSON.parse(content);
-        expect(Array.isArray(schemes)).toBe(true);
-        // SPM might return the package name as a scheme
-        if (schemes.length > 0) {
-          const hasXCTest = schemes.includes('TestSwiftPackageXCTest');
-          const hasSwiftTesting = schemes.includes('TestSwiftPackageSwiftTesting');
-          expect(hasXCTest || hasSwiftTesting).toBe(true);
-        }
-      }
+      // Should always return an error since xcodebuild -list doesn't work with Package.swift
+      expect(content.toLowerCase()).toContain('error');
+      // The error should indicate it's not a project file
+      expect(content.toLowerCase()).toMatch(/not a project file|package\.swift|cannot list schemes/i);
     });
   });
 
@@ -309,9 +306,8 @@ describe('ListSchemesTool E2E Tests', () => {
 
   describe('Special Cases', () => {
     test('should handle project with spaces in path', async () => {
-      // Note: This test would need a project with spaces in its path
-      // For now, we'll test that the tool handles paths with spaces correctly
-      const pathWithSpaces = projectManager.paths.xcodeProjectXCTestPath.replace('TestProjectXCTest', 'Test Project XCTest');
+      // Test that the tool properly handles non-existent paths with spaces
+      const pathWithSpaces = '/path with spaces/Project Name.xcodeproj';
       
       const response = await client.request({
         method: 'tools/call',
@@ -324,20 +320,20 @@ describe('ListSchemesTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       expect(response).toBeDefined();
-      // Will error since the project doesn't exist, but shouldn't crash
       const text = (response.content[0] as any).text;
-      expect(text).toBeDefined();
+      // Should handle the path with spaces and return an error (project doesn't exist)
+      expect(text.toLowerCase()).toContain('error');
+      expect(text).toMatch(/does not exist|cannot find|not found/i);
     });
 
-    test('should handle empty project (no schemes)', async () => {
-      // Try to find a project without schemes
-      // Most projects have at least one scheme, so this might return an empty array
+    test('should return empty array for bare directory without Xcode project', async () => {
+      // Test that a regular directory doesn't crash the tool
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectXCTestPath
+            projectPath: projectManager.paths.testProjectDir
           }
         }
       }, CallToolResultSchema);
@@ -345,12 +341,9 @@ describe('ListSchemesTool E2E Tests', () => {
       expect(response).toBeDefined();
       const content = (response.content[0] as any).text;
       
-      if (!content.includes('error')) {
-        const schemes = JSON.parse(content);
-        expect(Array.isArray(schemes)).toBe(true);
-        // Could be empty array
-        expect(schemes.length).toBeGreaterThanOrEqual(0);
-      }
+      // Should return an error since it's not a valid Xcode project/workspace
+      expect(content.toLowerCase()).toContain('error');
+      expect(content.toLowerCase()).toMatch(/not.*project|not.*workspace|invalid/i);
     });
   });
 });

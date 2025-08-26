@@ -1,14 +1,9 @@
 import { z } from 'zod';
-import { exec as nodeExec } from 'child_process';
-import { promisify } from 'util';
-import { Platform, SimulatorDevice } from '../types.js';
+import { Platform } from '../types.js';
+import { SimulatorInfo } from '../utils/devices/SimulatorInfo.js';
 import { createModuleLogger } from '../logger.js';
 
 const logger = createModuleLogger('ListSimulatorsTool');
-
-// Type for the exec function
-export type ExecFunction = typeof nodeExec;
-export type ExecAsyncFunction = (command: string, options?: any) => Promise<{ stdout: string; stderr: string }>;
 
 // Validation schema
 export const listSimulatorsSchema = z.object({
@@ -25,12 +20,11 @@ export interface IListSimulatorsTool {
 }
 
 export class ListSimulatorsTool implements IListSimulatorsTool {
-  private readonly execAsync: ExecAsyncFunction;
-
-  constructor(execFunc?: ExecFunction) {
-    // Use provided exec or default to Node's exec for testing
-    const exec = execFunc || nodeExec;
-    this.execAsync = promisify(exec) as unknown as ExecAsyncFunction;
+  // This tool is purely informational and creates SimulatorInfo instances as needed
+  // Unlike operational tools, it doesn't maintain a Devices instance
+  
+  constructor() {
+    // No dependencies - SimulatorInfo is created on demand in execute()
   }
 
   getToolDefinition() {
@@ -61,58 +55,23 @@ export class ListSimulatorsTool implements IListSimulatorsTool {
     
     logger.debug({ showAll, platform }, 'Listing simulators');
     
-    const devices = await this.listSimulators(showAll, platform);
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(devices, null, 2)
-        }
-      ]
-    };
-  }
-
-  /**
-   * List all available simulators, optionally filtered by platform
-   */
-  private async listSimulators(showAll = false, platform?: Platform): Promise<SimulatorDevice[]> {
     try {
-      const { stdout } = await this.execAsync('xcrun simctl list devices --json');
-      const data = JSON.parse(stdout);
+      // ListSimulatorsTool is informational, so we use SimulatorInfo directly
+      // rather than Devices which returns operational SimulatorDevice instances
+      const simulatorInfo = new SimulatorInfo();
+      const devices = await simulatorInfo.list(platform, showAll);
       
-      const devices: SimulatorDevice[] = [];
-      for (const [runtime, deviceList] of Object.entries(data.devices)) {
-        // Filter by platform if specified
-        if (platform) {
-          const runtimeLower = runtime.toLowerCase();
-          const platformLower = platform.toLowerCase();
-          
-          // Skip if runtime doesn't match platform
-          if (!runtimeLower.includes(platformLower)) {
-            continue;
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(devices, null, 2)
           }
-        }
-
-        for (const device of deviceList as any[]) {
-          if (!showAll && !device.isAvailable) {
-            continue;
-          }
-          devices.push({
-            udid: device.udid,
-            name: device.name,
-            state: device.state,
-            deviceTypeIdentifier: device.deviceTypeIdentifier,
-            runtime: runtime.replace('com.apple.CoreSimulator.SimRuntime.', ''),
-            isAvailable: device.isAvailable
-          });
-        }
-      }
-
-      return devices;
-    } catch (error) {
-      logger.error({ error }, 'Failed to list simulators');
-      throw new Error(`Failed to list simulators: ${error}`);
+        ]
+      };
+    } catch (error: any) {
+      logger.error({ error: error.message }, 'Failed to list simulators');
+      throw new Error(`Failed to list simulators: ${error.message}`);
     }
   }
 }

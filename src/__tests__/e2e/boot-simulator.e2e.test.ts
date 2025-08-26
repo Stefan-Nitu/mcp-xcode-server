@@ -38,6 +38,8 @@ describe('BootSimulatorTool E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     await cleanupClientAndTransport(client, transport);
   });
 

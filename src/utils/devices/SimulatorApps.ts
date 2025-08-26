@@ -34,15 +34,31 @@ export class SimulatorApps {
    * Uninstall an app from the simulator
    */
   async uninstall(bundleId: string, deviceId?: string): Promise<void> {
-    let command = `xcrun simctl uninstall `;
+    // First check if the app exists
+    let listCommand = `xcrun simctl listapps `;
     if (deviceId) {
-      command += `"${deviceId}" `;
+      listCommand += `"${deviceId}"`;
     } else {
-      command += 'booted ';
+      listCommand += 'booted';
     }
-    command += `"${bundleId}"`;
-
+    
     try {
+      const { stdout: listOutput } = await execAsync(listCommand);
+      
+      // Check if the bundle ID exists in the output
+      if (!listOutput.includes(bundleId)) {
+        throw new Error(`App with bundle ID '${bundleId}' is not installed`);
+      }
+      
+      // Now uninstall the app
+      let command = `xcrun simctl uninstall `;
+      if (deviceId) {
+        command += `"${deviceId}" `;
+      } else {
+        command += 'booted ';
+      }
+      command += `"${bundleId}"`;
+      
       await execAsync(command);
       logger.debug({ bundleId, deviceId }, 'App uninstalled successfully');
     } catch (error: any) {

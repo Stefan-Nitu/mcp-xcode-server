@@ -32,11 +32,14 @@ describe('RunSwiftPackageTool E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
   });
 
   afterAll(() => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
     TestEnvironmentCleaner.killMacOSApp('TestSwiftPackageXCTest');
   });
 

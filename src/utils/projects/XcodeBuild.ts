@@ -3,8 +3,9 @@ import { spawn } from 'child_process';
 import { createModuleLogger } from '../../logger.js';
 import { Platform } from '../../types.js';
 import { PlatformHandler } from '../../platformHandler.js';
-import { existsSync } from 'fs';
-import { TestOutputParser } from '../testParsing/TestOutputParser.js';
+import { existsSync, mkdirSync, rmSync } from 'fs';
+import path from 'path';
+import { config } from '../../config.js';
 
 const logger = createModuleLogger('XcodeBuild');
 
@@ -219,6 +220,22 @@ export class XcodeBuild {
       testTarget
     } = options;
     
+    // Create a unique result bundle path in DerivedData
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const derivedDataPath = config.getDerivedDataPath(projectPath);
+    const resultBundlePath = path.join(
+      derivedDataPath,
+      'Logs',
+      'Test',
+      `Test-${scheme || 'tests'}-${timestamp}.xcresult`
+    );
+    
+    // Ensure result directory exists
+    const resultDir = path.dirname(resultBundlePath);
+    if (!existsSync(resultDir)) {
+      mkdirSync(resultDir, { recursive: true });
+    }
+    
     const projectFlag = isWorkspace ? '-workspace' : '-project';
     let command = `xcodebuild ${projectFlag} "${projectPath}"`;
     
@@ -248,6 +265,9 @@ export class XcodeBuild {
     // Disable parallel testing to avoid timeouts and multiple simulator instances
     command += ' -parallel-testing-enabled NO';
     
+    // Add result bundle path
+    command += ` -resultBundlePath "${resultBundlePath}"`;
+    
     command += ' test';
     
     logger.debug({ command }, 'Test command');
@@ -258,7 +278,6 @@ export class XcodeBuild {
       let output = '';
       let lastProgressTime = Date.now();
       const progressInterval = 10000; // Log progress every 10 seconds
-      const parser = new TestOutputParser();
       
       // Stream stdout
       child.stdout.on('data', (data) => {
@@ -308,17 +327,96 @@ export class XcodeBuild {
       });
       
       // Handle completion
-      child.on('close', (code) => {
-        // Use the unified parser to analyze test results
-        const testResult = parser.parse(output);
+      child.on('close', async (code) => {
+        // Parse the xcresult bundle for accurate test results
+        let testResult = { passed: 0, failed: 0, success: false, failingTests: undefined as string[] | undefined };
         
-        logger.info({ projectPath, ...testResult, exitCode: code }, 'Tests completed');
+        try {
+          // Use xcresulttool to get structured test results
+          const { execSync } = require('child_process');
+          const testReportJson = execSync(
+            `xcrun xcresulttool get test-report --format json --path "${resultBundlePath}"`,
+            { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 }
+          );
+          
+          const testReport = JSON.parse(testReportJson);
+          
+          // Parse the test report to count passed/failed tests
+          let totalPassed = 0;
+          let totalFailed = 0;
+          const failingTestNames: string[] = [];
+          
+          // Navigate through the test report structure
+          if (testReport.tests) {
+            const countTests = (tests: any[]): void => {
+              for (const test of tests) {
+                if (test.subtests) {
+                  // This is a test suite, recurse into it
+                  countTests(test.subtests);
+                } else if (test.testStatus) {
+                  // This is an actual test
+                  if (test.testStatus === 'Success') {
+                    totalPassed++;
+                  } else if (test.testStatus === 'Failure' || test.testStatus === 'Expected Failure') {
+                    totalFailed++;
+                    // Extract test name
+                    if (test.identifier) {
+                      // Remove the target prefix if present (e.g., "TestTarget/TestClass/testMethod" -> "testMethod")
+                      const parts = test.identifier.split('/');
+                      failingTestNames.push(parts[parts.length - 1] || test.identifier);
+                    }
+                  }
+                }
+              }
+            };
+            
+            countTests(testReport.tests);
+          }
+          
+          testResult = {
+            passed: totalPassed,
+            failed: totalFailed,
+            success: totalFailed === 0 && code === 0,
+            failingTests: failingTestNames.length > 0 ? failingTestNames : undefined
+          };
+          
+          logger.info({ 
+            projectPath, 
+            ...testResult, 
+            exitCode: code,
+            resultBundlePath 
+          }, 'Tests completed (parsed from xcresult)');
+          
+        } catch (parseError: any) {
+          logger.error({ 
+            error: parseError.message,
+            resultBundlePath 
+          }, 'Failed to parse xcresult bundle');
+          
+          // If xcresulttool fails, we can't get accurate results
+          // Return basic failure info based on exit code
+          testResult = {
+            passed: 0,
+            failed: code === 0 ? 0 : 1,
+            success: code === 0,
+            failingTests: undefined
+          };
+        }
         
         const result = {
           ...testResult,
-          success: code === 0,
+          success: code === 0 && testResult.failed === 0,
           output
         };
+        
+        // Clean up the result bundle if tests passed (keep failed results for debugging)
+        if (result.success) {
+          try {
+            rmSync(resultBundlePath, { recursive: true, force: true });
+          } catch {
+            // Ignore cleanup errors
+          }
+        }
         
         resolve(result);
       });

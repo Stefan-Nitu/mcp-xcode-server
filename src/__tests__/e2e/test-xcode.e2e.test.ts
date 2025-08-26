@@ -316,9 +316,13 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
+      console.log('=== TEST OUTPUT ===');
+      console.log(text.substring(0, 500));
+      console.log('===================');
       // Should report test failure since we have testFailingTest
       expect(text).toContain('Tests failed');
-      expect(text).toMatch(/1 passed, 1 failed/);
+      // We have 6 XCTest UI tests (all passing) + 1 Swift Testing test passing + 1 Swift Testing test failing = 7 passed, 1 failed
+      expect(text).toMatch(/7 passed, 1 failed/);
       expect(text).toContain('Failing tests:');
       expect(text).toContain('testFailingTest');
     }, 180000);

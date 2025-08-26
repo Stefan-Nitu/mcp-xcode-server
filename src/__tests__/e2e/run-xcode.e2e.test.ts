@@ -40,6 +40,10 @@ describe('RunXcodeTool E2E Tests', () => {
     projectManager.cleanup();
   });
 
+  afterAll(() => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+  });
+
   /**
    * Helper to get available simulator
    */

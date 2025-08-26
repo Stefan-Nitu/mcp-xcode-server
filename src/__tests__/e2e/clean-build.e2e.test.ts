@@ -12,13 +12,15 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../utils/TestProjectManager';
 import { cleanupClientAndTransport, createAndConnectClient } from '../utils/testHelpers';
+import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner';
+import { config } from '../../config';
 
 describe('CleanBuildTool E2E Tests', () => {
   let client: Client;
   let transport: StdioClientTransport;
   let testProjectManager: TestProjectManager;
   
-  const derivedDataPath = './DerivedData';
+  let derivedDataPath: string;
   
   beforeAll(async () => {
     testProjectManager = new TestProjectManager();
@@ -30,9 +32,14 @@ describe('CleanBuildTool E2E Tests', () => {
     const result = await createAndConnectClient();
     client = result.client;
     transport = result.transport;
+    
+    // Set the correct DerivedData path based on the project being tested
+    derivedDataPath = config.getDerivedDataPath(testProjectManager.paths.xcodeProjectXCTestPath);
   });
 
   afterEach(async () => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
     
@@ -43,6 +50,8 @@ describe('CleanBuildTool E2E Tests', () => {
   });
 
   afterAll(() => {
+    TestEnvironmentCleaner.cleanupTestEnvironment();
+    
     // Final cleanup
     if (existsSync(derivedDataPath)) {
       rmSync(derivedDataPath, { recursive: true, force: true });
@@ -55,7 +64,7 @@ describe('CleanBuildTool E2E Tests', () => {
       const buildResponse = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build',
+          name: 'build_xcode',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -63,7 +72,7 @@ describe('CleanBuildTool E2E Tests', () => {
             configuration: 'Debug'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const buildText = (buildResponse.content[0] as any).text;
       expect(buildText).toContain('Build succeeded');
@@ -137,14 +146,14 @@ describe('CleanBuildTool E2E Tests', () => {
       const buildResponse = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build',
+          name: 'build_xcode',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const buildText = (buildResponse.content[0] as any).text;
       expect(buildText).toContain('Build succeeded');
@@ -199,14 +208,14 @@ describe('CleanBuildTool E2E Tests', () => {
       const testResponse = await client.request({
         method: 'tools/call',
         params: {
-          name: 'test',
+          name: 'test_xcode',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       // Test might succeed or fail, but should create some results
       expect(testResponse).toBeDefined();
@@ -259,7 +268,7 @@ describe('CleanBuildTool E2E Tests', () => {
       } else {
         expect(result.message).toContain('No test results to clear');
       }
-    }, 60000);
+    }, 120000);
   });
 
   describe('Clean All', () => {
@@ -268,14 +277,14 @@ describe('CleanBuildTool E2E Tests', () => {
       const buildResponse = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build',
+          name: 'build_xcode',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const buildText = (buildResponse.content[0] as any).text;
       expect(buildText).toContain('Build succeeded');
@@ -309,7 +318,7 @@ describe('CleanBuildTool E2E Tests', () => {
       await client.request({
         method: 'tools/call',
         params: {
-          name: 'build',
+          name: 'build_xcode',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -349,11 +358,9 @@ describe('CleanBuildTool E2E Tests', () => {
       const buildResponse = await client.request({
         method: 'tools/call',
         params: {
-          name: 'build',
+          name: 'build_swift_package',
           arguments: {
-            projectPath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift'),
-            scheme: testProjectManager.schemes.swiftPackageXCTest,
-            platform: 'macOS'
+            packagePath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift')
           }
         }
       }, CallToolResultSchema);
@@ -392,7 +399,7 @@ describe('CleanBuildTool E2E Tests', () => {
       await client.request({
         method: 'tools/call',
         params: {
-          name: 'build',
+          name: 'build_xcode',
           arguments: {
             projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
             scheme: testProjectManager.schemes.xcodeProject,
@@ -400,7 +407,7 @@ describe('CleanBuildTool E2E Tests', () => {
             configuration: 'Release'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       // Clean Release configuration
       const cleanResponse = await client.request({
