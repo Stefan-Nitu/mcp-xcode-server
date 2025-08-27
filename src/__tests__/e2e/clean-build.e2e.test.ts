@@ -215,7 +215,7 @@ describe('CleanBuildTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema, { timeout: 180000 });
+      }, CallToolResultSchema, { timeout: 190000 });
       
       // Test might succeed or fail, but should create some results
       expect(testResponse).toBeDefined();
@@ -268,7 +268,7 @@ describe('CleanBuildTool E2E Tests', () => {
       } else {
         expect(result.message).toContain('No test results to clear');
       }
-    }, 120000);
+    }, 200000);
   });
 
   describe('Clean All', () => {

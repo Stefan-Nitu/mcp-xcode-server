@@ -251,7 +251,8 @@ describe('BuildXcodeTool E2E Tests', () => {
         params: {
           name: 'build_xcode',
           arguments: {
-            projectPath: '/non/existent/project.xcodeproj'
+            projectPath: '/non/existent/project.xcodeproj',
+            scheme: 'NonExistentScheme'
           }
         }
       }, CallToolResultSchema);

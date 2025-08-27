@@ -12,7 +12,17 @@ import * as platformHandler from '../../platformHandler.js';
 
 // Mock the modules
 jest.mock('fs', () => ({
-  existsSync: jest.fn()
+  existsSync: jest.fn(),
+  mkdirSync: jest.fn(),
+  readdirSync: jest.fn(() => []),
+  statSync: jest.fn(() => ({ mtime: new Date() })),
+  rmSync: jest.fn(),
+  writeFileSync: jest.fn()
+}));
+
+jest.mock('os', () => ({
+  homedir: jest.fn(() => '/mocked/home'),
+  hostname: jest.fn(() => 'test-host')
 }));
 
 jest.mock('../../platformHandler.js', () => ({
@@ -119,8 +129,6 @@ describe('TestXcodeTool Unit Tests', () => {
       });
 
       expect(result.content[0].text).toContain('Tests failed: 8 passed, 2 failed');
-      // The output is now in the Test Results section
-      expect(result.content[0].text).toContain('Test Results:');
     });
 
     test('should boot simulator for iOS tests with deviceId', async () => {
@@ -215,7 +223,7 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: Project path does not exist');
+      expect(result.content[0].text).toBe('❌ Project not found: /non/existent/project.xcodeproj');
     });
 
     test('should handle non-Xcode project', async () => {
@@ -252,9 +260,16 @@ describe('TestXcodeTool Unit Tests', () => {
       mockXcode.open.mockResolvedValue(mockXcodeProject);
       mockTest.mockResolvedValue({
         success: false,
-        output: 'Build failed: Missing dependency',
+        output: 'error: no such module \'Foundation\'',
         passed: 0,
-        failed: 0
+        failed: 0,
+        buildErrors: [{
+          type: 'dependency',
+          title: 'Missing dependency',
+          details: 'Module \'Foundation\' not found',
+          suggestion: 'Run "swift package resolve" or check your Package.swift/Podfile'
+        }],
+        logPath: '/path/to/log'
       });
 
       const result = await tool.execute({
@@ -262,7 +277,8 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: Build failed: Missing dependency');
+      expect(result.content[0].text).toContain('Missing dependency');
+      expect(result.content[0].text).toContain('Module \'Foundation\' not found');
     });
 
     test('should handle test method throwing error', async () => {
@@ -270,9 +286,7 @@ describe('TestXcodeTool Unit Tests', () => {
       mockNeedsSimulator.mockReturnValue(false);
       mockXcode.open.mockResolvedValue(mockXcodeProject);
       
-      const error = new Error('Unexpected test error') as any;
-      error.stdout = 'Build output...';
-      error.stderr = 'Error details...';
+      const error = new Error('Unexpected test error');
       mockTest.mockRejectedValue(error);
 
       const result = await tool.execute({
@@ -280,8 +294,7 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: Unexpected test error');
-      expect(result.content[0].text).toContain('Build output...');
+      expect(result.content[0].text).toBe('❌ Test execution failed: Unexpected test error');
     });
   });
 
@@ -341,7 +354,10 @@ describe('TestXcodeTool Unit Tests', () => {
         output: 'Test Case \'-[TestProjectXCTestTests.TestProjectXCTestTests testFailingTest]\' failed',
         passed: 7,
         failed: 1,
-        failingTests: ['testFailingTest', 'testAnotherFailure']
+        failingTests: [
+          { identifier: 'TestProjectXCTestTests.testFailingTest', reason: 'XCTAssertEqual failed: ("1") is not equal to ("2")' },
+          { identifier: 'TestProjectXCTestTests.testAnotherFailure', reason: 'XCTAssertTrue failed' }
+        ]
       });
 
       const result = await tool.execute({
@@ -352,8 +368,10 @@ describe('TestXcodeTool Unit Tests', () => {
 
       expect(result.content[0].text).toContain('Tests failed: 7 passed, 1 failed');
       expect(result.content[0].text).toContain('Failing tests:');
-      expect(result.content[0].text).toContain('- testFailingTest');
-      expect(result.content[0].text).toContain('- testAnotherFailure');
+      expect(result.content[0].text).toContain('• TestProjectXCTestTests.testFailingTest');
+      expect(result.content[0].text).toContain('XCTAssertEqual failed: ("1") is not equal to ("2")');
+      expect(result.content[0].text).toContain('• TestProjectXCTestTests.testAnotherFailure');
+      expect(result.content[0].text).toContain('XCTAssertTrue failed');
     });
   });
 });

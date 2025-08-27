@@ -10,6 +10,8 @@ import { config } from '../config.js';
 import { execAsync } from '../utils.js';
 import { existsSync } from 'fs';
 import path from 'path';
+import { formatCompileErrors } from '../utils/errorFormatting.js';
+import { formatBuildErrors } from '../utils/buildErrorParsing.js';
 
 const logger = createModuleLogger('RunXcodeTool');
 
@@ -128,16 +130,46 @@ export class RunXcodeTool {
       // Use config to get DerivedData path
       const derivedDataPath = config.getDerivedDataPath(projectPath);
       
-      const buildResult = await project.buildProject({
-        scheme,
-        configuration,
-        platform,
-        deviceId: bootedDeviceId,
-        derivedDataPath
-      });
-      
-      if (!buildResult.success) {
-        throw new Error(buildResult.output);
+      let buildResult;
+      try {
+        buildResult = await project.buildProject({
+          scheme,
+          configuration,
+          platform,
+          deviceId: bootedDeviceId,
+          derivedDataPath
+        });
+      } catch (buildError: any) {
+        // Check if we have compile errors in the error object
+        if (buildError.compileErrors && buildError.compileErrors.length > 0) {
+          const { summary, errorList } = formatCompileErrors(buildError.compileErrors);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${summary}\n${errorList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${buildError.logPath}`
+              }
+            ]
+          };
+        }
+        
+        // Check if we have other build errors (scheme, signing, provisioning, etc.)
+        if (buildError.buildErrors && buildError.buildErrors.length > 0) {
+          const buildErrorText = formatBuildErrors(buildError.buildErrors);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${buildErrorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${buildError.logPath}`
+              }
+            ]
+          };
+        }
+        
+        // Re-throw if not a handled error type
+        throw buildError;
       }
       
       // Get the app path from build result or find it

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		F91945D3F4DD5DCAE9C490EF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407EE87CF9BB35A9026D4B5B /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		F869856C2E52501D00123C68 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		407EE87CF9BB35A9026D4B5B /* ContentView.swift */ = {isa = PBXFileReference; name = ContentView.swift; path = "/Users/stefan/Projects/mcp-servers/mcp-xcode-server/test_artifacts/TestProjectXCTest/TestProjectXCTest/ContentView.swift"; sourceTree = "<group>"; };
 		F869855B2E52501A00123C68 /* TestProjectXCTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TestProjectXCTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F869856B2E52501D00123C68 /* TestProjectXCTestTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestProjectXCTestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F86985752E52501D00123C68 /* TestProjectXCTestUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestProjectXCTestUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -79,6 +84,7 @@
 				F869856E2E52501D00123C68 /* TestProjectXCTestTests */,
 				F86985782E52501D00123C68 /* TestProjectXCTestUITests */,
 				F869855C2E52501A00123C68 /* Products */,
+				407EE87CF9BB35A9026D4B5B /* ContentView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -236,6 +242,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F91945D3F4DD5DCAE9C490EF /* ContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

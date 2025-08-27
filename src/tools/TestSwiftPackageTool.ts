@@ -4,6 +4,8 @@ import { safePathSchema } from './validators.js';
 import { Xcode } from '../utils/projects/Xcode.js';
 import { SwiftPackage } from '../utils/projects/SwiftPackage.js';
 import { XcodeError, XcodeErrorType } from '../utils/projects/XcodeErrors.js';
+import { formatCompileErrors } from '../utils/errorFormatting.js';
+import { formatBuildErrors } from '../utils/buildErrorParsing.js';
 import path from 'path';
 
 const logger = createModuleLogger('TestSwiftPackageTool');
@@ -74,57 +76,70 @@ export class TestSwiftPackageTool {
         configuration
       });
       
-      if (!testResult.success && testResult.failed === 0 && testResult.passed === 0 && 
-          testResult.output.toLowerCase().includes('error')) {
-        // Build or setup error, not test failures
-        // But allow cases where filter matched no tests
-        throw new Error(testResult.output);
+      // Check for compile errors first
+      if (testResult.compileErrors && testResult.compileErrors.length > 0) {
+        const { summary, errorList } = formatCompileErrors(testResult.compileErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${summary}\n${errorList}\n\nPackage: ${path.basename(project.path)}\nConfiguration: ${configuration}\n\n📁 Full logs saved to: ${testResult.logPath}`
+            }
+          ]
+        };
+      }
+      
+      // Check for build errors
+      if (testResult.buildErrors && testResult.buildErrors.length > 0) {
+        const errorText = formatBuildErrors(testResult.buildErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${errorText}\n\nPackage: ${path.basename(project.path)}\nConfiguration: ${configuration}\n\n📁 Full logs saved to: ${testResult.logPath}`
+            }
+          ]
+        };
+      }
+      
+      if (!testResult.success && testResult.failed === 0 && testResult.passed === 0) {
+        // Other non-test failures (configuration errors, etc) - extract error message from output
+        const output = testResult.output || '';
+        let errorMessage = '❌ Test execution failed';
+        
+        // Try to extract the actual error message
+        if (output.includes('error:')) {
+          const errorMatch = output.match(/error:\s*(.+?)(?:\n|$)/);
+          if (errorMatch) {
+            errorMessage = `❌ Test execution failed: ${errorMatch[1]}`;
+          }
+        }
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${errorMessage}\n\nPackage: ${path.basename(project.path)}\nConfiguration: ${configuration}\n\n📁 Full logs saved to: ${testResult.logPath}`
+            }
+          ]
+        };
       }
       
       // Format the results
-      const summary = `Tests ${testResult.success ? 'passed' : 'failed'}: ${testResult.passed} passed, ${testResult.failed} failed`;
+      const icon = testResult.success ? '✅' : '❌';
+      const summary = `${icon} Tests ${testResult.success ? 'passed' : 'failed'}: ${testResult.passed} passed, ${testResult.failed} failed`;
+      
       const failingTestsList = testResult.failingTests && testResult.failingTests.length > 0 
-        ? `\nFailing tests:\n${testResult.failingTests.map(t => `  - ${t}`).join('\n')}`
+        ? `\n\n**Failing tests:**\n${testResult.failingTests.map(t => `• ${t.identifier}\n  ${t.reason}`).join('\n\n')}`
         : '';
-      
-      // Extract just the relevant test results from output
-      const lines = testResult.output.split('\n');
-      const relevantLines: string[] = [];
-      let inTestResults = false;
-      
-      for (const line of lines) {
-        // Capture test suite results and failures
-        if (line.includes('Test Suite') || 
-            line.includes('Test Case') ||
-            line.includes('failed') ||
-            line.includes('passed') ||
-            line.includes('** TEST EXECUTE') ||
-            line.includes('error:') ||
-            line.includes('Testing failed:') ||
-            line.includes('Testing cancelled') ||
-            (inTestResults && line.trim())) {
-          relevantLines.push(line);
-          if (line.includes('Test Suite')) {
-            inTestResults = true;
-          }
-        }
-      }
-      
-      // Limit output to last 100 lines if still too long
-      const outputLines = relevantLines.slice(-100);
-      const truncated = relevantLines.length > 100;
       
       return {
         content: [
           {
             type: 'text',
-            text: `${summary}${failingTestsList}
-Package: ${path.basename(project.path)}
-Configuration: ${configuration}
-${filter ? `Filter: ${filter}` : 'All tests'}
-
-Test Results:
-${truncated ? '... (output truncated)\n' : ''}${outputLines.join('\n')}`
+            text: `${summary}${failingTestsList}\n\nPackage: ${path.basename(project.path)}\nConfiguration: ${configuration}\n${filter ? `Filter: ${filter}\n` : ''}\n📁 Full logs saved to: ${testResult.logPath}`
           }
         ]
       };
@@ -132,16 +147,19 @@ ${truncated ? '... (output truncated)\n' : ''}${outputLines.join('\n')}`
       logger.error({ error, packagePath }, 'Swift package tests failed');
       
       // Handle XcodeError with context-specific message
-      let errorMessage = error.message || 'Unknown test error';
+      let displayMessage = '❌ ';
       if (error instanceof XcodeError && error.type === XcodeErrorType.ProjectNotFound) {
-        errorMessage = `No Package.swift found at: ${error.path}`;
+        displayMessage += `No Package.swift found at: ${error.path}`;
+      } else {
+        const errorMessage = error.message || 'Unknown test error';
+        displayMessage += `Test execution failed: ${errorMessage.split('\n')[0]}`;
       }
       
       return {
         content: [
           {
             type: 'text',
-            text: `Test execution failed: ${errorMessage}`
+            text: displayMessage
           }
         ]
       };

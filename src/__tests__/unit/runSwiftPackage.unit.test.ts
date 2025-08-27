@@ -55,9 +55,12 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         configuration: 'Debug',
         arguments: undefined
       });
-      expect(result.content[0].text).toContain('Execution completed: default executable');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Output:\nHello, World!');
+      expect(result.content[0].text).toBe(
+        '✅ Execution completed: default executable\n' +
+        'Configuration: Debug\n\n' +
+        'Output:\n' +
+        'Hello, World!'
+      );
     });
 
     test('should run with release configuration', async () => {
@@ -96,7 +99,12 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         configuration: 'Debug',
         arguments: undefined
       });
-      expect(result.content[0].text).toContain('Execution completed: MyApp');
+      expect(result.content[0].text).toBe(
+        '✅ Execution completed: MyApp\n' +
+        'Configuration: Debug\n\n' +
+        'Output:\n' +
+        'MyApp output'
+      );
     });
 
     test('should pass arguments to executable', async () => {
@@ -186,7 +194,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
       });
 
       expect(result.content[0].text).toBe(
-        'Execution completed: MyApp\n' +
+        '✅ Execution completed: MyApp\n' +
         'Configuration: Release\n\n' +
         'Output:\n' +
         'Program output:\nLine 1\nLine 2\nDone!'
@@ -204,7 +212,12 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toContain('Execution completed: default executable');
+      expect(result.content[0].text).toBe(
+        '✅ Execution completed: default executable\n' +
+        'Configuration: Debug\n\n' +
+        'Output:\n' +
+        'Default output'
+      );
     });
   });
 
@@ -216,7 +229,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/project.xcodeproj'
       });
 
-      expect(result.content[0].text).toBe('Run failed: No Package.swift found at: /test/project.xcodeproj');
+      expect(result.content[0].text).toBe('❌ Run failed: No Package.swift found at: /test/project.xcodeproj');
     });
 
     test('should handle run failure', async () => {
@@ -230,7 +243,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toBe('Run failed: error: no such module \'Foundation\'');
+      expect(result.content[0].text).toBe('❌ Run failed: error: no such module \'Foundation\'');
     });
 
     test('should handle run throwing error', async () => {
@@ -244,7 +257,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toBe('Run failed: Execution failed');
+      expect(result.content[0].text).toBe('❌ Run failed: Execution failed');
     });
 
     test('should handle Xcode.open throwing error', async () => {
@@ -255,7 +268,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/NonExistent'
       });
 
-      expect(result.content[0].text).toBe('Run failed: Package.swift not found');
+      expect(result.content[0].text).toBe('❌ Run failed: Package.swift not found');
     });
 
     test('should handle missing executable', async () => {
@@ -270,7 +283,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         executable: 'NonExistent'
       });
 
-      expect(result.content[0].text).toBe('Run failed: error: no executable product named \'NonExistent\'');
+      expect(result.content[0].text).toBe('❌ Run failed: error: no executable product named \'NonExistent\'');
     });
   });
 

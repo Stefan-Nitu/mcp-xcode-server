@@ -1,11 +1,13 @@
 import { execAsync } from '../../utils.js';
-import { spawn } from 'child_process';
+import { execSync } from 'child_process';
 import { createModuleLogger } from '../../logger.js';
 import { Platform } from '../../types.js';
 import { PlatformHandler } from '../../platformHandler.js';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
 import { config } from '../../config.js';
+import { LogManager } from '../LogManager.js';
+import { parseBuildErrors, formatBuildErrors, BuildError } from '../buildErrorParsing.js';
 
 const logger = createModuleLogger('XcodeBuild');
 
@@ -24,6 +26,14 @@ export interface TestOptions {
   deviceId?: string;
   testFilter?: string;
   testTarget?: string;
+}
+
+export interface CompileError {
+  file: string;
+  line: number;
+  column: number;
+  message: string;
+  type: 'error' | 'warning';
 }
 
 /**
@@ -108,7 +118,7 @@ export class XcodeBuild {
     projectPath: string, 
     isWorkspace: boolean,
     options: BuildOptions = {}
-  ): Promise<{ success: boolean; output: string; appPath?: string }> {
+  ): Promise<{ success: boolean; output: string; appPath?: string; logPath?: string; errors?: CompileError[] }> {
     const {
       scheme,
       configuration = 'Debug',
@@ -142,12 +152,16 @@ export class XcodeBuild {
     
     logger.debug({ command }, 'Build command');
     
+    let output = '';
+    let exitCode = 0;
+    const projectName = path.basename(projectPath, path.extname(projectPath));
+    
     try {
       const { stdout, stderr } = await execAsync(command, { 
         maxBuffer: 50 * 1024 * 1024 
       });
       
-      const output = stdout + (stderr ? `\n${stderr}` : '');
+      output = stdout + (stderr ? `\n${stderr}` : '');
       
       // Try to find the built app using find command (more reliable than parsing output)
       let appPath: string | undefined;
@@ -174,32 +188,77 @@ export class XcodeBuild {
       
       logger.info({ projectPath, scheme, configuration, platform }, 'Build succeeded');
       
+      // Save the build output to logs
+      const logPath = LogManager.saveLog('build', output, projectName, {
+        scheme,
+        configuration,
+        platform,
+        exitCode,
+        command
+      });
+      
       return {
         success: true,
         output,
-        appPath
+        appPath,
+        logPath
       };
     } catch (error: any) {
       logger.error({ error: error.message, projectPath }, 'Build failed');
       
-      // Return more detailed error information
-      const stdout = error.stdout || '';
-      const stderr = error.stderr || '';
-      const errorMessage = error.message || 'Unknown build error';
+      output = (error.stdout || '') + (error.stderr ? `\n${error.stderr}` : '');
+      exitCode = error.code || 1;
       
-      // Prefer stderr if it has the actual error details, otherwise use stdout
-      let detailedError: string;
-      if (stderr && stderr.includes('xcodebuild: error')) {
-        detailedError = stderr;
-      } else if (stdout && stdout.includes('xcodebuild')) {
-        detailedError = stdout;
-      } else if (stderr) {
-        detailedError = stderr;
-      } else {
-        detailedError = errorMessage;
+      // Parse compile errors and warnings from output
+      const errors: Array<{ file: string; line: number; column: number; message: string; type: 'error' | 'warning' }> = [];
+      const lines = output.split('\n');
+      const errorRegex = /^(.+?):(\d+):(\d+): (error|warning): (.+)$/;
+      const seenErrors = new Set<string>();
+      
+      for (const line of lines) {
+        const match = line.match(errorRegex);
+        if (match) {
+          // Create a unique key for deduplication (same file, line, column, message)
+          const errorKey = `${match[1]}:${match[2]}:${match[3]}:${match[5]}`;
+          if (!seenErrors.has(errorKey)) {
+            seenErrors.add(errorKey);
+            errors.push({
+              file: match[1],
+              line: parseInt(match[2], 10),
+              column: parseInt(match[3], 10),
+              type: match[4] as 'error' | 'warning',
+              message: match[5]
+            });
+          }
+        }
       }
       
-      throw new Error(detailedError);
+      // Save the build output to logs
+      const logPath = LogManager.saveLog('build', output, projectName, {
+        scheme,
+        configuration,
+        platform,
+        exitCode,
+        command,
+        errors
+      });
+      
+      // Save debug data with parsed errors
+      if (errors.length > 0) {
+        LogManager.saveDebugData('build-errors', errors, projectName);
+      }
+      
+      // Also check for non-compile build errors
+      const buildErrors = parseBuildErrors(output);
+      
+      // Create error with both compile and build errors
+      const errorWithDetails = new Error('Build failed') as any;
+      errorWithDetails.output = output;
+      errorWithDetails.compileErrors = errors; // Compile errors
+      errorWithDetails.buildErrors = buildErrors; // Other build errors
+      errorWithDetails.logPath = logPath;
+      
+      throw errorWithDetails;
     }
   }
   
@@ -210,7 +269,16 @@ export class XcodeBuild {
     projectPath: string,
     isWorkspace: boolean,
     options: TestOptions = {}
-  ): Promise<{ success: boolean; output: string; passed: number; failed: number; failingTests?: string[] }> {
+  ): Promise<{ 
+    success: boolean; 
+    output: string; 
+    passed: number; 
+    failed: number; 
+    failingTests?: Array<{ identifier: string; reason: string }>;
+    compileErrors?: CompileError[];
+    buildErrors?: BuildError[];
+    logPath: string;
+  }> {
     const {
       scheme,
       configuration = 'Debug',
@@ -223,7 +291,7 @@ export class XcodeBuild {
     // Create a unique result bundle path in DerivedData
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const derivedDataPath = config.getDerivedDataPath(projectPath);
-    const resultBundlePath = path.join(
+    let resultBundlePath = path.join(
       derivedDataPath,
       'Logs',
       'Test',
@@ -272,113 +340,265 @@ export class XcodeBuild {
     
     logger.debug({ command }, 'Test command');
     
-    // Use spawn for streaming output to provide progress updates
-    return new Promise((resolve, reject) => {
-      const child = spawn('sh', ['-c', command]);
-      let output = '';
-      let lastProgressTime = Date.now();
-      const progressInterval = 10000; // Log progress every 10 seconds
-      
-      // Stream stdout
-      child.stdout.on('data', (data) => {
-        const chunk = data.toString();
-        output += chunk;
-        
-        // Log progress for long-running tests
-        const now = Date.now();
-        if (now - lastProgressTime > progressInterval) {
-          logger.info('Tests still running... (preventing timeout)');
-          lastProgressTime = now;
-        }
-        
-        // Parse test progress
-        if (chunk.includes('Testing started')) {
-          logger.info('🚀 Tests starting...');
-        }
-        if (chunk.includes('Test suite') && chunk.includes('started')) {
-          const match = chunk.match(/Test suite '([^']+)'/);
-          if (match) {
-            logger.info({ suite: match[1] }, '📦 Test suite started');
-          }
-        }
-        if (chunk.includes('Test case') && chunk.includes('passed')) {
-          const match = chunk.match(/Test case '([^']+)'/);
-          if (match) {
-            logger.debug({ test: match[1] }, '✅ Test passed');
-          }
-        }
-        if (chunk.includes('Test case') && chunk.includes('failed')) {
-          const match = chunk.match(/Test case '([^']+)'/);
-          if (match) {
-            logger.warn({ test: match[1] }, '❌ Test failed');
-          }
-        }
+    // Use execAsync instead of spawn to ensure the xcresult is fully written when we get the result
+    let output = '';
+    let code = 0;
+    
+    try {
+      logger.info('Running tests...');
+      const { stdout, stderr } = await execAsync(command, {
+        maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large test outputs
+        timeout: 600000 // 10 minute timeout for tests
       });
       
-      // Stream stderr
-      child.stderr.on('data', (data) => {
-        const chunk = data.toString();
-        output += '\n' + chunk;
-        
-        // xcodebuild outputs some normal progress to stderr, don't treat as error
-        if (chunk.includes('xcodebuild: error')) {
-          logger.error({ error: chunk.trim() }, 'Build/test error');
-        }
-      });
-      
-      // Handle completion
-      child.on('close', async (code) => {
-        // Parse the xcresult bundle for accurate test results
-        let testResult = { passed: 0, failed: 0, success: false, failingTests: undefined as string[] | undefined };
-        
-        try {
-          // Use xcresulttool to get structured test results
-          const { execSync } = require('child_process');
-          const testReportJson = execSync(
-            `xcrun xcresulttool get test-report --format json --path "${resultBundlePath}"`,
-            { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 }
-          );
+      output = stdout + (stderr ? '\n' + stderr : '');
+    } catch (error: any) {
+      // Test failure is expected, capture the output
+      output = (error.stdout || '') + (error.stderr ? '\n' + error.stderr : '');
+      code = error.code || 1;
+      logger.debug({ code }, 'Tests completed with failures');
+    }
+    
+    // Check for compile errors first
+    const errorRegex = /^(.+?):(\d+):(\d+): (error|warning): (.+)$/gm;
+    const compileErrors: Array<{ file: string; line: number; column: number; message: string; type: 'error' | 'warning' }> = [];
+    const seenErrors = new Set<string>();
+    
+    let match;
+    while ((match = errorRegex.exec(output)) !== null) {
+      // Create a unique key for deduplication (same file, line, column, message)
+      const errorKey = `${match[1]}:${match[2]}:${match[3]}:${match[5]}`;
+      if (!seenErrors.has(errorKey)) {
+        seenErrors.add(errorKey);
+        compileErrors.push({
+          file: match[1],
+          line: parseInt(match[2], 10),
+          column: parseInt(match[3], 10),
+          type: match[4] as 'error' | 'warning',
+          message: match[5]
+        });
+      }
+    }
+    
+    // Save the full test output to logs
+    const projectName = path.basename(projectPath, path.extname(projectPath));
+    const logPath = LogManager.saveLog('test', output, projectName, {
+      scheme,
+      configuration,
+      platform,
+      exitCode: code,
+      command,
+      compileErrors: compileErrors.length > 0 ? compileErrors : undefined
+    });
+    logger.debug({ logPath }, 'Test output saved to log file');
+    
+    // Parse the xcresult bundle for accurate test results
+    let testResult = { 
+      passed: 0, 
+      failed: 0, 
+      success: false, 
+      failingTests: undefined as Array<{ identifier: string; reason: string }> | undefined,
+      logPath
+    };
+    
+    // Try to extract the actual xcresult path from the output
+    const resultMatch = output.match(/Test session results.*?\n\s*(.+\.xcresult)/);
+    if (resultMatch) {
+      resultBundlePath = resultMatch[1].trim();
+      logger.debug({ resultBundlePath }, 'Found xcresult path in output');
+    }
+    
+    // Also check for the "Writing result bundle at path" message
+    const writingMatch = output.match(/Writing result bundle at path:\s*(.+\.xcresult)/);
+    if (!resultMatch && writingMatch) {
+      resultBundlePath = writingMatch[1].trim();
+      logger.debug({ resultBundlePath }, 'Found xcresult path from Writing message');
+    }
+    
+    try {
+          // Check if xcresult exists and wait for it to be fully written
+          // Wait for the xcresult bundle to be created and fully written (up to 10 seconds)
+          let waitTime = 0;
+          const maxWaitTime = 10000;
+          const checkInterval = 200;
           
-          const testReport = JSON.parse(testReportJson);
+          // Check both that the directory exists and has the Info.plist file
+          const isXcresultReady = () => {
+            if (!existsSync(resultBundlePath)) {
+              return false;
+            }
+            // Check if Info.plist exists inside the bundle, which indicates it's fully written
+            const infoPlistPath = path.join(resultBundlePath, 'Info.plist');
+            return existsSync(infoPlistPath);
+          };
           
-          // Parse the test report to count passed/failed tests
+          while (!isXcresultReady() && waitTime < maxWaitTime) {
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+            waitTime += checkInterval;
+          }
+          
+          if (!isXcresultReady()) {
+            logger.warn({ resultBundlePath, waitTime }, 'xcresult bundle not ready after waiting, using fallback parsing');
+            throw new Error('xcresult bundle not ready');
+          }
+          
+          // Give xcresulttool a moment to prepare for reading
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          logger.debug({ resultBundlePath, waitTime }, 'xcresult bundle is ready');
+          
+          let testReportJson;
           let totalPassed = 0;
           let totalFailed = 0;
-          const failingTestNames: string[] = [];
+          const failingTests: Array<{ identifier: string; reason: string }> = [];
           
-          // Navigate through the test report structure
-          if (testReport.tests) {
-            const countTests = (tests: any[]): void => {
-              for (const test of tests) {
-                if (test.subtests) {
-                  // This is a test suite, recurse into it
-                  countTests(test.subtests);
-                } else if (test.testStatus) {
-                  // This is an actual test
-                  if (test.testStatus === 'Success') {
-                    totalPassed++;
-                  } else if (test.testStatus === 'Failure' || test.testStatus === 'Expected Failure') {
-                    totalFailed++;
-                    // Extract test name
-                    if (test.identifier) {
-                      // Remove the target prefix if present (e.g., "TestTarget/TestClass/testMethod" -> "testMethod")
-                      const parts = test.identifier.split('/');
-                      failingTestNames.push(parts[parts.length - 1] || test.identifier);
+          try {
+            // Try the new format first (Xcode 16+)
+            logger.debug({ resultBundlePath }, 'Attempting to parse xcresult with new format');
+            testReportJson = execSync(
+              `xcrun xcresulttool get test-results summary --path "${resultBundlePath}"`,
+              { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 }
+            );
+            
+            const summary = JSON.parse(testReportJson);
+            logger.debug({ summary: { passedTests: summary.passedTests, failedTests: summary.failedTests } }, 'Got summary from xcresulttool');
+            
+            // The summary counts are not reliable for mixed XCTest/Swift Testing
+            // We'll count from the detailed test nodes instead
+            
+            // Always get the detailed tests to count accurately
+            try {
+                const testsJson = execSync(
+                  `xcrun xcresulttool get test-results tests --path "${resultBundlePath}"`,
+                  { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 }
+                );
+                const testsData = JSON.parse(testsJson);
+                
+                // Helper function to count tests and extract failing tests with reasons
+                const processTestNodes = (node: any, parentName: string = ''): void => {
+                  if (!node) return;
+                  
+                  // Count test cases (including argument variations)
+                  if (node.nodeType === 'Test Case') {
+                    // Check if this test has argument variations
+                    let hasArguments = false;
+                    if (node.children && Array.isArray(node.children)) {
+                      for (const child of node.children) {
+                        if (child.nodeType === 'Arguments') {
+                          hasArguments = true;
+                          // Each argument variation is a separate test
+                          if (child.result === 'Passed') {
+                            totalPassed++;
+                          } else if (child.result === 'Failed') {
+                            totalFailed++;
+                          }
+                        }
+                      }
+                    }
+                    
+                    // If no arguments, count the test case itself
+                    if (!hasArguments) {
+                      if (node.result === 'Passed') {
+                        totalPassed++;
+                      } else if (node.result === 'Failed') {
+                        totalFailed++;
+                        
+                        // Extract failure information
+                        let testName = node.nodeIdentifier || node.name || parentName;
+                        let failureReason = '';
+                        
+                        // Look for failure message in children
+                        if (node.children && Array.isArray(node.children)) {
+                          for (const child of node.children) {
+                            if (child.nodeType === 'Failure Message') {
+                              failureReason = child.details || child.name || 'Test failed';
+                              break;
+                            }
+                          }
+                        }
+                        
+                        // Add test as an object with identifier and reason
+                        failingTests.push({
+                          identifier: testName,
+                          reason: failureReason || 'Test failed (no details available)'
+                        });
+                      }
+                    }
+                  }
+                  
+                  // Recurse through children
+                  if (node.children && Array.isArray(node.children)) {
+                    for (const child of node.children) {
+                      processTestNodes(child, node.name || parentName);
+                    }
+                  }
+                };
+                
+                // Parse the test nodes to count tests and extract failing test names with reasons
+                if (testsData.testNodes && Array.isArray(testsData.testNodes)) {
+                  for (const testNode of testsData.testNodes) {
+                    processTestNodes(testNode);
+                  }
+                }
+            } catch (detailsError: any) {
+              logger.debug({ error: detailsError.message }, 'Could not extract failing test details');
+            }
+            
+          } catch (newFormatError: any) {
+            // Fall back to legacy format
+            logger.debug('Falling back to legacy xcresulttool format');
+            testReportJson = execSync(
+              `xcrun xcresulttool get test-report --legacy --format json --path "${resultBundlePath}"`,
+              { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 }
+            );
+            
+            const testReport = JSON.parse(testReportJson);
+            
+            // Parse the legacy test report structure
+            if (testReport.tests) {
+              const countTests = (tests: any[]): void => {
+                for (const test of tests) {
+                  if (test.subtests) {
+                    // This is a test suite, recurse into it
+                    countTests(test.subtests);
+                  } else if (test.testStatus) {
+                    // This is an actual test
+                    if (test.testStatus === 'Success') {
+                      totalPassed++;
+                    } else if (test.testStatus === 'Failure' || test.testStatus === 'Expected Failure') {
+                      totalFailed++;
+                      // Extract test name and failure details
+                      if (test.identifier) {
+                        const failureReason = test.failureMessage || test.message || 'Test failed (no details available)';
+                        failingTests.push({
+                          identifier: test.identifier,
+                          reason: failureReason
+                        });
+                      }
                     }
                   }
                 }
-              }
-            };
-            
-            countTests(testReport.tests);
+              };
+              
+              countTests(testReport.tests);
+            }
           }
           
           testResult = {
             passed: totalPassed,
             failed: totalFailed,
             success: totalFailed === 0 && code === 0,
-            failingTests: failingTestNames.length > 0 ? failingTestNames : undefined
+            failingTests: failingTests.length > 0 ? failingTests : undefined,
+            logPath
           };
+          
+          // Save debug data for successful parsing
+          LogManager.saveDebugData('test-xcresult-parsed', {
+            passed: totalPassed,
+            failed: totalFailed,
+            failingTests,
+            resultBundlePath
+          }, projectName);
           
           logger.info({ 
             projectPath, 
@@ -390,43 +610,62 @@ export class XcodeBuild {
         } catch (parseError: any) {
           logger.error({ 
             error: parseError.message,
-            resultBundlePath 
+            resultBundlePath,
+            xcresultExists: existsSync(resultBundlePath) 
           }, 'Failed to parse xcresult bundle');
           
-          // If xcresulttool fails, we can't get accurate results
-          // Return basic failure info based on exit code
-          testResult = {
-            passed: 0,
-            failed: code === 0 ? 0 : 1,
-            success: code === 0,
-            failingTests: undefined
-          };
-        }
-        
-        const result = {
-          ...testResult,
-          success: code === 0 && testResult.failed === 0,
-          output
-        };
-        
-        // Clean up the result bundle if tests passed (keep failed results for debugging)
-        if (result.success) {
-          try {
-            rmSync(resultBundlePath, { recursive: true, force: true });
-          } catch {
-            // Ignore cleanup errors
+          // Save debug info about the failure
+          LogManager.saveDebugData('test-xcresult-parse-error', {
+            error: parseError.message,
+            resultBundlePath,
+            exists: existsSync(resultBundlePath)
+          }, projectName);
+          
+          // If xcresulttool fails, try to parse counts from the text output
+          const passedMatch = output.match(/Executed (\d+) tests?, with (\d+) failures?/);
+          if (passedMatch) {
+            const totalTests = parseInt(passedMatch[1], 10);
+            const failures = parseInt(passedMatch[2], 10);
+            testResult = {
+              passed: totalTests - failures,
+              failed: failures,
+              success: failures === 0,
+              failingTests: undefined,
+              logPath
+            };
+          } else {
+            // Last resort fallback
+            testResult = {
+              passed: 0,
+              failed: code === 0 ? 0 : 1,
+              success: code === 0,
+              failingTests: undefined,
+              logPath
+            };
           }
         }
         
-        resolve(result);
-      });
-      
-      // Handle errors
-      child.on('error', (error) => {
-        logger.error({ error: error.message, projectPath }, 'Failed to spawn test process');
-        reject(new Error(`Failed to run tests: ${error.message}`));
-      });
-    });
+    // Parse build errors from output
+    const buildErrors = parseBuildErrors(output);
+    
+    const result = {
+      ...testResult,
+      success: code === 0 && testResult.failed === 0,
+      output,
+      compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
+      buildErrors: buildErrors.length > 0 ? buildErrors : undefined
+    };
+    
+    // Clean up the result bundle if tests passed (keep failed results for debugging)
+    if (result.success) {
+      try {
+        rmSync(resultBundlePath, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+    
+    return result;
   }
   
   /**

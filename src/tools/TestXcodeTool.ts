@@ -7,6 +7,8 @@ import { Devices } from '../utils/devices/Devices.js';
 import { Xcode } from '../utils/projects/Xcode.js';
 import { XcodeProject } from '../utils/projects/XcodeProject.js';
 import { PlatformHandler } from '../platformHandler.js';
+import { formatCompileErrors } from '../utils/errorFormatting.js';
+import { formatBuildErrors } from '../utils/buildErrorParsing.js';
 
 const logger = createModuleLogger('TestXcodeTool');
 
@@ -139,80 +141,84 @@ export class TestXcodeTool {
         testFilter
       });
       
+      // Check for compile errors first
+      if (testResult.compileErrors && testResult.compileErrors.length > 0) {
+        const { summary, errorList } = formatCompileErrors(testResult.compileErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${summary}\n${errorList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${testResult.logPath}`
+            }
+          ]
+        };
+      }
+      
+      // Check for build errors
+      if (testResult.buildErrors && testResult.buildErrors.length > 0) {
+        const errorText = formatBuildErrors(testResult.buildErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${errorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${testResult.logPath}`
+            }
+          ]
+        };
+      }
+      
       if (!testResult.success && testResult.failed === 0 && testResult.passed === 0) {
-        // Build or setup error, not test failures
-        throw new Error(testResult.output);
+        // Other non-test failures (scheme errors, etc)
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `❌ Test execution failed (see logs for details)\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${testResult.logPath}`
+            }
+          ]
+        };
       }
       
       // Format the results
-      const summary = `Tests ${testResult.success ? 'passed' : 'failed'}: ${testResult.passed} passed, ${testResult.failed} failed`;
+      const icon = testResult.success ? '✅' : '❌';
+      const summary = `${icon} Tests ${testResult.success ? 'passed' : 'failed'}: ${testResult.passed} passed, ${testResult.failed} failed`;
+      
       const failingTestsList = testResult.failingTests && testResult.failingTests.length > 0 
-        ? `\nFailing tests:\n${testResult.failingTests.map(t => `  - ${t}`).join('\n')}`
+        ? `\n\n**Failing tests:**\n${testResult.failingTests.map(t => `• ${t.identifier}\n  ${t.reason}`).join('\n\n')}`
         : '';
-      
-      // Extract just the relevant test results from output
-      const lines = testResult.output.split('\n');
-      const relevantLines: string[] = [];
-      let inTestResults = false;
-      
-      for (const line of lines) {
-        // Capture test suite results and failures
-        if (line.includes('Test Suite') || 
-            line.includes('Test Case') ||
-            line.includes('failed') ||
-            line.includes('passed') ||
-            line.includes('** TEST EXECUTE') ||
-            line.includes('error:') ||
-            line.includes('Testing failed:') ||
-            line.includes('Testing cancelled') ||
-            (inTestResults && line.trim())) {
-          relevantLines.push(line);
-          if (line.includes('Test Suite')) {
-            inTestResults = true;
-          }
-        }
-      }
-      
-      // Limit output to last 100 lines if still too long
-      const outputLines = relevantLines.slice(-100);
-      const truncated = relevantLines.length > 100;
       
       return {
         content: [
           {
             type: 'text',
-            text: `${summary}${failingTestsList}
-Platform: ${platform}
-Configuration: ${configuration}
-${testTarget ? `Test Target: ${testTarget}` : 'All tests in scheme'}
-${testFilter ? `Filter: ${testFilter}` : ''}
-
-Test Results:
-${truncated ? '... (output truncated)\n' : ''}${outputLines.join('\n')}`
+            text: `${summary}${failingTestsList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\n${testTarget ? `Test Target: ${testTarget}\n` : ''}${testFilter ? `Filter: ${testFilter}\n` : ''}\n📁 Full logs saved to: ${testResult.logPath}`
           }
         ]
       };
     } catch (error: any) {
       logger.error({ error, projectPath, scheme, platform }, 'Tests failed');
       
-      // Return error with truncated output
+      // Extract meaningful error message
       const errorMessage = error.message || 'Unknown test error';
-      let output = error.stdout || error.stderr || '';
+      const isProjectNotFound = errorMessage.includes('does not exist');
+      const isSchemeNotFound = errorMessage.includes('scheme');
       
-      // Truncate output if too long
-      if (output.length > 5000) {
-        const lines = output.split('\n');
-        // Keep first 20 and last 30 lines for context
-        const firstLines = lines.slice(0, 20);
-        const lastLines = lines.slice(-30);
-        output = [...firstLines, '\n... (output truncated) ...\n', ...lastLines].join('\n');
+      let displayMessage = '❌ ';
+      if (isProjectNotFound) {
+        displayMessage += `Project not found: ${projectPath}`;
+      } else if (isSchemeNotFound) {
+        displayMessage += `Scheme '${scheme}' not found in project`;
+      } else {
+        displayMessage += `Test execution failed: ${errorMessage.split('\n')[0]}`;
       }
       
       return {
         content: [
           {
             type: 'text',
-            text: `Test execution failed: ${errorMessage}${output ? `\n\n${output}` : ''}`
+            text: displayMessage
           }
         ]
       };

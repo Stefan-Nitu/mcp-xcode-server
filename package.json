@@ -12,11 +12,9 @@
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
     "test": "jest --runInBand",
-    "test:watch": "jest --watch",
-    "test:parallel": "jest",
-    "test:coverage": "jest --coverage",
+    "test:ci": "jest src/__tests__/unit/ && jest src/__tests__/e2e/ --runInBand",
+    "test:coverage": "jest --coverage --runInBand",
     "test:unit": "jest src/__tests__/unit/",
-    "test:integration": "jest src/__tests__/integration/",
     "test:e2e": "jest src/__tests__/e2e/ --runInBand",
     "postinstall": "cd XcodeProjectModifier && swift build -c release",
     "build:modifier": "cd XcodeProjectModifier && swift build -c release"
@@ -39,6 +37,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "commander": "^12.0.0",
+    "fast-xml-parser": "^5.2.5",
     "pino": "^9.9.0",
     "pino-pretty": "^13.1.1",
     "zod": "^3.25.76"

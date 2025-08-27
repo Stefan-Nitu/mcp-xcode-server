@@ -233,10 +233,7 @@ describe('BuildSwiftPackageTool Unit Tests', () => {
         configuration: 'Release'
       });
 
-      expect(result.content[0].text).toContain('Build succeeded: package');
-      expect(result.content[0].text).toContain('Configuration: Release');
-      expect(result.content[0].text).toContain('Full output:');
-      expect(result.content[0].text).toContain('Build complete!');
+      expect(result.content[0].text).toBe('✅ Build succeeded: package\nConfiguration: Release');
     });
 
     test('should include target in output when specified', async () => {

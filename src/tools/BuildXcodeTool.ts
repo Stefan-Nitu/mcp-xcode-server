@@ -10,6 +10,8 @@ import { config } from '../config.js';
 import { Xcode } from '../utils/projects/Xcode.js';
 import { XcodeProject } from '../utils/projects/XcodeProject.js';
 import { execAsync } from '../utils.js';
+import { formatCompileErrors } from '../utils/errorFormatting.js';
+import { formatBuildErrors } from '../utils/buildErrorParsing.js';
 
 const logger = createModuleLogger('BuildXcodeTool');
 
@@ -161,46 +163,59 @@ export class BuildXcodeTool {
         configNote = ` - ${configuration} configuration was not found`;
       }
       
+      const icon = buildResult.logPath ? '✅' : '✅';
       return {
         content: [
           {
             type: 'text',
-            text: `Build succeeded: ${scheme || path.basename(projectPath)}
+            text: `${icon} Build succeeded: ${scheme || path.basename(projectPath)}
+
 Platform: ${platform}
 Configuration: ${actualConfiguration}${configNote}
-App path: ${appPath || 'N/A'}`
+App path: ${appPath || 'N/A'}${buildResult.logPath ? `
+
+📁 Full logs saved to: ${buildResult.logPath}` : ''}`
           }
         ]
       };
     } catch (error: any) {
       logger.error({ error, projectPath, scheme, platform }, 'Build failed');
       
-      // Combine stdout and stderr to get full output
-      const stdout = error.stdout || '';
-      const stderr = error.stderr || '';
-      const errorMessage = error.message || 'Unknown build error';
-      
-      // Prefer stderr if it has the actual error details, otherwise use stdout
-      let responseText: string;
-      if (stderr && stderr.includes('xcodebuild: error')) {
-        // stderr has the actual error - use it
-        responseText = stderr;
-      } else if (stdout && stdout.includes('xcodebuild')) {
-        // stdout has build output
-        responseText = stdout;
-      } else if (stderr) {
-        // Use any stderr we have
-        responseText = stderr;
-      } else {
-        // Fallback to error message
-        responseText = `Build failed: ${errorMessage}`;
+      // Check if we have parsed compile errors
+      if (error.compileErrors && error.compileErrors.length > 0) {
+        const { summary, errorList } = formatCompileErrors(error.compileErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${summary}\n${errorList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme || 'default'}\n\n📁 Full logs saved to: ${error.logPath}`
+            }
+          ]
+        };
       }
       
+      // Check if we have other build errors (scheme, signing, provisioning, etc.)
+      if (error.buildErrors && error.buildErrors.length > 0) {
+        const buildErrorText = formatBuildErrors(error.buildErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${buildErrorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme || 'default'}\n\n📁 Full logs saved to: ${error.logPath}`
+            }
+          ]
+        };
+      }
+      
+      // Fallback for generic errors
+      const errorMessage = error.message || 'Unknown build error';
       return {
         content: [
           {
             type: 'text',
-            text: responseText
+            text: `❌ Build failed: ${errorMessage.split('\n')[0]}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
           }
         ]
       };

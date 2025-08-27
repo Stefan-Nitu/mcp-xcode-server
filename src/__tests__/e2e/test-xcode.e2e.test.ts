@@ -56,7 +56,7 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Platform: iOS');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
     }, 180000); // Increased timeout for simulator boot and test execution
@@ -95,7 +95,7 @@ describe('TestXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
     }, 180000);
 
     test('should filter tests when testTarget is specified', async () => {
@@ -114,7 +114,7 @@ describe('TestXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain(`Test Target: ${testProjectManager.targets.xcodeProject.unitTests}`);
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
     }, 180000);
 
     test('should filter tests with testFilter for specific test method', async () => {
@@ -136,7 +136,7 @@ describe('TestXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain(`Filter: ${testFilter}`);
-      expect(text).toMatch(/Tests passed: 1 passed/);
+      expect(text).toMatch(/✅ Tests passed: 1 passed/);
     }, 180000);
     
     test('should properly report failing tests', async () => {
@@ -158,8 +158,11 @@ describe('TestXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain(`Filter: ${testFilter}`);
-      expect(text).toMatch(/Tests failed: 0 passed, 1 failed/);
+      expect(text).toMatch(/❌ Tests failed: 0 passed, 1 failed/);
       expect(text).toContain('Test MCP failing test reporting');
+      // Verify that failing test details are reported with identifier and reason
+      expect(text).toContain('**Failing tests:**');
+      expect(text).toContain('• TestProjectXCTestTests');
     }, 180000);
 
     test('should filter tests with testFilter for specific test class', async () => {
@@ -181,7 +184,7 @@ describe('TestXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain(`Filter: ${testFilter}`);
-      expect(text).toMatch(/Tests failed/);
+      expect(text).toMatch(/❌ Tests failed/);
       // Should run 4 tests now (testExample, testPerformanceExample, targetForFilterTest, failingTest)
       // 3 will pass, 1 will fail  
       expect(text).toContain('3 passed, 1 failed');
@@ -240,7 +243,7 @@ describe('TestXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toBeDefined();
       expect(text).toContain('Platform: tvOS');
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
     }, 180000);
 
     test('should support visionOS platform', async () => {
@@ -259,7 +262,7 @@ describe('TestXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toBeDefined();
       expect(text).toContain('Platform: visionOS');
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
     }, 180000);
 
     test('should support watchOS platform', async () => {
@@ -278,7 +281,7 @@ describe('TestXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toBeDefined();
       expect(text).toContain('Platform: watchOS');
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
     }, 180000);
   });
 
@@ -297,7 +300,7 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Platform: iOS');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
     }, 180000);
@@ -316,14 +319,11 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      console.log('=== TEST OUTPUT ===');
-      console.log(text.substring(0, 500));
-      console.log('===================');
       // Should report test failure since we have testFailingTest
-      expect(text).toContain('Tests failed');
+      expect(text).toContain('❌ Tests failed');
       // We have 6 XCTest UI tests (all passing) + 1 Swift Testing test passing + 1 Swift Testing test failing = 7 passed, 1 failed
       expect(text).toMatch(/7 passed, 1 failed/);
-      expect(text).toContain('Failing tests:');
+      expect(text).toContain('**Failing tests:**');
       expect(text).toContain('testFailingTest');
     }, 180000);
   });

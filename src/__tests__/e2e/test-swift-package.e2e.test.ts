@@ -53,7 +53,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Package:');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
       expect(text).toContain('Configuration: Debug');
@@ -73,7 +73,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
     }, 60000);
 
     test('should filter tests when specified', async () => {
@@ -90,7 +90,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Filter: TestSwiftPackageXCTestTests');
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
     }, 60000);
 
     test('should handle Package.swift path directly', async () => {
@@ -106,7 +106,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Package:');
     }, 60000);
 
@@ -156,9 +156,11 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Filter: TestSwiftPackageXCTestTests.testFailingTest');
-      expect(text).toMatch(/Tests failed: 0 passed, 1 failed/);
+      expect(text).toMatch(/❌ Tests failed: 0 passed, 1 failed/);
       expect(text).toContain('Failing tests:');
-      expect(text).toContain('testFailingTest');
+      // Verify that failing test details are reported with identifier and reason
+      expect(text).toMatch(/TestSwiftPackageXCTestTests\.testFailingTest:/);
+      expect(text).toMatch(/XCTAssertEqual failed/i);
     }, 60000);
   });
 
@@ -194,7 +196,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Package:');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
       expect(text).toContain('Configuration: Debug');
@@ -214,7 +216,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Filter: testExample');
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       // The parser should correctly identify Swift Testing output
       expect(text).toMatch(/\d+ passed/);
     }, 60000);
@@ -233,7 +235,28 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
-      expect(text).toMatch(/Tests (passed|failed)/);
+      expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
+    }, 60000);
+
+    test('should properly report failing Swift Testing tests', async () => {
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'test_swift_package',
+          arguments: {
+            packagePath: testProjectManager.paths.swiftPackageSwiftTestingDir,
+            filter: 'testFailingTest'
+          }
+        }
+      }, CallToolResultSchema);
+      
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Filter: testFailingTest');
+      expect(text).toMatch(/❌ Tests failed: 0 passed, 1 failed/);
+      expect(text).toContain('Failing tests:');
+      // Verify that failing test details are reported with identifier and reason
+      expect(text).toMatch(/TestProjectSwiftTestingTests\.testFailingTest:/);
+      expect(text).toContain('This test is designed to fail');
     }, 60000);
   });
 });

@@ -2,6 +2,7 @@ import { existsSync, rmSync, readdirSync, statSync } from 'fs';
 import { join, resolve } from 'path';
 import { createModuleLogger } from '../../logger';
 import { config } from '../../config';
+import { TestEnvironmentCleaner } from './TestEnvironmentCleaner';
 
 const logger = createModuleLogger('TestProjectManager');
 
@@ -89,21 +90,8 @@ export class TestProjectManager {
 
   private cleanBuildArtifacts() {
     // Clean DerivedData
-    const derivedDataPaths = [
-      join(this.testArtifactsDir, 'DerivedData'),
-      join(process.cwd(), 'DerivedData'),
-      './DerivedData',
-      // Clean new MCP-Xcode DerivedData location from config
-      config.derivedDataBasePath
-    ];
-
-    derivedDataPaths.forEach(path => {
-      if (existsSync(path)) {
-        logger.debug({ path }, 'Cleaning DerivedData');
-        rmSync(path, { recursive: true, force: true });
-      }
-    });
-
+    TestEnvironmentCleaner.cleanupTestEnvironment()
+    
     // Clean .build directories (for SPM)
     const buildDirs = [
       join(this.swiftPackageXCTestPath, '.build'),
@@ -113,7 +101,6 @@ export class TestProjectManager {
 
     buildDirs.forEach(dir => {
       if (existsSync(dir)) {
-        logger.debug({ dir }, 'Cleaning build directory');
         rmSync(dir, { recursive: true, force: true });
       }
     });
@@ -124,7 +111,6 @@ export class TestProjectManager {
     // Clean any .swiftpm directories
     const swiftpmDirs = this.findDirectories(this.testArtifactsDir, '.swiftpm');
     swiftpmDirs.forEach(dir => {
-      logger.debug({ dir }, 'Cleaning .swiftpm directory');
       rmSync(dir, { recursive: true, force: true });
     });
 
@@ -138,7 +124,6 @@ export class TestProjectManager {
     xcodeProjects.forEach(projectDir => {
       const buildDir = join(projectDir, 'build');
       if (existsSync(buildDir)) {
-        logger.debug({ buildDir }, 'Cleaning Xcode build directory');
         rmSync(buildDir, { recursive: true, force: true });
       }
     });
@@ -148,7 +133,6 @@ export class TestProjectManager {
     // Find and remove all .xcresult bundles
     const xcresultFiles = this.findFiles(this.testArtifactsDir, '.xcresult');
     xcresultFiles.forEach(file => {
-      logger.debug({ file }, 'Cleaning test result');
       rmSync(file, { recursive: true, force: true });
     });
 
@@ -161,7 +145,6 @@ export class TestProjectManager {
 
     testOutputFiles.forEach(file => {
       if (existsSync(file)) {
-        logger.debug({ file }, 'Cleaning test output');
         rmSync(file, { force: true });
       }
     });
@@ -172,9 +155,7 @@ export class TestProjectManager {
     try {
       // Remove all untracked files and directories in test_artifacts
       const { execSync } = require('child_process');
-      
-      logger.debug('Restoring test_artifacts to pristine state');
-      
+            
       // Remove untracked files and directories (build artifacts)
       execSync('git clean -fdx test_artifacts/', { 
         cwd: resolve(process.cwd()),
@@ -187,7 +168,6 @@ export class TestProjectManager {
         stdio: 'pipe'
       });
       
-      logger.debug('Test artifacts cleaned successfully');
     } catch (error) {
       logger.warn({ error }, 'Failed to use git clean');
     }
@@ -198,7 +178,6 @@ export class TestProjectManager {
     // Also clean DerivedData in project root
     const projectDerivedData = join(process.cwd(), 'DerivedData');
     if (existsSync(projectDerivedData)) {
-      logger.debug({ path: projectDerivedData }, 'Cleaning project DerivedData');
       rmSync(projectDerivedData, { recursive: true, force: true });
     }
   }

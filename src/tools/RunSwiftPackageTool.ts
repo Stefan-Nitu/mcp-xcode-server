@@ -4,6 +4,8 @@ import { safePathSchema } from './validators.js';
 import { Xcode } from '../utils/projects/Xcode.js';
 import { SwiftPackage } from '../utils/projects/SwiftPackage.js';
 import { XcodeError, XcodeErrorType } from '../utils/projects/XcodeErrors.js';
+import { formatCompileErrors } from '../utils/errorFormatting.js';
+import { formatBuildErrors } from '../utils/buildErrorParsing.js';
 
 const logger = createModuleLogger('RunSwiftPackageTool');
 
@@ -90,17 +92,50 @@ export class RunSwiftPackageTool implements IRunSwiftPackageTool {
         throw new Error(runResult.output);
       }
       
-      // Success response
+      // Success response with log path
+      const icon = '✅';
       return {
         content: [
           {
             type: 'text',
-            text: `Execution completed: ${executable || 'default executable'}\nConfiguration: ${configuration}\n\nOutput:\n${runResult.output}`
+            text: `${icon} Execution completed: ${executable || 'default executable'}
+Configuration: ${configuration}
+
+Output:
+${runResult.output}${runResult.logPath ? `\n\n📁 Full logs saved to: ${runResult.logPath}` : ''}`
           }
         ]
       };
     } catch (error: any) {
       logger.error({ error, packagePath }, 'Swift package run failed');
+      
+      // Check if we have compile errors
+      if (error.compileErrors && error.compileErrors.length > 0) {
+        const { summary, errorList } = formatCompileErrors(error.compileErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${summary}\n${errorList}\n\nConfiguration: ${configuration}${executable ? `\nExecutable: ${executable}` : ''}\n\n📁 Full logs saved to: ${error.logPath}`
+            }
+          ]
+        };
+      }
+      
+      // Check if we have build errors
+      if (error.buildErrors && error.buildErrors.length > 0) {
+        const errorText = formatBuildErrors(error.buildErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${errorText}\n\nConfiguration: ${configuration}${executable ? `\nExecutable: ${executable}` : ''}\n\n📁 Full logs saved to: ${error.logPath}`
+            }
+          ]
+        };
+      }
       
       // Handle XcodeError with context-specific message
       let errorMessage = error.message || 'Unknown run error';
@@ -112,7 +147,7 @@ export class RunSwiftPackageTool implements IRunSwiftPackageTool {
         content: [
           {
             type: 'text',
-            text: `Run failed: ${errorMessage}`
+            text: `❌ Run failed: ${errorMessage}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
           }
         ]
       };

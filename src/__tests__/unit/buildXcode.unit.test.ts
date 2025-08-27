@@ -13,7 +13,17 @@ import { config } from '../../config.js';
 
 // Mock the modules
 jest.mock('fs', () => ({
-  existsSync: jest.fn()
+  existsSync: jest.fn(),
+  mkdirSync: jest.fn(),
+  readdirSync: jest.fn(() => []),
+  statSync: jest.fn(() => ({ mtime: new Date() })),
+  rmSync: jest.fn(),
+  writeFileSync: jest.fn()
+}));
+
+jest.mock('os', () => ({
+  homedir: jest.fn(() => '/mocked/home'),
+  hostname: jest.fn(() => 'test-host')
 }));
 
 jest.mock('../../utils.js', () => ({
@@ -284,7 +294,7 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toBe('Build failed: Project path does not exist: /non/existent/project.xcodeproj');
+      expect(result.content[0].text).toBe('❌ Build failed: Project path does not exist: /non/existent/project.xcodeproj');
     });
 
     test('should handle non-Xcode project', async () => {
@@ -340,7 +350,7 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toBe('Build failed: Unknown error');
+      expect(result.content[0].text).toBe('❌ Build failed: Unknown error');
     });
   });
 

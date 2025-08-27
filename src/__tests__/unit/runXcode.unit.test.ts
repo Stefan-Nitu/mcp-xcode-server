@@ -13,7 +13,17 @@ import * as platformHandler from '../../platformHandler.js';
 
 // Mock the modules
 jest.mock('fs', () => ({
-  existsSync: jest.fn()
+  existsSync: jest.fn(),
+  mkdirSync: jest.fn(),
+  readdirSync: jest.fn(() => []),
+  statSync: jest.fn(() => ({ mtime: new Date() })),
+  rmSync: jest.fn(),
+  writeFileSync: jest.fn()
+}));
+
+jest.mock('os', () => ({
+  homedir: jest.fn(() => '/mocked/home'),
+  hostname: jest.fn(() => 'test-host')
 }));
 
 jest.mock('../../utils.js', () => ({
@@ -365,10 +375,12 @@ describe('RunXcodeTool Unit Tests', () => {
       mockDevices.findForPlatform.mockResolvedValue(mockDevice);
       mockDevice.ensureBooted.mockResolvedValue(undefined);
       mockGetDerivedDataPath.mockReturnValue('./DerivedData');
-      mockBuildProject.mockResolvedValue({
-        success: false,
-        output: 'Build failed: error message'
-      });
+      
+      // Build should throw an error when it fails, not return success: false
+      const buildError = new Error('Build failed: error message') as any;
+      buildError.output = 'Build output with errors';
+      buildError.logPath = '/path/to/log';
+      mockBuildProject.mockRejectedValue(buildError);
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',

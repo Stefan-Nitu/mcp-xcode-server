@@ -15,9 +15,7 @@ export class TestEnvironmentCleaner {
   static shutdownAllSimulators(): void {
     try {
       execSync('xcrun simctl shutdown all', { stdio: 'ignore' });
-      logger.debug('All simulators shut down');
     } catch (error) {
-      // Ignore errors - simulators might not be running
       logger.debug('No simulators to shutdown or shutdown failed (normal)');
     }
   }
@@ -29,10 +27,8 @@ export class TestEnvironmentCleaner {
   static killMacOSApp(appName: string): void {
     try {
       execSync(`pkill -f ${appName}`, { stdio: 'ignore' });
-      logger.debug({ appName }, 'Killed macOS app');
     } catch (error) {
       // Ignore errors - app might not be running
-      logger.debug({ appName }, 'App not running or kill failed (normal)');
     }
   }
 
@@ -49,6 +45,7 @@ export class TestEnvironmentCleaner {
   static cleanDerivedData(): void {
     try {
       // Clean MCP-Xcode DerivedData location (where our tests actually write)
+      // This includes Logs/Test/*.xcresult files
       execSync('rm -rf ~/Library/Developer/Xcode/DerivedData/MCP-Xcode/TestProjectSwiftTesting', { 
         shell: '/bin/bash',
         stdio: 'ignore' 
@@ -93,7 +90,6 @@ export class TestEnvironmentCleaner {
         stdio: 'ignore'
       });
       
-      logger.debug('DerivedData and SPM build artifacts cleaned for test projects');
     } catch (error) {
       logger.debug('DerivedData cleanup failed or nothing to clean (normal)');
     }
@@ -104,8 +100,6 @@ export class TestEnvironmentCleaner {
    * Shuts down simulators, kills test apps, and cleans DerivedData
    */
   static cleanupTestEnvironment(): void {
-    logger.debug('Cleaning up test environment');
-    
     // Shutdown all simulators
     this.shutdownAllSimulators();
     
@@ -114,8 +108,6 @@ export class TestEnvironmentCleaner {
     
     // Clean DerivedData for test projects
     this.cleanDerivedData();
-    
-    logger.debug('Test environment cleanup complete');
   }
 
   /**
@@ -125,7 +117,6 @@ export class TestEnvironmentCleaner {
   static resetSimulator(deviceId: string): void {
     try {
       execSync(`xcrun simctl erase "${deviceId}"`);
-      logger.debug({ deviceId }, 'Simulator erased');
     } catch (error: any) {
       // Log the actual error message for debugging
       logger.warn({ deviceId, error: error.message, stderr: error.stderr?.toString() }, 'Failed to erase simulator');
@@ -139,10 +130,8 @@ export class TestEnvironmentCleaner {
   static bootSimulator(deviceId: string): void {
     try {
       execSync(`xcrun simctl boot "${deviceId}"`, { stdio: 'ignore' });
-      logger.debug({ deviceId }, 'Simulator booted');
     } catch (error) {
-      // Might already be booted
-      logger.debug({ deviceId }, 'Simulator already booted or boot failed');
+      logger.warn({ deviceId }, 'Simulator already booted or boot failed');
     }
   }
 }

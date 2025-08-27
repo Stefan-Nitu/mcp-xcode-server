@@ -58,10 +58,12 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         configuration: 'Debug'
       });
       
-      expect(result.content[0].text).toContain('Tests passed: 15 passed, 0 failed');
-      expect(result.content[0].text).toContain('Package: MyPackage');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('All tests');
+      expect(result.content[0].text).toBe(
+        '✅ Tests passed: 15 passed, 0 failed\n\n' +
+        'Package: MyPackage\n' +
+        'Configuration: Debug\n\n' +
+        '📁 Full logs saved to: undefined'
+      );
     });
 
     test('should run filtered tests', async () => {
@@ -83,7 +85,13 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         configuration: 'Debug'
       });
       
-      expect(result.content[0].text).toContain('Filter: MyPackageTests.testSpecificFeature');
+      expect(result.content[0].text).toBe(
+        '✅ Tests passed: 3 passed, 0 failed\n\n' +
+        'Package: MyPackage\n' +
+        'Configuration: Debug\n' +
+        'Filter: MyPackageTests.testSpecificFeature\n\n' +
+        '📁 Full logs saved to: undefined'
+      );
     });
 
     test('should use Release configuration', async () => {
@@ -105,7 +113,12 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         configuration: 'Release'
       });
       
-      expect(result.content[0].text).toContain('Configuration: Release');
+      expect(result.content[0].text).toBe(
+        '✅ Tests passed: 10 passed, 0 failed\n\n' +
+        'Package: MyPackage\n' +
+        'Configuration: Release\n\n' +
+        '📁 Full logs saved to: undefined'
+      );
     });
 
     test('should handle test failures', async () => {
@@ -121,8 +134,12 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/MyPackage'
       });
 
-      expect(result.content[0].text).toContain('Tests failed: 8 passed, 2 failed');
-      expect(result.content[0].text).toContain('Test Results:');
+      expect(result.content[0].text).toBe(
+        '❌ Tests failed: 8 passed, 2 failed\n\n' +
+        'Package: MyPackage\n' +
+        'Configuration: Debug\n\n' +
+        '📁 Full logs saved to: undefined'
+      );
     });
 
     test('should report failing test names when available', async () => {
@@ -132,17 +149,27 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         output: 'Test Case \'TestSwiftPackageXCTestTests.testExample\' failed\nTest Case \'TestSwiftPackageXCTestTests.testPerformance\' failed',
         passed: 8,
         failed: 2,
-        failingTests: ['TestSwiftPackageXCTestTests.testExample', 'TestSwiftPackageXCTestTests.testPerformance']
+        failingTests: [
+          { identifier: 'TestSwiftPackageXCTestTests.testExample', reason: 'Test failed' },
+          { identifier: 'TestSwiftPackageXCTestTests.testPerformance', reason: 'Performance test failed' }
+        ]
       });
 
       const result = await tool.execute({
         packagePath: '/test/MyPackage'
       });
 
-      expect(result.content[0].text).toContain('Tests failed: 8 passed, 2 failed');
-      expect(result.content[0].text).toContain('Failing tests:');
-      expect(result.content[0].text).toContain('- TestSwiftPackageXCTestTests.testExample');
-      expect(result.content[0].text).toContain('- TestSwiftPackageXCTestTests.testPerformance');
+      expect(result.content[0].text).toBe(
+        '❌ Tests failed: 8 passed, 2 failed\n\n' +
+        '**Failing tests:**\n' +
+        '• TestSwiftPackageXCTestTests.testExample\n' +
+        '  Test failed\n\n' +
+        '• TestSwiftPackageXCTestTests.testPerformance\n' +
+        '  Performance test failed\n\n' +
+        'Package: MyPackage\n' +
+        'Configuration: Debug\n\n' +
+        '📁 Full logs saved to: undefined'
+      );
     });
 
     test('should handle Package.swift path directly', async () => {
@@ -170,7 +197,7 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/project.xcodeproj'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: No Package.swift found at: /test/project.xcodeproj');
+      expect(result.content[0].text).toBe('❌ Test execution failed: No Package.swift found at: /test/project.xcodeproj');
     });
 
     test('should handle build/setup errors', async () => {
@@ -179,14 +206,20 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         success: false,
         output: 'error: no such module \'XCTest\'',
         passed: 0,
-        failed: 0
+        failed: 0,
+        logPath: '/path/to/log'
       });
 
       const result = await tool.execute({
         packagePath: '/test/MyPackage'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: error: no such module \'XCTest\'');
+      expect(result.content[0].text).toBe(
+        '❌ Test execution failed: no such module \'XCTest\'\n\n' +
+        'Package: MyPackage\n' +
+        'Configuration: Debug\n\n' +
+        '📁 Full logs saved to: /path/to/log'
+      );
     });
 
     test('should handle test method throwing error', async () => {
@@ -199,7 +232,7 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/MyPackage'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: Failed to resolve dependencies');
+      expect(result.content[0].text).toBe('❌ Test execution failed: Failed to resolve dependencies');
     });
 
     test('should handle Xcode.open throwing error', async () => {
@@ -210,7 +243,7 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/NonExistent'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: Package.swift not found');
+      expect(result.content[0].text).toBe('❌ Test execution failed: Package.swift not found');
     });
   });
 

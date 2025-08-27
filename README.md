@@ -9,11 +9,14 @@ A Model Context Protocol (MCP) server for Xcode - build, test, run, and manage A
 This MCP server enables AI assistants and development tools to interact with Apple's development ecosystem directly. It provides comprehensive control over Xcode projects, Swift packages, and simulators, making it possible to build, test, and debug iOS/macOS applications without leaving your editor.
 
 ### Recent Improvements (v2.4.0)
+- **Comprehensive Error Detection**: Detects and reports compile errors, scheme errors, code signing issues, provisioning problems, and configuration errors
+- **Enhanced Error Display**: All errors shown with clear formatting, file locations, and actionable suggestions (e.g., "Check available schemes with list_schemes tool")
+- **Persistent Logging**: All operations save full logs to `~/.mcp-xcode-server/logs/` with 7-day retention
+- **Error Deduplication**: Compile errors shown only once even when building for multiple architectures
 - **Unified Architecture**: Consolidated build and test operations into cohesive Xcode and SwiftPackage utility classes
 - **Enhanced Device Management**: Modular simulator device management with clean separation of concerns
 - **Unified Test Parser**: Strategy pattern-based test output parsing supporting both XCTest and Swift Testing frameworks
 - **Security Enhancements**: Comprehensive input validation with command injection protection
-- **Better Error Messages**: More descriptive validation errors for better developer experience
 
 ## Key Features
 
@@ -162,13 +165,80 @@ The hook is configured automatically when you run `mcp-xcode-server setup`. To m
 ```bash
 npm test              # Run all tests
 npm run test:unit     # Run unit tests only
-npm run test:integration  # Run integration tests
+npm run test:e2e      # Run end-to-end tests
 npm run test:coverage # Run tests with coverage report
 ```
 
 ## Usage
 
 The server runs using stdio transport and can be used with any MCP-compatible client like Claude Desktop, VS Code extensions, or custom clients.
+
+### Error Handling and Logging
+
+#### Comprehensive Error Detection
+The server detects and clearly reports various types of build errors:
+
+##### Compile Errors
+- **File location** with line and column numbers
+- **Error messages** with proper formatting
+- **Warning support** with different icons (❌ for errors, ⚠️ for warnings)
+- **Deduplication** - errors shown only once even when building for multiple architectures
+
+Example:
+```
+❌ Build failed with 1 error
+
+❌ ContentView.swift:52:23
+   Cannot convert value of type 'Int' to expected argument type 'String'
+
+Platform: iOS
+Configuration: Debug
+Scheme: MyApp
+
+📁 Full logs saved to: ~/.mcp-xcode-server/logs/2025-01-27/build_MyApp_20250127_143052.log
+```
+
+##### Build Configuration Errors
+- **Scheme not found** - with suggestion to use `list_schemes` tool
+- **Configuration not found** - e.g., using "Production" when only Debug/Release exist
+- **Platform incompatibility** - trying to build for unsupported platform
+- **Project not found** - invalid project or workspace path
+
+Example:
+```
+❌ Build failed
+
+📍 Scheme not found: "NonExistentScheme"
+   The specified scheme does not exist in the project
+   💡 Check available schemes with list_schemes tool
+
+Platform: iOS
+Configuration: Debug
+
+📁 Full logs saved to: ~/.mcp-xcode-server/logs/2025-01-27/build_error_20250127_143052.log
+```
+
+##### Code Signing & Provisioning Errors
+- **Missing certificates** - no valid signing identity found
+- **Provisioning profile issues** - profile not found or capability mismatches
+- **Team ID problems** - missing or invalid development team
+- **Entitlements conflicts** - profile doesn't support required capabilities
+
+##### Dependency Errors
+- **Missing modules** - Swift Package or CocoaPods dependencies not found
+- **Version conflicts** - incompatible dependency versions
+- **Import failures** - unable to find modules in scope
+
+#### Persistent Logging
+The server maintains comprehensive logs for all operations:
+- **Location**: `~/.mcp-xcode-server/logs/`
+- **Organization**: Daily folders (e.g., `2025-01-27/`)
+- **Retention**: 7-day automatic cleanup
+- **Content**: Complete xcodebuild/swift output, test results, and metadata
+
+This dual approach ensures:
+1. **MCP output** is concise and actionable for immediate feedback
+2. **Full logs** are preserved for detailed debugging when needed
 
 ### Available Tools
 
@@ -200,20 +270,19 @@ The server runs using stdio transport and can be used with any MCP-compatible cl
   - `configuration`: Build configuration (Debug or Release) (default: Debug)
   - `arguments`: Arguments to pass to the executable (optional)
 
-- **`test_project`**: Run tests for an Xcode project
-  - `projectPath`: Path to .xcodeproj or .xcworkspace
-  - `scheme`: Xcode scheme to test (optional, uses default if not provided)
+- **`test_xcode`**: Run tests for an Xcode project or workspace
+  - `projectPath`: Path to .xcodeproj or .xcworkspace (required)
+  - `scheme`: Xcode scheme to test (required)
   - `platform`: Target platform (iOS, macOS, tvOS, watchOS, visionOS) (default: iOS)
   - `deviceId`: Simulator device name or UDID (optional)
   - `configuration`: Build configuration (Debug or Release) (default: Debug)
-  - `testTarget`: Specific test target (e.g., "MyAppTests") (optional)
-  - `testFilter`: Filter for specific test methods (optional)
+  - `testTarget`: Specific test target to run (e.g., "MyAppTests" or "MyAppUITests") (optional)
+  - `testFilter`: Filter for specific test classes or methods (e.g., "MyAppTests/UserTests" for a class, "MyAppTests/UserTests/testLogin" for a method) (optional)
 
-- **`test_spm_module`**: Test a Swift Package Manager module
-  - `packagePath`: Path to the Swift package
-  - `platform`: Target platform (iOS, macOS, tvOS, watchOS) (default: macOS)
-  - `testFilter`: Filter for specific tests (optional)
-  - `osVersion`: OS version for testing (e.g., "17.2") (optional)
+- **`test_swift_package`**: Run tests for a Swift Package Manager package
+  - `packagePath`: Path to Package.swift or package directory (required)
+  - `configuration`: Build configuration (Debug or Release) (default: Debug)
+  - `filter`: Filter for specific tests (e.g., "MyPackageTests.UserTests" for a class, "MyPackageTests.UserTests/testLogin" for a method) (optional)
 
 #### Project Information
 
@@ -543,6 +612,52 @@ Projects can disable Xcode sync in several ways:
    }
    ```
 
+### Logging
+
+The MCP Xcode server maintains comprehensive logs for debugging and troubleshooting:
+
+#### Log Location
+Logs are saved to `~/.mcp-xcode-server/logs/` with daily rotation and 7-day retention.
+
+#### Log Structure
+```
+~/.mcp-xcode-server/logs/
+├── 2025-08-27/                    # Daily folder
+│   ├── 14-30-15-test-MyApp.log    # Full xcodebuild output
+│   ├── 14-30-15-test-xcresult-parsed-MyApp-debug.json  # Parsed test results
+│   └── 14-35-22-build-MyApp.log   # Build output
+└── latest-test.log -> ./2025-08-27/14-30-15-test-MyApp.log  # Symlink to latest
+```
+
+#### MCP Output Format
+Tools provide clean, minimal output while saving full details to logs:
+
+**Test Results:**
+```
+✅ Tests passed: 50 passed, 0 failed
+
+Platform: iOS
+Configuration: Debug
+
+📁 Full logs saved to: ~/.mcp-xcode-server/logs/2025-08-27/14-30-15-test-MyApp.log
+```
+
+**Test Failures:**
+```
+❌ Tests failed: 48 passed, 2 failed
+
+**Failing tests:**
+• MyAppTests/testLogin()
+  XCTAssertTrue failed: Expected true but got false
+• MyAppTests/testDataParsing()
+  XCTAssertEqual failed: ("expected") is not equal to ("actual")
+
+Platform: iOS
+Configuration: Debug
+
+📁 Full logs saved to: ~/.mcp-xcode-server/logs/2025-08-27/14-35-15-test-MyApp.log
+```
+
 ### Troubleshooting
 
 If files aren't being added automatically:
@@ -563,7 +678,7 @@ npm run build
 ```bash
 npm test              # Run all tests
 npm run test:unit     # Unit tests only
-npm run test:integration  # Integration tests
+npm run test:e2e      # End-to-end tests
 npm run test:coverage # With coverage report
 ```
 

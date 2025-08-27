@@ -58,7 +58,9 @@ describe('App Installation and Uninstallation E2E Tests', () => {
   }, 30000);
   
   afterEach(async () => {
-    TestEnvironmentCleaner.cleanupTestEnvironment();
+    // Only shutdown simulators, don't clean DerivedData as we need the built apps
+    TestEnvironmentCleaner.shutdownAllSimulators();
+    TestEnvironmentCleaner.killTestProjectApp();
     
     // Cleanup client and transport
     await cleanupClientAndTransport(client, transport);
@@ -396,12 +398,15 @@ describe('App Installation and Uninstallation E2E Tests', () => {
 
   describe('Error Handling', () => {
     test('should handle installing non-existent app', async () => {
+      const deviceId = await ensureSimulator();
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'install_app',
           arguments: {
-            appPath: '/non/existent/app.app'
+            appPath: '/non/existent/app.app',
+            deviceId: deviceId
           }
         }
       }, CallToolResultSchema);

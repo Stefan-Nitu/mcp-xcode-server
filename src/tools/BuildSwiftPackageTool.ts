@@ -4,6 +4,8 @@ import { safePathSchema } from './validators.js';
 import { Xcode } from '../utils/projects/Xcode.js';
 import { SwiftPackage } from '../utils/projects/SwiftPackage.js';
 import { XcodeError, XcodeErrorType } from '../utils/projects/XcodeErrors.js';
+import { formatCompileErrors } from '../utils/errorFormatting.js';
+import { formatBuildErrors } from '../utils/buildErrorParsing.js';
 import path from 'path';
 
 const logger = createModuleLogger('BuildSwiftPackageTool');
@@ -91,21 +93,47 @@ export class BuildSwiftPackageTool implements IBuildSwiftPackageTool {
         throw new Error(buildResult.output);
       }
       
-      // Success response
+      // Success response with log path
+      const icon = '✅';
       return {
         content: [
           {
             type: 'text',
-            text: `Build succeeded: ${path.basename(project.path)}
-Configuration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}
-
-Full output:
-${buildResult.output}`
+            text: `${icon} Build succeeded: ${path.basename(project.path)}
+Configuration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}${buildResult.logPath ? `\n\n📁 Full logs saved to: ${buildResult.logPath}` : ''}`
           }
         ]
       };
     } catch (error: any) {
       logger.error({ error, packagePath }, 'Swift package build failed');
+      
+      // Check if we have compile errors
+      if (error.compileErrors && error.compileErrors.length > 0) {
+        const { summary, errorList } = formatCompileErrors(error.compileErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${summary}\n${errorList}\n\nConfiguration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}\n\n📁 Full logs saved to: ${error.logPath}`
+            }
+          ]
+        };
+      }
+      
+      // Check if we have build errors
+      if (error.buildErrors && error.buildErrors.length > 0) {
+        const errorText = formatBuildErrors(error.buildErrors);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${errorText}\n\nConfiguration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}\n\n📁 Full logs saved to: ${error.logPath}`
+            }
+          ]
+        };
+      }
       
       // Handle XcodeError with context-specific message
       let errorMessage = error.message || 'Unknown build error';
@@ -117,7 +145,7 @@ ${buildResult.output}`
         content: [
           {
             type: 'text',
-            text: `Build failed: ${errorMessage}`
+            text: `❌ Build failed: ${errorMessage}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
           }
         ]
       };
