@@ -53,13 +53,13 @@ describe('TestXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema, { timeout: 180000 });
+      }, CallToolResultSchema, { timeout: 300000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Platform: iOS');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
-    }, 180000); // Increased timeout for simulator boot and test execution
+    }, 300000); // 5 minute timeout for simulator boot and test execution
 
     test('should require scheme parameter', async () => {
       const response = await client.request({
@@ -204,7 +204,7 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Project path does not exist');
+      expect(text).toContain('Project not found: /nonexistent/project.xcodeproj');
     }, 180000);
 
     test('should handle invalid scheme name', async () => {

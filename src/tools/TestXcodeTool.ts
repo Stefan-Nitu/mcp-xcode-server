@@ -141,8 +141,12 @@ export class TestXcodeTool {
         testFilter
       });
       
-      // Check for compile errors first
-      if (testResult.compileErrors && testResult.compileErrors.length > 0) {
+      // Check for compile errors that prevented tests from running
+      // Only report compile errors if tests didn't run at all (no test results)
+      const hasActualErrors = testResult.compileErrors?.some(e => e.type === 'error');
+      const testsRan = testResult.passed > 0 || testResult.failed > 0;
+      
+      if (hasActualErrors && !testsRan && testResult.compileErrors) {
         const { summary, errorList } = formatCompileErrors(testResult.compileErrors);
         
         return {

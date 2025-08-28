@@ -88,8 +88,9 @@ export function parseBuildErrors(output: string): BuildError[] {
     });
   }
   
-  // Check for workspace/project errors
-  if (output.match(/workspace.*does not exist|project.*does not exist|could not find/i)) {
+  // Check for workspace/project errors (but not AXLoading errors about URLs)
+  if (output.match(/workspace.*does not exist|\.xcodeproj.*does not exist|\.xcworkspace.*does not exist|could not find.*\.(xcodeproj|xcworkspace)/i) 
+      && !output.includes('[AXLoading]')) {
     errors.push({
       type: 'configuration',
       title: 'Project not found',
