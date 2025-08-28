@@ -1,7 +1,7 @@
 import XCTest
 @testable import TestSwiftPackageXCTest
 
-final class TestSwiftPackageXCTestTests: XCTestCase {
+final class XCTestSuite: XCTestCase {
     func testExample() throws {
         let spm = TestSwiftPackageXCTest()
         XCTAssertEqual(spm.text, "Hello, TestSwiftPackageXCTest!")
