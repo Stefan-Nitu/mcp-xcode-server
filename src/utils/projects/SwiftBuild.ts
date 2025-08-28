@@ -273,8 +273,19 @@ export class SwiftBuild {
       // Swift Testing generates a separate file with -swift-testing suffix
       const swiftTestingXunitPath = xunitPath.replace('.xml', '-swift-testing.xml');
       
-      // Check Swift Testing xunit file first (it has the actual results)
-      const xunitFileToUse = existsSync(swiftTestingXunitPath) ? swiftTestingXunitPath : xunitPath;
+      // Check which xunit file to use - Swift Testing file if it exists AND has tests
+      let xunitFileToUse = xunitPath;
+      if (existsSync(swiftTestingXunitPath)) {
+        try {
+          const swiftTestingContent = readFileSync(swiftTestingXunitPath, 'utf8');
+          // Only use Swift Testing file if it has actual tests
+          if (swiftTestingContent.includes('tests="') && !swiftTestingContent.includes('tests="0"')) {
+            xunitFileToUse = swiftTestingXunitPath;
+          }
+        } catch {
+          // Ignore read errors, use regular xunit file
+        }
+      }
       
       // Parse xunit XML if it exists
       if (existsSync(xunitFileToUse)) {
@@ -399,15 +410,27 @@ export class SwiftBuild {
       // Swift Testing generates a separate file with -swift-testing suffix
       const swiftTestingXunitPath = xunitPath.replace('.xml', '-swift-testing.xml');
       
+      // Check which xunit file to use - Swift Testing file if it exists AND has tests
+      let xunitFileToUse = xunitPath;
+      if (existsSync(swiftTestingXunitPath)) {
+        try {
+          const swiftTestingContent = readFileSync(swiftTestingXunitPath, 'utf8');
+          // Only use Swift Testing file if it has actual tests
+          if (swiftTestingContent.includes('tests="') && !swiftTestingContent.includes('tests="0"')) {
+            xunitFileToUse = swiftTestingXunitPath;
+          }
+        } catch {
+          // Ignore read errors, use regular xunit file
+        }
+      }
+      
       logger.debug({ 
         xunitPath, 
         exists: existsSync(xunitPath),
         swiftTestingPath: swiftTestingXunitPath,
-        swiftTestingExists: existsSync(swiftTestingXunitPath)
+        swiftTestingExists: existsSync(swiftTestingXunitPath),
+        usingFile: xunitFileToUse
       }, 'Checking xunit files after test failure');
-      
-      // Check Swift Testing xunit file first (it has the actual results)
-      const xunitFileToUse = existsSync(swiftTestingXunitPath) ? swiftTestingXunitPath : xunitPath;
       
       if (existsSync(xunitFileToUse)) {
         try {
