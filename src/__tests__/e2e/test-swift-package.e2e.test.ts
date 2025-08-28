@@ -255,8 +255,8 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       expect(text).toMatch(/❌ Tests failed: 0 passed, 1 failed/);
       expect(text).toContain('Failing tests:');
       // Verify that failing test details are reported with identifier and reason
-      expect(text).toMatch(/TestProjectSwiftTestingTests\.testFailingTest:/);
-      expect(text).toContain('This test is designed to fail');
+      expect(text).toMatch(/TestSwiftPackageSwiftTestingTests\.testFailingTest\(\)/);
+      expect(text).toContain('Expectation failed: 1 == 2');
     }, 60000);
   });
 });

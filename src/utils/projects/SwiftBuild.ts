@@ -270,11 +270,17 @@ export class SwiftBuild {
       
       output = stdout + (stderr ? `\n${stderr}` : '');
       
+      // Swift Testing generates a separate file with -swift-testing suffix
+      const swiftTestingXunitPath = xunitPath.replace('.xml', '-swift-testing.xml');
+      
+      // Check Swift Testing xunit file first (it has the actual results)
+      const xunitFileToUse = existsSync(swiftTestingXunitPath) ? swiftTestingXunitPath : xunitPath;
+      
       // Parse xunit XML if it exists
-      if (existsSync(xunitPath)) {
+      if (existsSync(xunitFileToUse)) {
         try {
-          const xmlContent = readFileSync(xunitPath, 'utf8');
-          logger.debug({ xunitPath }, 'Found xunit output file');
+          const xmlContent = readFileSync(xunitFileToUse, 'utf8');
+          logger.debug({ xunitFileToUse }, 'Found xunit output file');
           
           // Parse the xunit XML using proper parser
           const parser = new XMLParser({
@@ -390,10 +396,22 @@ export class SwiftBuild {
       output = (error.stdout || '') + (error.stderr ? `\n${error.stderr}` : '');
       exitCode = error.code || 1;
       
-      logger.debug({ xunitPath, exists: existsSync(xunitPath) }, 'Checking xunit file after test failure');
-      if (existsSync(xunitPath)) {
+      // Swift Testing generates a separate file with -swift-testing suffix
+      const swiftTestingXunitPath = xunitPath.replace('.xml', '-swift-testing.xml');
+      
+      logger.debug({ 
+        xunitPath, 
+        exists: existsSync(xunitPath),
+        swiftTestingPath: swiftTestingXunitPath,
+        swiftTestingExists: existsSync(swiftTestingXunitPath)
+      }, 'Checking xunit files after test failure');
+      
+      // Check Swift Testing xunit file first (it has the actual results)
+      const xunitFileToUse = existsSync(swiftTestingXunitPath) ? swiftTestingXunitPath : xunitPath;
+      
+      if (existsSync(xunitFileToUse)) {
         try {
-          const xmlContent = readFileSync(xunitPath, 'utf8');
+          const xmlContent = readFileSync(xunitFileToUse, 'utf8');
           
           // Parse the xunit XML using proper parser
           const parser = new XMLParser({
@@ -478,13 +496,28 @@ export class SwiftBuild {
       } else {
         // No xunit file on failure - parse from console output
         logger.debug({ outputLength: output.length }, 'No xunit file found, parsing from console output');
-        // Parse test counts from output
-        const executedMatch = output.match(/Executed (\d+) test(?:s)?, with (\d+) failure/);
-        if (executedMatch) {
-          const totalTests = parseInt(executedMatch[1], 10);
-          const failures = parseInt(executedMatch[2], 10);
+        // Parse test counts from output - support both XCTest and Swift Testing formats
+        // XCTest format: "Executed 1 test, with 1 failure"
+        const xcTestMatch = output.match(/Executed (\d+) test(?:s)?, with (\d+) failure/);
+        if (xcTestMatch) {
+          const totalTests = parseInt(xcTestMatch[1], 10);
+          const failures = parseInt(xcTestMatch[2], 10);
           testResult.passed = totalTests - failures;
           testResult.failed = failures;
+        }
+        
+        // Swift Testing format: "✘ Test run with 1 test failed after..." or "✔ Test run with X tests passed after..."
+        const swiftTestingMatch = output.match(/[✘✔] Test run with (\d+) test(?:s)? (passed|failed)/);
+        if (swiftTestingMatch && !xcTestMatch) {
+          const testCount = parseInt(swiftTestingMatch[1], 10);
+          const status = swiftTestingMatch[2];
+          if (status === 'failed') {
+            testResult.passed = 0;
+            testResult.failed = testCount;
+          } else {
+            testResult.passed = testCount;
+            testResult.failed = 0;
+          }
         }
         
         // Parse failing test names from output - supports both XCTest and Swift Testing formats
