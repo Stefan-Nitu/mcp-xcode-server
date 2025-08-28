@@ -18,5 +18,11 @@ struct TestProjectSwiftTestingTests {
         // This test intentionally fails to test failure reporting
         #expect(false, "This test is designed to fail for testing MCP failure reporting")
     }
+    
+    @Test func testAnotherFailure() async throws {
+        // Another failing test to verify multiple failures are handled
+        let result = 42
+        #expect(result == 100, "Expected result to be 100 but got \(result)")
+    }
 
 }

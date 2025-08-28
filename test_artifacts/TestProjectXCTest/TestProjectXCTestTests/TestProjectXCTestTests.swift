@@ -43,5 +43,11 @@ final class TestProjectXCTestTests: XCTestCase {
     func testFailingTest() throws {
         XCTFail("Test MCP failing test reporting")
     }
+    
+    func testAnotherFailure() throws {
+        // Another failing test to verify multiple failures are handled
+        let result = 42
+        XCTAssertEqual(result, 100, "Expected result to be 100 but got \(result)")
+    }
 
 }
