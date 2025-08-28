@@ -11,4 +11,9 @@ final class LegacyTests: XCTestCase {
         // This test is designed to fail for MCP testing
         XCTFail("Test MCP failing test reporting")
     }
+    
+    func testAnotherFailure() async throws {
+        // Another failing test to verify multiple failures are handled
+        XCTAssertEqual(42, 100, "Expected 42 to equal 100 but it doesn't")
+    }
 }
