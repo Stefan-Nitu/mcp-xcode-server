@@ -1,7 +1,7 @@
 import Testing
 @testable import TestSwiftPackageSwiftTesting
 
-struct SwiftTestingSuite {
+struct ModernTests {
     @Test func testExample() async throws {
         // Simple test to verify the module can be imported and tested
         let spm = TestSwiftPackageSwiftTesting()
