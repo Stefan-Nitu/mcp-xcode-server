@@ -10,6 +10,12 @@ struct ModernTests {
 
     @Test func testFailingTest() async throws {
         // This test is designed to fail for MCP testing
-        #expect(1 == 2, "Test MCP failing test reporting")
+        #expect(1 == 2, """
+            Test MCP failing test reporting.
+            This is a multi-line message to test
+            how Swift Testing handles longer error descriptions.
+            Line 4 of the message.
+            Line 5 with special characters: @#$%^&*()
+            """)
     }
 }
