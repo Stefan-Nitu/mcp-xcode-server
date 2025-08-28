@@ -31,8 +31,26 @@
     "spm",
     "swift"
   ],
-  "author": "",
+  "author": "Stefan",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/mcp-xcode-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/mcp-xcode-server/issues"
+  },
+  "homepage": "https://github.com/yourusername/mcp-xcode-server#readme",
+  "files": [
+    "dist/**/*",
+    "scripts/**/*",
+    "XcodeProjectModifier/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "commander": "^12.0.0",

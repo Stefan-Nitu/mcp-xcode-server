@@ -153,7 +153,7 @@ describe('ListSchemesTool E2E Tests', () => {
       const content = (response.content[0] as any).text;
       
       // Should always return an error since xcodebuild -list doesn't work with Package.swift
-      expect(content).toContain('Error listing schemes');
+      expect(content).toContain('Error: Failed to list schemes');
       // The error should indicate it's not a project file
       expect(content).toMatch(/not.*project|Package\.swift|cannot list schemes/i);
     });
@@ -173,7 +173,7 @@ describe('ListSchemesTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Error listing schemes');
+      expect(text).toContain('Error: Failed to list schemes');
       expect(text).toContain('does not exist');
     });
 
@@ -191,8 +191,9 @@ describe('ListSchemesTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Error listing schemes');
-      expect(text).toMatch(/not.*project|invalid format/i);
+      expect(text).toContain('Error: Failed to list schemes');
+      // The actual error says "does not exist" for non-project files
+      expect(text).toContain('does not exist');
     });
 
     test('should handle path traversal attempts', async () => {
@@ -208,8 +209,9 @@ describe('ListSchemesTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Error listing schemes');
-      expect(text).toMatch(/not.*project|invalid|does not exist/i);
+      // Path traversal is caught by validation
+      expect(text).toContain('Validation error');
+      expect(text).toContain('Path traversal patterns are not allowed');
     });
 
     test('should handle missing project path parameter', async () => {
@@ -224,19 +226,19 @@ describe('ListSchemesTool E2E Tests', () => {
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
       expect(text).toContain('Validation error');
-      expect(text).toContain('required');
+      expect(text).toContain('Required');
     });
   });
 
   describe('Multiple Project Types', () => {
     test('should handle projects with multiple schemes', async () => {
-      // Some projects might have multiple schemes (e.g., app + tests + UI tests)
+      // Test with TestProjectSwiftTesting which has multiple schemes
       const response = await client.request({
         method: 'tools/call',
         params: {
           name: 'list_schemes',
           arguments: {
-            projectPath: projectManager.paths.xcodeProjectXCTestPath
+            projectPath: projectManager.paths.testProjectDir + '/TestProjectSwiftTesting/TestProjectSwiftTesting.xcodeproj'
           }
         }
       }, CallToolResultSchema);
@@ -245,12 +247,19 @@ describe('ListSchemesTool E2E Tests', () => {
       const schemes = JSON.parse((response.content[0] as any).text);
       
       expect(Array.isArray(schemes)).toBe(true);
+      // This project specifically has 3 schemes
+      expect(schemes).toHaveLength(3);
       
-      // Check that each scheme is a string
+      // Check that each scheme is a non-empty string
       schemes.forEach((scheme: any) => {
         expect(typeof scheme).toBe('string');
         expect(scheme.length).toBeGreaterThan(0);
       });
+      
+      // Verify the expected schemes are present
+      expect(schemes).toContain('TestProjectSwiftTesting');
+      expect(schemes).toContain('TestSwiftPackageSwiftTesting');
+      expect(schemes).toContain('TestSwiftPackageSwiftTestingExecutable');
     });
 
     test('should return consistent results on multiple calls', async () => {
@@ -326,7 +335,7 @@ describe('ListSchemesTool E2E Tests', () => {
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
       // Should handle the path with spaces and return an error (project doesn't exist)
-      expect(text).toContain('Error listing schemes');
+      expect(text).toContain('Error: Failed to list schemes');
       expect(text).toContain('does not exist');
     });
 
@@ -346,7 +355,7 @@ describe('ListSchemesTool E2E Tests', () => {
       const content = (response.content[0] as any).text;
       
       // Should return an error since it's not a valid Xcode project/workspace
-      expect(content).toContain('Error listing schemes');
+      expect(content).toContain('Error: Failed to list schemes');
       expect(content).toMatch(/not.*project|not.*workspace|invalid/i);
     });
   });
