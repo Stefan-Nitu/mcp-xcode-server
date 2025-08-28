@@ -185,9 +185,17 @@ describe('TestXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain(`Filter: ${testFilter}`);
       expect(text).toMatch(/❌ Tests failed/);
-      // Should run 4 tests now (testExample, testPerformanceExample, targetForFilterTest, failingTest)
-      // 3 will pass, 1 will fail  
-      expect(text).toContain('3 passed, 1 failed');
+      // Running all tests in TestProjectXCTestTests class:
+      // - testExample (passes)
+      // - testPerformanceExample (passes)  
+      // - testTargetForFilter (passes)
+      // - testFailingTest (fails)
+      // - testAnotherFailure (fails)
+      // Total: 3 passed, 2 failed
+      expect(text).toMatch(/3 passed, 2 failed/);
+      expect(text).toContain('**Failing tests:**');
+      expect(text).toContain('testFailingTest');
+      expect(text).toContain('testAnotherFailure');
     }, 180000);
 
     test('should handle project not found error', async () => {
@@ -319,12 +327,20 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      // Should report test failure since we have testFailingTest
+      // Should report test failures
       expect(text).toContain('❌ Tests failed');
-      // We have 6 XCTest UI tests (all passing) + 1 Swift Testing test passing + 1 Swift Testing test failing = 7 passed, 1 failed
-      expect(text).toMatch(/7 passed, 1 failed/);
+      // Test count breakdown:
+      // - 6 XCTest UI tests (all passing)
+      // - 1 Swift Testing test passing (example)
+      // - 2 Swift Testing tests failing (testFailingTest, testAnotherFailure)
+      // Total: 7 passed, 2 failed
+      expect(text).toMatch(/7 passed, 2 failed/);
       expect(text).toContain('**Failing tests:**');
       expect(text).toContain('testFailingTest');
+      expect(text).toContain('testAnotherFailure');
+      // Verify failure messages are included
+      expect(text).toMatch(/fail.*MCP failure reporting/i);
+      expect(text).toMatch(/Expected result to be 100/i);
     }, 180000);
   });
 });

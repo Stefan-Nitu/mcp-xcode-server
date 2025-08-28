@@ -2,13 +2,16 @@
 
 A Model Context Protocol (MCP) server for Xcode - build, test, run, and manage Apple platform projects (iOS, macOS, tvOS, watchOS, visionOS).
 
-## Version: 2.4.0
+## Version: 0.6.0 (Beta)
 
 ## Overview
 
 This MCP server enables AI assistants and development tools to interact with Apple's development ecosystem directly. It provides comprehensive control over Xcode projects, Swift packages, and simulators, making it possible to build, test, and debug iOS/macOS applications without leaving your editor.
 
-### Recent Improvements (v2.4.0)
+### Beta Status
+**⚠️ This project is in beta.** While core functionality is stable and well-tested, approximately 48% of tools have been fully validated. See [test.md](test.md) for detailed validation status.
+
+### Recent Improvements (v0.6.0)
 - **Comprehensive Error Detection**: Detects and reports compile errors, scheme errors, code signing issues, provisioning problems, and configuration errors
 - **Enhanced Error Display**: All errors shown with clear formatting, file locations, and actionable suggestions (e.g., "Check available schemes with list_schemes tool")
 - **Persistent Logging**: All operations save full logs to `~/.mcp-xcode-server/logs/` with 7-day retention
