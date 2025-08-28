@@ -81,14 +81,14 @@ describe('ListSchemesTool E2E Tests', () => {
       expect(response).toBeDefined();
       const schemes = JSON.parse((response.content[0] as any).text);
       
-      // Should return an array with schemes
+      // Should return exactly 3 schemes based on xcodebuild -list output
       expect(Array.isArray(schemes)).toBe(true);
-      expect(schemes.length).toBeGreaterThanOrEqual(2);
-      expect(schemes).toContain('TestProjectSwiftTesting');
-      // Could be either TestSwiftPackageXCTest or TestSwiftPackageSwiftTesting
-      const hasXCTest = schemes.includes('TestSwiftPackageXCTest');
-      const hasSwiftTesting = schemes.includes('TestSwiftPackageSwiftTesting');
-      expect(hasXCTest || hasSwiftTesting).toBe(true);
+      expect(schemes).toHaveLength(3);
+      expect(schemes).toEqual([
+        'TestProjectSwiftTesting',
+        'TestSwiftPackageSwiftTesting',
+        'TestSwiftPackageSwiftTestingExecutable'
+      ]);
     });
 
     test('should list schemes for watchOS project', async () => {
@@ -153,9 +153,9 @@ describe('ListSchemesTool E2E Tests', () => {
       const content = (response.content[0] as any).text;
       
       // Should always return an error since xcodebuild -list doesn't work with Package.swift
-      expect(content.toLowerCase()).toContain('error');
+      expect(content).toContain('Error listing schemes');
       // The error should indicate it's not a project file
-      expect(content.toLowerCase()).toMatch(/not a project file|package\.swift|cannot list schemes/i);
+      expect(content).toMatch(/not.*project|Package\.swift|cannot list schemes/i);
     });
   });
 
@@ -173,7 +173,8 @@ describe('ListSchemesTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      expect(text).toContain('Error listing schemes');
+      expect(text).toContain('does not exist');
     });
 
     test('should handle invalid project format', async () => {
@@ -190,7 +191,8 @@ describe('ListSchemesTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      expect(text).toContain('Error listing schemes');
+      expect(text).toMatch(/not.*project|invalid format/i);
     });
 
     test('should handle path traversal attempts', async () => {
@@ -206,7 +208,8 @@ describe('ListSchemesTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      expect(text).toContain('Error listing schemes');
+      expect(text).toMatch(/not.*project|invalid|does not exist/i);
     });
 
     test('should handle missing project path parameter', async () => {
@@ -220,7 +223,8 @@ describe('ListSchemesTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      expect(text).toContain('Validation error');
+      expect(text).toContain('required');
     });
   });
 
@@ -322,8 +326,8 @@ describe('ListSchemesTool E2E Tests', () => {
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
       // Should handle the path with spaces and return an error (project doesn't exist)
-      expect(text.toLowerCase()).toContain('error');
-      expect(text).toMatch(/does not exist|cannot find|not found/i);
+      expect(text).toContain('Error listing schemes');
+      expect(text).toContain('does not exist');
     });
 
     test('should return empty array for bare directory without Xcode project', async () => {
@@ -342,8 +346,8 @@ describe('ListSchemesTool E2E Tests', () => {
       const content = (response.content[0] as any).text;
       
       // Should return an error since it's not a valid Xcode project/workspace
-      expect(content.toLowerCase()).toContain('error');
-      expect(content.toLowerCase()).toMatch(/not.*project|not.*workspace|invalid/i);
+      expect(content).toContain('Error listing schemes');
+      expect(content).toMatch(/not.*project|not.*workspace|invalid/i);
     });
   });
 });
