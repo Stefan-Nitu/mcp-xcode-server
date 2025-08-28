@@ -4,8 +4,8 @@
 This document tracks the testing and validation status of all tools in the MCP Xcode Server.
 
 **Current Status:**
-- ✅ **12 tools validated** with comprehensive e2e tests and new architecture
-- ⏳ **9 tools pending** validation or e2e test creation
+- ✅ **14 tools validated** with comprehensive e2e tests and new architecture
+- ⏳ **7 tools pending** validation or e2e test creation
 
 ## Validation Status
 
@@ -67,55 +67,61 @@ These tools have been thoroughly tested with comprehensive e2e tests and refacto
     - Test file: `src/__tests__/e2e/test-swift-package.e2e.test.ts`
     - Notes: Comprehensive e2e tests covering XCTest and Swift Testing frameworks
 
+12. **InstallAppTool** ✅
+    - Status: Validated
+    - Test file: `src/__tests__/e2e/install-uninstall.e2e.test.ts`
+    - Notes: Complete lifecycle testing with app installation verification
+
+13. **UninstallAppTool** ✅
+    - Status: Validated
+    - Test file: `src/__tests__/e2e/install-uninstall.e2e.test.ts`
+    - Notes: Complete lifecycle testing with app uninstallation verification
+
 ### ⏳ Pending Validation
 These tools need comprehensive e2e testing and potential refactoring:
 
-12. **ShutdownSimulatorTool** ⏳
+14. **ShutdownSimulatorTool** ⏳
     - Status: Pending
     - Test file: Partial coverage
     - Notes: Needs dedicated e2e test file
 
-13. **ViewSimulatorScreenTool** ⏳
+15. **ViewSimulatorScreenTool** ⏳
     - Status: Pending
     - Test file: Partial coverage
     - Notes: Needs dedicated e2e test file
 
-14. **ArchiveProjectTool** ⏳
+16. **ArchiveProjectTool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-15. **ExportIPATool** ⏳
+17. **ExportIPATool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-16. **GetBuildSettingsTool** ⏳
+18. **GetBuildSettingsTool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-17. **GetProjectInfoTool** ⏳
+19. **GetProjectInfoTool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-18. **ListTargetsTool** ⏳
+20. **ListTargetsTool** ⏳
     - Status: Pending
     - Test file: None
     - Notes: Needs e2e tests
 
-19. **UninstallAppTool** ⏳
-    - Status: Pending
-    - Test file: `src/__tests__/e2e/uninstall-app.e2e.test.ts`
-    - Notes: Has tests but needs validation for refactoring
 
-20. **GetDeviceLogsTool** ⏳
+21. **GetDeviceLogsTool** ⏳
     - Status: Pending
     - Test file: Partial coverage
     - Notes: Needs dedicated e2e test file
 
-21. **ManageDependenciesTool** ⏳
+22. **ManageDependenciesTool** ⏳
     - Status: Pending
     - Test file: None currently
     - Notes: Needs e2e tests for dependency management operations
@@ -123,8 +129,8 @@ These tools need comprehensive e2e testing and potential refactoring:
 ## Testing Guidelines
 
 ### Tool Validation Progress
-- **57% Complete** (12/21 tools validated)
-- Core functionality (build, test, run) is stable
+- **67% Complete** (14/21 tools validated)
+- Core functionality (build, test, run, install/uninstall) is stable
 - Critical path tools are validated
 
 ### For Validated Tools

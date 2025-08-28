@@ -66,6 +66,15 @@ describe('App Installation and Uninstallation E2E Tests', () => {
     await cleanupClientAndTransport(client, transport);
   });
 
+  /**
+   * Helper to check if an app with exact bundle ID is installed
+   * Uses regex to match exact bundle ID entry, not substrings (to avoid test runner confusion)
+   */
+  function isAppInstalled(appsList: string, bundleId: string): boolean {
+    const pattern = new RegExp(`"${bundleId}"\\s*=\\s*\\{`);
+    return pattern.test(appsList);
+  }
+
   async function buildTestApps() {
     // Create a client just for building
     const { client: buildClient, transport: buildTransport } = await createAndConnectClient();
@@ -202,7 +211,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify app is installed
       const installedApps = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(installedApps).toContain(testApp1BundleId);
+      expect(isAppInstalled(installedApps, testApp1BundleId)).toBe(true);
       
       // Uninstall app
       const uninstallResponse = await client.request({
@@ -223,7 +232,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify app is uninstalled
       const appsAfterUninstall = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(appsAfterUninstall).not.toContain(testApp1BundleId);
+      expect(isAppInstalled(appsAfterUninstall, testApp1BundleId)).toBe(false);
     }, 60000);
 
     test('should handle install and uninstall without specifying device', async () => {
@@ -250,7 +259,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify installed
       const installedApps = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(installedApps).toContain(testApp2BundleId);
+      expect(isAppInstalled(installedApps, testApp2BundleId)).toBe(true);
       
       // Uninstall without deviceId (uses booted device)
       const uninstallResponse = await client.request({
@@ -269,7 +278,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify uninstalled
       const appsAfterUninstall = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(appsAfterUninstall).not.toContain(testApp2BundleId);
+      expect(isAppInstalled(appsAfterUninstall, testApp2BundleId)).toBe(false);
     }, 60000);
 
     test('should handle reinstallation (update) flow', async () => {
@@ -308,7 +317,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // App should still be there
       const installedApps = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(installedApps).toContain(testApp1BundleId);
+      expect(isAppInstalled(installedApps, testApp1BundleId)).toBe(true);
       
       // Clean up
       await client.request({
@@ -357,8 +366,8 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify both installed
       const installedApps = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(installedApps).toContain(testApp1BundleId);
-      expect(installedApps).toContain(testApp2BundleId);
+      expect(isAppInstalled(installedApps, testApp1BundleId)).toBe(true);
+      expect(isAppInstalled(installedApps, testApp2BundleId)).toBe(true);
       
       // Uninstall first app
       await client.request({
@@ -374,8 +383,8 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify first is gone but second remains
       const appsAfterFirst = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(appsAfterFirst).not.toContain(testApp1BundleId);
-      expect(appsAfterFirst).toContain(testApp2BundleId);
+      expect(isAppInstalled(appsAfterFirst, testApp1BundleId)).toBe(false);
+      expect(isAppInstalled(appsAfterFirst, testApp2BundleId)).toBe(true);
       
       // Uninstall second app
       await client.request({
@@ -391,8 +400,8 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify both are gone
       const appsAfterBoth = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(appsAfterBoth).not.toContain(testApp1BundleId);
-      expect(appsAfterBoth).not.toContain(testApp2BundleId);
+      expect(isAppInstalled(appsAfterBoth, testApp1BundleId)).toBe(false);
+      expect(isAppInstalled(appsAfterBoth, testApp2BundleId)).toBe(false);
     }, 90000);
   });
 
@@ -555,8 +564,8 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify both apps are installed
       const installedApps = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(installedApps).toContain(testApp1BundleId);
-      expect(installedApps).toContain(testApp2BundleId);
+      expect(isAppInstalled(installedApps, testApp1BundleId)).toBe(true);
+      expect(isAppInstalled(installedApps, testApp2BundleId)).toBe(true);
       
       // Uninstall both apps concurrently
       const uninstalls = await Promise.all([
@@ -591,8 +600,8 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Verify both apps are gone
       const appsAfter = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
-      expect(appsAfter).not.toContain(testApp1BundleId);
-      expect(appsAfter).not.toContain(testApp2BundleId);
+      expect(isAppInstalled(appsAfter, testApp1BundleId)).toBe(false);
+      expect(isAppInstalled(appsAfter, testApp2BundleId)).toBe(false);
     }, 60000);
   });
 });
