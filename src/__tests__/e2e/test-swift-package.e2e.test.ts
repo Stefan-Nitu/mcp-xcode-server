@@ -149,18 +149,18 @@ describe('TestSwiftPackageTool E2E Tests', () => {
           name: 'test_swift_package',
           arguments: {
             packagePath: testProjectManager.paths.swiftPackageXCTestDir,
-            filter: 'TestSwiftPackageXCTestTests.testFailingTest'
+            filter: 'LegacyTests.testFailingTest'
           }
         }
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Filter: TestSwiftPackageXCTestTests.testFailingTest');
+      expect(text).toContain('Filter: LegacyTests.testFailingTest');
       expect(text).toMatch(/❌ Tests failed: 0 passed, 1 failed/);
       expect(text).toContain('Failing tests:');
       // Verify that failing test details are reported with identifier and reason
-      expect(text).toMatch(/TestSwiftPackageXCTestTests\.testFailingTest:/);
-      expect(text).toMatch(/XCTAssertEqual failed/i);
+      expect(text).toContain('TestSwiftPackageXCTestTests.LegacyTests.testFailingTest');
+      expect(text).toContain('Test MCP failing test reporting');
     }, 60000);
   });
 
@@ -177,9 +177,10 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Test Results:');
-      // Swift test output typically includes these
-      expect(text).toMatch(/(Test Suite|test|XCT|swift test)/i);
+      // Verify test summary and multiple failures are shown
+      expect(text).toMatch(/❌ Tests failed: 1 passed, 2 failed/);
+      expect(text).toContain('Failing tests:');
+      expect(text).toContain('TestSwiftPackageXCTestTests.LegacyTests');
     }, 60000);
   });
 
@@ -255,7 +256,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       expect(text).toMatch(/❌ Tests failed: 0 passed, 1 failed/);
       expect(text).toContain('Failing tests:');
       // Verify that failing test details are reported with identifier and reason
-      expect(text).toMatch(/TestSwiftPackageSwiftTestingTests\.testFailingTest\(\)/);
+      expect(text).toContain('TestSwiftPackageSwiftTestingTests.ModernTests.testFailingTest()');
       expect(text).toContain('Expectation failed: 1 == 2');
     }, 60000);
   });

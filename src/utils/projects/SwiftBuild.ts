@@ -1,8 +1,8 @@
 import { execAsync } from '../../utils.js';
 import { createModuleLogger } from '../../logger.js';
+import path from 'path';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
-import path from 'path';
 import { XMLParser } from 'fast-xml-parser';
 import { LogManager } from '../LogManager.js';
 import { CompileError } from './XcodeBuild.js';
@@ -239,22 +239,24 @@ export class SwiftBuild {
   }> {
     const { filter, configuration = 'Debug' } = options;
     
-    // Generate unique xunit output file path
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const xunitPath = path.join(tmpdir(), `swift-test-${timestamp}.xml`);
     
     // Convert to lowercase for swift command
     const configFlag = configuration.toLowerCase();
+    
+    // Generate unique xunit output file in temp directory
+    const xunitPath = path.join(tmpdir(), `test-${Date.now()}-${Math.random().toString(36).substring(7)}.xml`);
+    const swiftTestingXunitPath = xunitPath.replace('.xml', '-swift-testing.xml');
+    
     let command = `swift test --package-path "${packagePath}" -c ${configFlag}`;
     
     if (filter) {
       command += ` --filter "${filter}"`;
     }
     
-    // Add xunit output for XCTest results - --parallel is required for xunit output to work
+    // Add parallel and xunit output for better results
     command += ` --parallel --xunit-output "${xunitPath}"`;
     
-    logger.debug({ command, xunitPath }, 'Test command with xunit output');
+    logger.debug({ command, xunitPath, swiftTestingXunitPath }, 'Test command');
     
     // Extract package name for logging
     const packageName = path.basename(packagePath);
@@ -270,121 +272,30 @@ export class SwiftBuild {
       
       output = stdout + (stderr ? `\n${stderr}` : '');
       
-      // Swift Testing generates a separate file with -swift-testing suffix
-      const swiftTestingXunitPath = xunitPath.replace('.xml', '-swift-testing.xml');
+      // Parse XUnit files for test results
+      const xunitResults = this.parseXunitFiles(xunitPath, swiftTestingXunitPath, output);
       
-      // Check which xunit file to use - Swift Testing file if it exists AND has tests
-      let xunitFileToUse = xunitPath;
-      if (existsSync(swiftTestingXunitPath)) {
-        try {
-          const swiftTestingContent = readFileSync(swiftTestingXunitPath, 'utf8');
-          // Only use Swift Testing file if it has actual tests
-          if (swiftTestingContent.includes('tests="') && !swiftTestingContent.includes('tests="0"')) {
-            xunitFileToUse = swiftTestingXunitPath;
-          }
-        } catch {
-          // Ignore read errors, use regular xunit file
-        }
-      }
-      
-      // Parse xunit XML if it exists
-      if (existsSync(xunitFileToUse)) {
-        try {
-          const xmlContent = readFileSync(xunitFileToUse, 'utf8');
-          logger.debug({ xunitFileToUse }, 'Found xunit output file');
-          
-          // Parse the xunit XML using proper parser
-          const parser = new XMLParser({
-            ignoreAttributes: false,
-            attributeNamePrefix: '@_'
-          });
-          
-          const result = parser.parse(xmlContent);
-          const testsuites = result.testsuites;
-          
-          // The attributes are on the testsuite element, not testsuites
-          let testsuite = testsuites?.testsuite;
-          
-          if (testsuite && testsuite['@_tests'] && testsuite['@_failures'] !== undefined) {
-            const totalTests = parseInt(testsuite['@_tests'], 10);
-            const failures = parseInt(testsuite['@_failures'], 10);
-            testResult.passed = totalTests - failures;
-            testResult.failed = failures;
-            testResult.success = failures === 0;
-            
-            // Extract failing test names and reasons from nested testcase elements
-            const failingTests: Array<{ identifier: string; reason: string }> = [];
-            
-            // Handle both single testsuite and multiple testsuites
-            const suites = Array.isArray(testsuite) ? testsuite : [testsuite];
-            
-            for (const suite of suites) {
-              if (suite && suite.testcase) {
-                const testcases = Array.isArray(suite.testcase) ? suite.testcase : [suite.testcase];
-                for (const testcase of testcases) {
-                  if (testcase && testcase.failure) {
-                    // Build full test identifier from testcase attributes
-                    const className = testcase['@_classname'] || '';
-                    const testName = testcase['@_name'] || '';
-                    const identifier = className ? `${className}.${testName}` : testName;
-                    
-                    // Extract failure reason from failure element
-                    let reason = 'Test failed';
-                    if (testcase.failure) {
-                      const failure = testcase.failure;
-                      if (typeof failure === 'string') {
-                        reason = failure;
-                      } else if (failure['@_message']) {
-                        reason = failure['@_message'];
-                        // Include the failure text content if available
-                        if (failure['#text']) {
-                          reason = `${reason}: ${failure['#text']}`;
-                        }
-                      } else if (failure['#text']) {
-                        reason = failure['#text'];
-                      }
-                    }
-                    
-                    failingTests.push({ identifier, reason });
-                  }
-                }
-              }
-            }
-            
-            if (failingTests.length > 0) {
-              testResult.failingTests = failingTests;
-            }
-            
-            logger.info({ 
-              packagePath, 
-              passed: testResult.passed, 
-              failed: testResult.failed,
-              failingTests: testResult.failingTests
-            }, 'Tests completed (parsed from xunit)');
-          } else {
-            // XML structure unexpected
-            throw new Error('Failed to parse xunit XML: tests/failures attributes not found');
-          }
-        } catch (xmlError: any) {
-          logger.error({ error: xmlError.message }, 'Failed to parse xunit file');
-          throw new Error(`Failed to parse xunit output: ${xmlError.message}`);
-        } finally {
-          // Clean up xunit file
-          try {
-            unlinkSync(xunitPath);
-            // Also clean up Swift Testing output file if it exists
-            const swiftTestingPath = xunitPath.replace('.xml', '-swift-testing.xml');
-            if (existsSync(swiftTestingPath)) {
-              unlinkSync(swiftTestingPath);
-            }
-          } catch {
-            // Ignore cleanup errors
-          }
-        }
+      // Use XUnit results if available
+      if (xunitResults) {
+        testResult = { ...testResult, ...xunitResults };
       } else {
-        // No xunit file created
-        throw new Error('Swift test did not generate xunit output file');
+        // Fallback to console parsing if XUnit fails
+        const parsedResults = this.parseTestOutput(output);
+        testResult = { ...testResult, ...parsedResults };
       }
+      
+      testResult.success = exitCode === 0 && testResult.failed === 0;
+      
+      // Clean up XUnit files
+      this.cleanupXunitFiles(xunitPath, swiftTestingXunitPath);
+      
+      logger.info({ 
+        packagePath, 
+        passed: testResult.passed, 
+        failed: testResult.failed,
+        failingTests: testResult.failingTests,
+        source: xunitResults ? 'xunit' : 'console'
+      }, 'Tests completed');
       
       // Save the test output to logs
       const logPath = LogManager.saveLog('test', output, packageName, {
@@ -403,221 +314,24 @@ export class SwiftBuild {
     } catch (error: any) {
       logger.error({ error: error.message, packagePath }, 'Tests failed');
       
-      // Try to parse xunit output even on failure
+      // Extract output from error
       output = (error.stdout || '') + (error.stderr ? `\n${error.stderr}` : '');
       exitCode = error.code || 1;
       
-      // Swift Testing generates a separate file with -swift-testing suffix
-      const swiftTestingXunitPath = xunitPath.replace('.xml', '-swift-testing.xml');
+      // Parse XUnit files for test results
+      const xunitResults = this.parseXunitFiles(xunitPath, swiftTestingXunitPath, output);
       
-      // Check which xunit file to use - Swift Testing file if it exists AND has tests
-      let xunitFileToUse = xunitPath;
-      if (existsSync(swiftTestingXunitPath)) {
-        try {
-          const swiftTestingContent = readFileSync(swiftTestingXunitPath, 'utf8');
-          // Only use Swift Testing file if it has actual tests
-          if (swiftTestingContent.includes('tests="') && !swiftTestingContent.includes('tests="0"')) {
-            xunitFileToUse = swiftTestingXunitPath;
-          }
-        } catch {
-          // Ignore read errors, use regular xunit file
-        }
-      }
-      
-      logger.debug({ 
-        xunitPath, 
-        exists: existsSync(xunitPath),
-        swiftTestingPath: swiftTestingXunitPath,
-        swiftTestingExists: existsSync(swiftTestingXunitPath),
-        usingFile: xunitFileToUse
-      }, 'Checking xunit files after test failure');
-      
-      if (existsSync(xunitFileToUse)) {
-        try {
-          const xmlContent = readFileSync(xunitFileToUse, 'utf8');
-          
-          // Parse the xunit XML using proper parser
-          const parser = new XMLParser({
-            ignoreAttributes: false,
-            attributeNamePrefix: '@_'
-          });
-          
-          const result = parser.parse(xmlContent);
-          const testsuites = result.testsuites;
-          
-          // The attributes are on the testsuite element, not testsuites
-          let testsuite = testsuites?.testsuite;
-          
-          if (testsuite && testsuite['@_tests'] && testsuite['@_failures'] !== undefined) {
-            const totalTests = parseInt(testsuite['@_tests'], 10);
-            const failures = parseInt(testsuite['@_failures'], 10);
-            testResult.passed = totalTests - failures;
-            testResult.failed = failures;
-            
-            // Extract failing test names and reasons from nested testcase elements
-            const failingTests: Array<{ identifier: string; reason: string }> = [];
-            
-            // Handle both single testsuite and multiple testsuites
-            const suites = Array.isArray(testsuite) ? testsuite : [testsuite];
-            
-            for (const suite of suites) {
-              if (suite && suite.testcase) {
-                const testcases = Array.isArray(suite.testcase) ? suite.testcase : [suite.testcase];
-                for (const testcase of testcases) {
-                  if (testcase && testcase.failure) {
-                    // Build full test identifier from testcase attributes
-                    const className = testcase['@_classname'] || '';
-                    const testName = testcase['@_name'] || '';
-                    const identifier = className ? `${className}.${testName}` : testName;
-                    
-                    // Extract failure reason from failure element
-                    let reason = 'Test failed';
-                    if (testcase.failure) {
-                      const failure = testcase.failure;
-                      if (typeof failure === 'string') {
-                        reason = failure;
-                      } else if (failure['@_message']) {
-                        reason = failure['@_message'];
-                        // Include the failure text content if available
-                        if (failure['#text']) {
-                          reason = `${reason}: ${failure['#text']}`;
-                        }
-                      } else if (failure['#text']) {
-                        reason = failure['#text'];
-                      }
-                    }
-                    
-                    failingTests.push({ identifier, reason });
-                  }
-                }
-              }
-            }
-            
-            if (failingTests.length > 0) {
-              testResult.failingTests = failingTests;
-            }
-          } else {
-            throw new Error('Failed to parse xunit XML: tests/failures attributes not found');
-          }
-        } catch (xmlError: any) {
-          logger.error({ error: xmlError.message }, 'Failed to parse xunit file on test failure');
-          // Return basic failure info
-          testResult = { passed: 0, failed: 1, success: false, failingTests: undefined };
-        } finally {
-          // Clean up xunit file
-          try {
-            unlinkSync(xunitPath);
-            // Also clean up Swift Testing output file if it exists
-            const swiftTestingPath = xunitPath.replace('.xml', '-swift-testing.xml');
-            if (existsSync(swiftTestingPath)) {
-              unlinkSync(swiftTestingPath);
-            }
-          } catch {
-            // Ignore cleanup errors
-          }
-        }
+      // Use XUnit results if available
+      if (xunitResults) {
+        testResult = { ...testResult, ...xunitResults };
       } else {
-        // No xunit file on failure - parse from console output
-        logger.debug({ outputLength: output.length }, 'No xunit file found, parsing from console output');
-        // Parse test counts from output - support both XCTest and Swift Testing formats
-        // XCTest format: "Executed 1 test, with 1 failure"
-        const xcTestMatch = output.match(/Executed (\d+) test(?:s)?, with (\d+) failure/);
-        if (xcTestMatch) {
-          const totalTests = parseInt(xcTestMatch[1], 10);
-          const failures = parseInt(xcTestMatch[2], 10);
-          testResult.passed = totalTests - failures;
-          testResult.failed = failures;
-        }
-        
-        // Swift Testing format: "✘ Test run with 1 test failed after..." or "✔ Test run with X tests passed after..."
-        const swiftTestingMatch = output.match(/[✘✔] Test run with (\d+) test(?:s)? (passed|failed)/);
-        if (swiftTestingMatch && !xcTestMatch) {
-          const testCount = parseInt(swiftTestingMatch[1], 10);
-          const status = swiftTestingMatch[2];
-          if (status === 'failed') {
-            testResult.passed = 0;
-            testResult.failed = testCount;
-          } else {
-            testResult.passed = testCount;
-            testResult.failed = 0;
-          }
-        }
-        
-        // Parse failing test names from output - supports both XCTest and Swift Testing formats
-        const failingTests: Array<{ identifier: string; reason: string }> = [];
-        
-        // XCTest format: Test Case '-[TestSwiftPackageXCTestTests.TestSwiftPackageXCTestTests testFailingTest]' failed
-        const xcTestPattern = /Test Case '-\[(\S+)\s+(\w+)\]' failed/g;
-        let match;
-        while ((match = xcTestPattern.exec(output)) !== null) {
-          const className = match[1];
-          const methodName = match[2];
-          const identifier = `${className}.${methodName}`;
-          
-          // Try to extract the failure reason from the line before "Test Case ... failed"
-          const lines = output.split('\n');
-          let reason = 'Test failed';
-          for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes(`Test Case '-[${className} ${methodName}]' failed`)) {
-              // Check the previous line for error details
-              if (i > 0 && lines[i-1].includes('error:')) {
-                const errorMatch = lines[i-1].match(/error:\s*(.+?)(?:\s*:\s*failed\s*-\s*(.+))?$/);
-                if (errorMatch) {
-                  reason = errorMatch[2] || errorMatch[1] || 'Test failed';
-                }
-              } else if (i > 0 && lines[i-1].includes('failed -')) {
-                const failedMatch = lines[i-1].match(/failed\s*-\s*(.+)$/);
-                if (failedMatch) {
-                  reason = failedMatch[1];
-                }
-              }
-              break;
-            }
-          }
-          
-          failingTests.push({ identifier, reason });
-        }
-        
-        // Swift Testing format: ✘ Test testFailingTest() failed
-        const swiftTestingPattern = /✘ Test (\w+)\(\) (?:failed|recorded an issue)/g;
-        while ((match = swiftTestingPattern.exec(output)) !== null) {
-          const testName = match[1];
-          const identifier = testName;  // Swift Testing uses just the test name
-          
-          // Extract reason from the previous line if it contains the issue details
-          const lines = output.split('\n');
-          let reason = 'Test failed';
-          for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes(`✘ Test ${testName}() recorded an issue`)) {
-              // Extract the expectation failure message
-              const issueMatch = lines[i].match(/recorded an issue.*?:\s*(.+)$/);
-              if (issueMatch) {
-                reason = issueMatch[1];
-              }
-              break;
-            } else if (lines[i].includes(`✘ Test ${testName}() failed`)) {
-              // Check if there was an issue line before this
-              if (i > 0 && lines[i-1].includes('recorded an issue')) {
-                const issueMatch = lines[i-1].match(/recorded an issue.*?:\s*(.+)$/);
-                if (issueMatch) {
-                  reason = issueMatch[1];
-                }
-              }
-              break;
-            }
-          }
-          
-          // Avoid duplicates (in case both patterns match somehow)
-          if (!failingTests.some(t => t.identifier === identifier)) {
-            failingTests.push({ identifier, reason });
-          }
-        }
-        
-        logger.debug({ failingTestsCount: failingTests.length, failingTests }, 'Parsed failing tests from console output');
-        if (failingTests.length > 0) {
-          testResult.failingTests = failingTests;
-        }
+        // Fallback to console parsing if XUnit fails
+        const parsedResults = this.parseTestOutput(output);
+        testResult = { ...testResult, ...parsedResults };
       }
+      
+      // Clean up XUnit files
+      this.cleanupXunitFiles(xunitPath, swiftTestingXunitPath);
       
       // Parse compile errors if the build failed
       const compileErrors = this.parseCompileErrors(output);
@@ -644,6 +358,432 @@ export class SwiftBuild {
         buildErrors: buildErrors.length > 0 ? buildErrors : undefined,
         logPath
       };
+    }
+  }
+
+  /**
+   * Parse test output from console
+   */
+  private parseTestOutput(output: string): { passed?: number; failed?: number; failingTests?: Array<{ identifier: string; reason: string }> } {
+    const result: { passed?: number; failed?: number; failingTests?: Array<{ identifier: string; reason: string }> } = {};
+    
+    // Parse test counts
+    const counts = this.parseTestCounts(output);
+    if (counts) {
+      result.passed = counts.passed;
+      result.failed = counts.failed;
+    }
+    
+    // Parse failing tests
+    const failingTests = this.parseFailingTests(output);
+    if (failingTests.length > 0) {
+      result.failingTests = failingTests;
+    }
+    
+    return result;
+  }
+
+  /**
+   * Parse test counts from output
+   */
+  private parseTestCounts(output: string): { passed: number; failed: number } | null {
+    // XCTest format: "Executed 1 test, with 1 failure"
+    // Look for the last occurrence to get the summary
+    const xcTestMatches = [...output.matchAll(/Executed (\d+) test(?:s)?, with (\d+) failure/g)];
+    if (xcTestMatches.length > 0) {
+      const lastMatch = xcTestMatches[xcTestMatches.length - 1];
+      const totalTests = parseInt(lastMatch[1], 10);
+      const failures = parseInt(lastMatch[2], 10);
+      
+      // If we found XCTest results with actual tests, use them
+      if (totalTests > 0) {
+        return {
+          passed: totalTests - failures,
+          failed: failures
+        };
+      }
+    }
+    
+    // Swift Testing format: "✘ Test run with 1 test failed after..." or "✔ Test run with X tests passed after..."
+    const swiftTestingMatch = output.match(/[✘✔] Test run with (\d+) test(?:s)? (passed|failed)/);
+    if (swiftTestingMatch) {
+      const testCount = parseInt(swiftTestingMatch[1], 10);
+      const status = swiftTestingMatch[2];
+      
+      // Only use Swift Testing results if we have actual tests
+      if (testCount > 0) {
+        if (status === 'failed') {
+          return { passed: 0, failed: testCount };
+        } else {
+          return { passed: testCount, failed: 0 };
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Parse failing test details from output
+   */
+  private parseFailingTests(output: string): Array<{ identifier: string; reason: string }> {
+    const failingTests: Array<{ identifier: string; reason: string }> = [];
+    
+    // Parse XCTest failures
+    const xcTestFailures = this.parseXCTestFailures(output);
+    failingTests.push(...xcTestFailures);
+    
+    // Parse Swift Testing failures
+    const swiftTestingFailures = this.parseSwiftTestingFailures(output);
+    
+    // Add Swift Testing failures, avoiding duplicates
+    for (const failure of swiftTestingFailures) {
+      if (!failingTests.some(t => t.identifier === failure.identifier)) {
+        failingTests.push(failure);
+      }
+    }
+    
+    logger.debug({ failingTestsCount: failingTests.length, failingTests }, 'Parsed failing tests from console output');
+    return failingTests;
+  }
+
+  /**
+   * Parse XCTest failure details
+   */
+  private parseXCTestFailures(output: string): Array<{ identifier: string; reason: string }> {
+    const failures: Array<{ identifier: string; reason: string }> = [];
+    const pattern = /Test Case '-\[(\S+)\s+(\w+)\]' failed/g;
+    let match;
+    
+    while ((match = pattern.exec(output)) !== null) {
+      const className = match[1];
+      const methodName = match[2];
+      const identifier = `${className}.${methodName}`;
+      const reason = this.extractXCTestFailureReason(output, className, methodName);
+      
+      failures.push({ identifier, reason });
+    }
+    
+    return failures;
+  }
+
+  /**
+   * Extract failure reason for a specific XCTest
+   */
+  private extractXCTestFailureReason(output: string, className: string, testName: string): string {
+    const lines = output.split('\n');
+    
+    // Try both formats: full class name and just test name
+    const patterns = [
+      `Test Case '-[${className} ${testName}]' failed`,
+      `Test Case '-[${className.split('.').pop()} ${testName}]' failed`
+    ];
+    
+    for (const pattern of patterns) {
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes(pattern)) {
+          // Check the previous line for error details
+          if (i > 0) {
+            const prevLine = lines[i-1];
+            
+            // XCTFail format: "error: ... : failed - <message>"
+            if (prevLine.includes('failed -')) {
+              const failedMatch = prevLine.match(/failed\s*-\s*(.+)$/);
+              if (failedMatch) {
+                return failedMatch[1].trim();
+              }
+            }
+            
+            // XCTAssert format: may have the full error with escaped quotes
+            if (prevLine.includes('error:')) {
+              // Try to extract custom message after the last dash
+              const customMessageMatch = prevLine.match(/\s-\s([^-]+)$/);
+              if (customMessageMatch) {
+                return customMessageMatch[1].trim();
+              }
+              
+              // Try to extract the assertion type
+              if (prevLine.includes('XCTAssertEqual failed')) {
+                // Clean up the XCTAssertEqual format
+                const assertMatch = prevLine.match(/XCTAssertEqual failed:.*?-\s*(.+)$/);
+                if (assertMatch) {
+                  return assertMatch[1].trim();
+                }
+                // If no custom message, return a generic one
+                return 'Values are not equal';
+              }
+              
+              // Generic error format: extract everything after "error: ... :"
+              const errorMatch = prevLine.match(/error:\s*[^:]+:\s*(.+)$/);
+              if (errorMatch) {
+                let reason = errorMatch[1].trim();
+                // Clean up escaped quotes and format
+                reason = reason.replace(/\\"/g, '"');
+                // Remove the redundant class/method prefix if present
+                reason = reason.replace(new RegExp(`^-?\\[${className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\]]*\\]\\s*:\\s*`, 'i'), '');
+                return reason.trim();
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+    
+    return 'Test failed';
+  }
+
+  /**
+   * Parse Swift Testing failure details
+   */
+  private parseSwiftTestingFailures(output: string): Array<{ identifier: string; reason: string }> {
+    const failures: Array<{ identifier: string; reason: string }> = [];
+    const pattern = /✘ Test (\w+)\(\) (?:failed|recorded an issue)/g;
+    let match;
+    
+    // Try to find the suite name from the output
+    let suiteName: string | null = null;
+    const suiteMatch = output.match(/◇ Suite (\w+) started\./);
+    if (suiteMatch) {
+      suiteName = suiteMatch[1];
+    }
+    
+    while ((match = pattern.exec(output)) !== null) {
+      const testName = match[1];
+      
+      // Build identifier with module.suite.test format to match XCTest
+      let identifier = testName;
+      const issuePattern = new RegExp(`✘ Test ${testName}\\(\\) recorded an issue at (\\w+)\\.swift`, 'm');
+      const issueMatch = output.match(issuePattern);
+      if (issueMatch) {
+        const fileName = issueMatch[1];
+        // If we have a suite name, use module.suite.test format
+        // Otherwise fall back to module.test
+        if (suiteName) {
+          identifier = `${fileName}.${suiteName}.${testName}`;
+        } else {
+          identifier = `${fileName}.${testName}`;
+        }
+      }
+      
+      const reason = this.extractSwiftTestingFailureReason(output, testName);
+      
+      failures.push({ identifier, reason });
+    }
+    
+    return failures;
+  }
+
+  /**
+   * Extract failure reason for a specific Swift test
+   */
+  private extractSwiftTestingFailureReason(output: string, testName: string): string {
+    const lines = output.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      if (line.includes(`✘ Test ${testName}() recorded an issue`)) {
+        // Extract the expectation failure message from the same line
+        // Format: "✘ Test testFailingTest() recorded an issue at TestSwiftPackageSwiftTestingTests.swift:12:5: Expectation failed: 1 == 2"
+        const issueMatch = line.match(/recorded an issue at .*?:\d+:\d+:\s*(.+)$/);
+        if (issueMatch) {
+          let reason = issueMatch[1];
+          
+          // Check if there's a message on the following lines (marked with ↳)
+          // Collect all lines between ↳ and the next ✘ marker
+          const messageLines: string[] = [];
+          let inMessage = false;
+          
+          for (let j = i + 1; j < lines.length && j < i + 20; j++) {
+            const nextLine = lines[j];
+            
+            // Stop when we hit the next test marker
+            if (nextLine.includes('✘')) {
+              break;
+            }
+            
+            // Start capturing after we see ↳ (but skip comment lines)
+            if (nextLine.includes('↳')) {
+              if (!nextLine.includes('//')) {
+                const messageMatch = nextLine.match(/↳\s*(.+)$/);
+                if (messageMatch) {
+                  messageLines.push(messageMatch[1].trim());
+                  inMessage = true;
+                }
+              }
+            } else if (inMessage && nextLine.trim()) {
+              // Capture continuation lines (indented lines without ↳)
+              messageLines.push(nextLine.trim());
+            }
+          }
+          
+          // If we found message lines, append them to the reason
+          if (messageLines.length > 0) {
+            reason = `${reason} - ${messageLines.join(' ')}`;
+          }
+          
+          return reason;
+        }
+        // Fallback to simpler pattern
+        const simpleMatch = line.match(/recorded an issue.*?:\s*(.+)$/);
+        if (simpleMatch) {
+          return simpleMatch[1];
+        }
+        break;
+      } else if (line.includes(`✘ Test ${testName}() failed`)) {
+        // Check if there was an issue line before this
+        if (i > 0 && lines[i-1].includes('recorded an issue')) {
+          const issueMatch = lines[i-1].match(/recorded an issue.*?:\d+:\d+:\s*(.+)$/);
+          if (issueMatch) {
+            return issueMatch[1];
+          }
+        }
+        break;
+      }
+    }
+    
+    return 'Test failed';
+  }
+  
+  /**
+   * Parse XUnit files from both XCTest and Swift Testing
+   */
+  private parseXunitFiles(xunitPath: string, swiftTestingPath: string, consoleOutput: string): {
+    passed: number;
+    failed: number;
+    failingTests?: Array<{ identifier: string; reason: string }>;
+  } | null {
+    try {
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: '@_'
+      });
+      
+      let totalPassed = 0;
+      let totalFailed = 0;
+      const allFailingTests: Array<{ identifier: string; reason: string }> = [];
+      
+      // Parse XCTest XUnit file
+      if (existsSync(xunitPath)) {
+        const xcTestXml = readFileSync(xunitPath, 'utf8');
+        const xcTestResult = parser.parse(xcTestXml);
+        const xcTestSuite = xcTestResult.testsuites?.testsuite;
+        
+        if (xcTestSuite && xcTestSuite['@_tests']) {
+          const totalTests = parseInt(xcTestSuite['@_tests'], 10);
+          const failures = parseInt(xcTestSuite['@_failures'] || '0', 10);
+          
+          if (totalTests > 0) {
+            totalPassed += totalTests - failures;
+            totalFailed += failures;
+            
+            // Extract failing test identifiers (but not reasons - they're just "failed")
+            const testcases = Array.isArray(xcTestSuite.testcase) 
+              ? xcTestSuite.testcase 
+              : xcTestSuite.testcase ? [xcTestSuite.testcase] : [];
+            
+            for (const testcase of testcases) {
+              if (testcase && testcase.failure) {
+                const className = testcase['@_classname'] || '';
+                const testName = testcase['@_name'] || '';
+                const identifier = `${className}.${testName}`;
+                
+                // Extract reason from console output
+                const reason = this.extractXCTestFailureReason(consoleOutput, className, testName);
+                allFailingTests.push({ identifier, reason });
+              }
+            }
+          }
+        }
+      }
+      
+      // Parse Swift Testing XUnit file
+      if (existsSync(swiftTestingPath)) {
+        const swiftTestingXml = readFileSync(swiftTestingPath, 'utf8');
+        const swiftTestingResult = parser.parse(swiftTestingXml);
+        const swiftTestingSuite = swiftTestingResult.testsuites?.testsuite;
+        
+        if (swiftTestingSuite && swiftTestingSuite['@_tests']) {
+          const totalTests = parseInt(swiftTestingSuite['@_tests'], 10);
+          const failures = parseInt(swiftTestingSuite['@_failures'] || '0', 10);
+          
+          if (totalTests > 0) {
+            totalPassed += totalTests - failures;
+            totalFailed += failures;
+            
+            // Extract failing tests with full error messages
+            const testcases = Array.isArray(swiftTestingSuite.testcase) 
+              ? swiftTestingSuite.testcase 
+              : swiftTestingSuite.testcase ? [swiftTestingSuite.testcase] : [];
+            
+            for (const testcase of testcases) {
+              if (testcase && testcase.failure) {
+                const className = testcase['@_classname'] || '';
+                const testName = testcase['@_name'] || '';
+                const identifier = `${className}.${testName}`;
+                
+                // Swift Testing XUnit includes the full error message!
+                const failureElement = testcase.failure;
+                let reason = 'Test failed';
+                if (typeof failureElement === 'object' && failureElement['@_message']) {
+                  reason = failureElement['@_message'];
+                  // Decode HTML entities
+                  reason = reason
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#10;/g, '\n')
+                    .replace(/&#8594;/g, '→');
+                  // Replace newlines with space for single-line display
+                  reason = reason.replace(/\n+/g, ' ').trim();
+                }
+                
+                allFailingTests.push({ identifier, reason });
+              }
+            }
+          }
+        }
+      }
+      
+      // Return results if we found any tests
+      if (totalPassed > 0 || totalFailed > 0) {
+        logger.debug({ 
+          totalPassed, 
+          totalFailed, 
+          failingTests: allFailingTests,
+          xcTestExists: existsSync(xunitPath),
+          swiftTestingExists: existsSync(swiftTestingPath)
+        }, 'XUnit parsing successful');
+        
+        return {
+          passed: totalPassed,
+          failed: totalFailed,
+          failingTests: allFailingTests.length > 0 ? allFailingTests : undefined
+        };
+      }
+      
+      return null;
+    } catch (error: any) {
+      logger.error({ error: error.message }, 'Failed to parse XUnit files');
+      return null;
+    }
+  }
+  
+  /**
+   * Clean up XUnit files after parsing
+   */
+  private cleanupXunitFiles(xunitPath: string, swiftTestingPath: string): void {
+    try {
+      if (existsSync(xunitPath)) {
+        unlinkSync(xunitPath);
+      }
+      if (existsSync(swiftTestingPath)) {
+        unlinkSync(swiftTestingPath);
+      }
+    } catch (error: any) {
+      logger.debug({ error: error.message }, 'Failed to clean up XUnit files');
     }
   }
   
