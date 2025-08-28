@@ -12,7 +12,6 @@
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
     "test": "jest --runInBand",
-    "test:ci": "jest src/__tests__/unit/ && jest src/__tests__/e2e/ --runInBand",
     "test:coverage": "jest --coverage --runInBand",
     "test:unit": "jest src/__tests__/unit/",
     "test:e2e": "jest src/__tests__/e2e/ --runInBand",

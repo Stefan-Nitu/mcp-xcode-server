@@ -28,13 +28,7 @@ jobs:
     - name: Build TypeScript
       run: npm run build
     
-    - name: Run unit tests
-      run: npm run test:unit
-    
-    - name: Run end-to-end tests
-      run: npm run test:e2e
-    
-    - name: Run test coverage
+    - name: Run tests with coverage
       run: npm run test:coverage
     
     - name: Upload coverage reports
