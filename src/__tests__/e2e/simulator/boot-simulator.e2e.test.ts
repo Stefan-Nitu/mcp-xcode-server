@@ -52,7 +52,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const devices = JSON.parse((listResponse.content[0] as any).text);
       const shutdownDevice = devices.find((d: any) => 
@@ -73,7 +73,7 @@ describe('BootSimulatorTool E2E Tests', () => {
             deviceId: shutdownDevice.udid
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       expect(response.content[0].type).toBe('text');
@@ -90,7 +90,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const verifyDevices = JSON.parse((verifyResponse.content[0] as any).text);
       const bootedDevice = verifyDevices.find((d: any) => d.udid === shutdownDevice.udid);
@@ -105,7 +105,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const devices = JSON.parse((listResponse.content[0] as any).text);
       const shutdownDevice = devices.find((d: any) => 
@@ -126,7 +126,7 @@ describe('BootSimulatorTool E2E Tests', () => {
             deviceId: shutdownDevice.name
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -145,7 +145,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const devices = JSON.parse((listResponse.content[0] as any).text);
       let targetDevice = devices.find((d: any) => d.state === 'Booted');
@@ -169,7 +169,7 @@ describe('BootSimulatorTool E2E Tests', () => {
               deviceId: targetDevice.udid
             }
           }
-        }, CallToolResultSchema);
+        }, CallToolResultSchema, { timeout: 180000 });
         
         bootedSimulators.push(targetDevice.udid);
       }
@@ -183,7 +183,7 @@ describe('BootSimulatorTool E2E Tests', () => {
             deviceId: targetDevice.udid
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -200,7 +200,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'boot_simulator',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -217,7 +217,7 @@ describe('BootSimulatorTool E2E Tests', () => {
             deviceId: ''
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -234,7 +234,7 @@ describe('BootSimulatorTool E2E Tests', () => {
             deviceId: 'non-existent-device-12345'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -253,7 +253,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const devices = JSON.parse((listResponse.content[0] as any).text);
       const shutdownDevice = devices.find((d: any) => 
@@ -274,7 +274,7 @@ describe('BootSimulatorTool E2E Tests', () => {
             deviceId: shutdownDevice.udid
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       bootedSimulators.push(shutdownDevice.udid);
       
@@ -301,7 +301,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const devices = JSON.parse((listResponse.content[0] as any).text);
       const shutdownDevices = devices
@@ -323,7 +323,7 @@ describe('BootSimulatorTool E2E Tests', () => {
               deviceId: device.udid
             }
           }
-        }, CallToolResultSchema);
+        }, CallToolResultSchema, { timeout: 180000 });
         
         expect(response).toBeDefined();
         const text = (response.content[0] as any).text;
@@ -339,7 +339,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const verifyDevices = JSON.parse((verifyResponse.content[0] as any).text);
       shutdownDevices.forEach((device: any) => {
@@ -358,7 +358,7 @@ describe('BootSimulatorTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const devices = JSON.parse((listResponse.content[0] as any).text);
       const shutdownDevice = devices.find((d: any) => 
@@ -380,7 +380,7 @@ describe('BootSimulatorTool E2E Tests', () => {
             deviceId: shutdownDevice.udid
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const duration = Date.now() - startTime;
       

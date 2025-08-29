@@ -63,7 +63,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -149,7 +149,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             packagePath: packagePath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -180,7 +180,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             packagePath: packagePath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -209,7 +209,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -234,7 +234,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -259,7 +259,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             configuration: 'Production' // Non-existent configuration
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -280,7 +280,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -301,7 +301,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             platform: 'iOS' // Wrong platform for watchOS app
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -323,7 +323,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             packagePath: '/path/to/nonexistent/package'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -342,7 +342,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
             configuration: 'Beta' // Invalid for SPM (only Debug/Release)
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       

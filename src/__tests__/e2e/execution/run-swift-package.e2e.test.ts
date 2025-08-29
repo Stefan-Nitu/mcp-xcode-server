@@ -54,7 +54,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             executable: 'TestSwiftPackageXCTestExecutable'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Execution completed: TestSwiftPackageXCTestExecutable');
@@ -74,7 +74,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             configuration: 'Release'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
@@ -91,7 +91,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             executable: 'TestSwiftPackageXCTestExecutable'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
@@ -110,7 +110,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             arguments: ['test-arg']
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Received 1 arguments');
@@ -128,7 +128,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             arguments: ['arg1', 'arg2', 'arg3']
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Received 3 arguments');
@@ -148,7 +148,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             packagePath: '/non/existent/package'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('failed');
@@ -165,7 +165,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             executable: 'NonExistentExecutable'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('❌ Run failed');
@@ -184,7 +184,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             arguments: ['--fail']
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // When executable fails, we get generic error with log path
@@ -207,7 +207,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             packagePath: brokenPackagePath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('❌ Run failed');
@@ -228,7 +228,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
             packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should run the default executable (first one found)

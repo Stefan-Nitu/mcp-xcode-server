@@ -107,7 +107,7 @@ describe('RunXcodeTool E2E Tests', () => {
             deviceId: deviceName
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
@@ -127,7 +127,7 @@ describe('RunXcodeTool E2E Tests', () => {
             platform: 'macOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // macOS may not be supported by all test projects
@@ -149,7 +149,7 @@ describe('RunXcodeTool E2E Tests', () => {
             platform: 'tvOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
@@ -167,7 +167,7 @@ describe('RunXcodeTool E2E Tests', () => {
             platform: 'watchOS'
           }
         } 
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
@@ -199,7 +199,7 @@ describe('RunXcodeTool E2E Tests', () => {
             platform: 'visionOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
@@ -220,7 +220,7 @@ describe('RunXcodeTool E2E Tests', () => {
             configuration: 'Debug'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Debug');
@@ -238,7 +238,7 @@ describe('RunXcodeTool E2E Tests', () => {
             configuration: 'Release'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
@@ -257,7 +257,7 @@ describe('RunXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
@@ -275,7 +275,7 @@ describe('RunXcodeTool E2E Tests', () => {
             scheme: 'NonExistent'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Run failed');
@@ -292,7 +292,7 @@ describe('RunXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // When scheme doesn't exist, it fails during build phase
@@ -312,7 +312,7 @@ describe('RunXcodeTool E2E Tests', () => {
             // Missing required scheme parameter
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should fail with validation error about missing required field

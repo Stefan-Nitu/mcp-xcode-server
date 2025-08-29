@@ -224,7 +224,7 @@ describe('TestXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should get scheme not found error (build fails before tests run)

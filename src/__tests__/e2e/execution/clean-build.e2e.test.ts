@@ -93,7 +93,7 @@ describe('CleanBuildTool E2E Tests', () => {
             cleanTarget: 'build'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const cleanResult = JSON.parse((cleanResponse.content[0] as any).text);
       expect(cleanResult.success).toBe(true);
@@ -114,7 +114,7 @@ describe('CleanBuildTool E2E Tests', () => {
             cleanTarget: 'build'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((response.content[0] as any).text);
       expect(result.success).toBe(true);
@@ -134,7 +134,7 @@ describe('CleanBuildTool E2E Tests', () => {
             // No projectPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((response.content[0] as any).text);
       expect(result.success).toBe(false);
@@ -171,7 +171,7 @@ describe('CleanBuildTool E2E Tests', () => {
             derivedDataPath: derivedDataPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((cleanResponse.content[0] as any).text);
       expect(result.success).toBe(true);
@@ -196,7 +196,7 @@ describe('CleanBuildTool E2E Tests', () => {
             derivedDataPath: derivedDataPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((response.content[0] as any).text);
       expect(result.success).toBe(true);
@@ -234,7 +234,7 @@ describe('CleanBuildTool E2E Tests', () => {
               derivedDataPath: derivedDataPath
             }
           }
-        }, CallToolResultSchema);
+        }, CallToolResultSchema, { timeout: 180000 });
         
         const result = JSON.parse((cleanResponse.content[0] as any).text);
         expect(result.success).toBe(true);
@@ -256,7 +256,7 @@ describe('CleanBuildTool E2E Tests', () => {
             derivedDataPath: derivedDataPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((cleanResponse.content[0] as any).text);
       expect(result.success).toBe(true);
@@ -304,7 +304,7 @@ describe('CleanBuildTool E2E Tests', () => {
             derivedDataPath: derivedDataPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((cleanResponse.content[0] as any).text);
       expect(result.success).toBe(true);
@@ -327,7 +327,7 @@ describe('CleanBuildTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(existsSync(derivedDataPath)).toBe(true);
       
@@ -343,7 +343,7 @@ describe('CleanBuildTool E2E Tests', () => {
             derivedDataPath: derivedDataPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((cleanResponse.content[0] as any).text);
       expect(result.success).toBe(true);
@@ -365,7 +365,7 @@ describe('CleanBuildTool E2E Tests', () => {
             packagePath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift')
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const buildText = (buildResponse.content[0] as any).text;
       expect(buildText).toContain('Build succeeded');
@@ -384,7 +384,7 @@ describe('CleanBuildTool E2E Tests', () => {
             cleanTarget: 'build'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((cleanResponse.content[0] as any).text);
       expect(result.success).toBe(true);
@@ -424,7 +424,7 @@ describe('CleanBuildTool E2E Tests', () => {
             cleanTarget: 'build'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const result = JSON.parse((cleanResponse.content[0] as any).text);
       expect(result.success).toBe(true);

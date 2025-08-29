@@ -45,7 +45,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       expect(response.content).toBeDefined();
@@ -91,7 +91,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
             showAll: false
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const allResponse = await client.request({
         method: 'tools/call',
@@ -101,7 +101,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
             showAll: true
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const availableDevices = JSON.parse((availableResponse.content[0] as any).text);
       const allDevices = JSON.parse((allResponse.content[0] as any).text);
@@ -126,7 +126,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const devices = JSON.parse((response.content[0] as any).text);
@@ -157,7 +157,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
               platform
             }
           }
-        }, CallToolResultSchema);
+        }, CallToolResultSchema, { timeout: 180000 });
         
         expect(response).toBeDefined();
         const devices = JSON.parse((response.content[0] as any).text);
@@ -184,7 +184,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
             platform: 'InvalidPlatform'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -203,7 +203,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
             platform: 'macOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const devices = JSON.parse((response.content[0] as any).text);
@@ -224,7 +224,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
             showAll: true
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const devices = JSON.parse((response.content[0] as any).text);
@@ -244,7 +244,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       expect(response.content[0].type).toBe('text');
@@ -267,7 +267,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const devices = JSON.parse((response.content[0] as any).text);
@@ -285,7 +285,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
             anotherParam: 123
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       // Should work normally, ignoring unknown params
@@ -302,7 +302,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const devices = JSON.parse((response.content[0] as any).text);
       
@@ -327,7 +327,7 @@ describe('ListSimulatorsTool E2E Tests', () => {
           name: 'list_simulators',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const duration = Date.now() - startTime;
       

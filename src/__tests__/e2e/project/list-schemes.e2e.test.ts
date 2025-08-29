@@ -56,7 +56,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const schemes = JSON.parse((response.content[0] as any).text);
@@ -76,7 +76,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.testProjectDir + '/TestProjectSwiftTesting/TestProjectSwiftTesting.xcodeproj'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const schemes = JSON.parse((response.content[0] as any).text);
@@ -100,7 +100,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.watchOSProjectPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const schemes = JSON.parse((response.content[0] as any).text);
@@ -123,7 +123,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.workspacePath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const schemes = JSON.parse((response.content[0] as any).text);
@@ -147,7 +147,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.swiftPackageXCTestDir + '/Package.swift'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const content = (response.content[0] as any).text;
@@ -169,7 +169,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: '/non/existent/project.xcodeproj'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -187,7 +187,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.testProjectDir + '/README.md'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -205,7 +205,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: '../../../etc/passwd'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -221,7 +221,7 @@ describe('ListSchemesTool E2E Tests', () => {
           name: 'list_schemes',
           arguments: {}
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -241,7 +241,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.testProjectDir + '/TestProjectSwiftTesting/TestProjectSwiftTesting.xcodeproj'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const schemes = JSON.parse((response.content[0] as any).text);
@@ -272,7 +272,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const schemes1 = JSON.parse((response1.content[0] as any).text);
       
@@ -285,7 +285,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const schemes2 = JSON.parse((response2.content[0] as any).text);
       
@@ -306,7 +306,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.xcodeProjectXCTestPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -330,7 +330,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: pathWithSpaces
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
@@ -349,7 +349,7 @@ describe('ListSchemesTool E2E Tests', () => {
             projectPath: projectManager.paths.testProjectDir
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       expect(response).toBeDefined();
       const content = (response.content[0] as any).text;

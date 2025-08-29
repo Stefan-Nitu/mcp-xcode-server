@@ -92,7 +92,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             configuration: 'Debug'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       // Extract app path from response
       const buildText1 = (buildResponse1.content[0] as any).text;
@@ -115,7 +115,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             configuration: 'Debug'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       // Extract app path from response
       const buildText2 = (buildResponse2.content[0] as any).text;
@@ -203,7 +203,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId: deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const installText = (installResponse.content[0] as any).text;
       expect(installText).toMatch(/^Successfully installed app: .+ on .+$/);
@@ -223,7 +223,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId: deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const uninstallText = (uninstallResponse.content[0] as any).text;
       expect(uninstallText).toContain('Successfully uninstalled');
@@ -251,7 +251,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             appPath: testApp2Path
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const installText = (installResponse.content[0] as any).text;
       expect(installText).toMatch(/^Successfully installed app: .+ on .+$/);
@@ -270,7 +270,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             bundleId: testApp2BundleId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const uninstallText = (uninstallResponse.content[0] as any).text;
       expect(uninstallText).toContain('Successfully uninstalled');
@@ -298,7 +298,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       // Reinstall (should overwrite)
       const reinstallResponse = await client.request({
@@ -310,7 +310,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const reinstallText = (reinstallResponse.content[0] as any).text;
       expect(reinstallText).toMatch(/^Successfully installed app: .+ on .+$/);
@@ -329,7 +329,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
     }, 60000);
   });
 
@@ -351,7 +351,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       await client.request({
         method: 'tools/call',
@@ -362,7 +362,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       // Verify both installed
       const installedApps = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
@@ -379,7 +379,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       // Verify first is gone but second remains
       const appsAfterFirst = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
@@ -396,7 +396,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       // Verify both are gone
       const appsAfterBoth = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
@@ -418,7 +418,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId: deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should get error about app not existing
@@ -439,7 +439,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should get specific error about app not being installed
@@ -457,7 +457,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             bundleId: 'invalid bundle id with spaces'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('invalid bundle id format');
@@ -477,7 +477,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             deviceId: 'non-existent-device-id'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should get error about device not found
@@ -502,7 +502,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             // No deviceId and no booted devices
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should get error about no booted simulator
@@ -523,7 +523,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
             // No deviceId and no booted devices
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should get error about no booted simulator

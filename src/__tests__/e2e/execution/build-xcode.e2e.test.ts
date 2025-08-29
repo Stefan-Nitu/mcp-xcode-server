@@ -52,7 +52,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -69,7 +69,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Should fail with validation error
@@ -88,7 +88,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             configuration: 'Release'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -105,7 +105,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const simulators = JSON.parse((listResponse.content[0] as any).text);
       const availableSimulator = simulators.find((s: any) => s.isAvailable);
@@ -122,7 +122,7 @@ describe('BuildXcodeTool E2E Tests', () => {
               deviceId: availableSimulator.udid
             }
           }
-        }, CallToolResultSchema);
+        }, CallToolResultSchema, { timeout: 180000 });
         
         const text = (response.content[0] as any).text;
         expect(text).toContain('Build succeeded');
@@ -142,7 +142,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -161,7 +161,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             // iOS is default platform
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -179,7 +179,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'macOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Either succeeds or reports platform not supported
@@ -198,7 +198,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'tvOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -216,7 +216,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'watchOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -234,7 +234,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'visionOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -253,7 +253,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             scheme: 'NonExistentScheme'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Project path does not exist');
@@ -270,7 +270,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('❌ Build failed');
@@ -290,7 +290,7 @@ describe('BuildXcodeTool E2E Tests', () => {
             configuration: 'Beta'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');

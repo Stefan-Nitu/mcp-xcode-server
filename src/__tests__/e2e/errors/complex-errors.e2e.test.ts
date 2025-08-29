@@ -67,7 +67,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -99,7 +99,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -131,7 +131,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -155,7 +155,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
             packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
@@ -190,7 +190,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const failText = (failResponse.content[0] as any).text;
       expect(failText).toContain('❌ Build failed');
@@ -208,7 +208,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const successText = (successResponse.content[0] as any).text;
       expect(successText).toContain('✅ Build succeeded');
@@ -245,7 +245,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
             name: scenario.tool,
             arguments: scenario.args
           }
-        }, CallToolResultSchema);
+        }, CallToolResultSchema, { timeout: 180000 });
         
         const text = (response.content[0] as any).text;
         

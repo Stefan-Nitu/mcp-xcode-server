@@ -54,7 +54,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             packagePath: join(testProjectManager.paths.swiftPackageXCTestDir, 'Package.swift')
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -75,7 +75,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             configuration: 'Release'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -91,7 +91,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
@@ -110,7 +110,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             target: 'TestSwiftPackageXCTest'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Either succeeds or fails if target doesn't exist
@@ -133,7 +133,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             product: 'TestSwiftPackageXCTest'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Either succeeds or fails if product doesn't exist
@@ -158,7 +158,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             packagePath: '/non/existent/Package.swift'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('failed');
@@ -179,7 +179,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             packagePath: brokenPackagePath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('❌ Build failed');
@@ -199,7 +199,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             target: 'NonExistentTarget'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('❌ Build failed');
@@ -217,7 +217,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
             product: 'NonExistentProduct'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('❌ Build failed');

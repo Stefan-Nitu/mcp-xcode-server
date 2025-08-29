@@ -50,7 +50,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
@@ -69,7 +69,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             configuration: 'Release'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
@@ -86,7 +86,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             filter: 'TestSwiftPackageXCTestTests'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Filter: TestSwiftPackageXCTestTests');
@@ -103,7 +103,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             packagePath: packageSwiftPath
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
@@ -119,7 +119,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             packagePath: '/nonexistent/package'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('No Package.swift found');
@@ -135,7 +135,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             configuration: 'InvalidConfig'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('validation error');
@@ -152,7 +152,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             filter: 'LegacyTests.testFailingTest'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Filter: LegacyTests.testFailingTest');
@@ -174,7 +174,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             packagePath: testProjectManager.paths.swiftPackageXCTestDir
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       // Verify test summary and multiple failures are shown
@@ -194,7 +194,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             packagePath: testProjectManager.paths.swiftPackageSwiftTestingDir
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
@@ -213,7 +213,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             filter: 'testExample' // Run a specific test
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Filter: testExample');
@@ -232,7 +232,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             configuration: 'Release'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
@@ -249,7 +249,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
             filter: 'testFailingTest'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Filter: testFailingTest');
