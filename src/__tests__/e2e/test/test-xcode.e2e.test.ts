@@ -11,6 +11,9 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { createAndConnectClient, cleanupClientAndTransport } from '../../utils/testHelpers.js';
 import { TestProjectManager } from '../../utils/TestProjectManager.js';
 import { TestEnvironmentCleaner } from '../../utils/TestEnvironmentCleaner.js';
+import { createModuleLogger } from '../../../logger.js';
+
+const logger = createModuleLogger('test-xcode-e2e');
 
 describe('TestXcodeTool E2E Tests', () => {
   let client: Client;
@@ -56,6 +59,11 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 300000 });
       
       const text = (response.content[0] as any).text;
+      logger.info({ 
+        testResponse: text,
+        projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
+        scheme: testProjectManager.schemes.xcodeProject 
+      }, 'test_xcode response');
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Platform: iOS');
       expect(text).toMatch(/\d+ passed, \d+ failed/);

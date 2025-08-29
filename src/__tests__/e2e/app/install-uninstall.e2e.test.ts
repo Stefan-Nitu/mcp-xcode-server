@@ -10,7 +10,10 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { TestProjectManager } from '../../utils/TestProjectManager';
 import { TestEnvironmentCleaner } from '../../utils/TestEnvironmentCleaner';
+import { createModuleLogger } from '../../../logger';
 import { createAndConnectClient, cleanupClientAndTransport } from '../../utils/testHelpers';
+
+const logger = createModuleLogger('install-uninstall-e2e');
 
 describe('App Installation and Uninstallation E2E Tests', () => {
   let client: Client;
@@ -96,10 +99,16 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       // Extract app path from response
       const buildText1 = (buildResponse1.content[0] as any).text;
+      logger.info({ buildText: buildText1 }, 'TestProjectSwiftTesting build response');
       const appPathMatch1 = buildText1.match(/App path: (.+)$/m);
       testApp1Path = appPathMatch1 ? appPathMatch1[1].trim() : null;
       
       if (!testApp1Path || testApp1Path === 'N/A') {
+        logger.error({ 
+          buildText: buildText1,
+          projectPath: projectManager.paths.xcodeProjectSwiftTestingPath,
+          scheme: projectManager.schemes.xcodeProjectSwiftTesting 
+        }, 'Build failed - no app path found');
         throw new Error('Failed to build TestProjectSwiftTesting - no app path found');
       }
       

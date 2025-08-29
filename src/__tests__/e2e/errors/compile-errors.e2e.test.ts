@@ -12,7 +12,10 @@ import { createAndConnectClient, cleanupClientAndTransport } from '../../utils/t
 import { TestProjectManager } from '../../utils/TestProjectManager.js';
 import { TestEnvironmentCleaner } from '../../utils/TestEnvironmentCleaner.js';
 import { TestErrorInjector } from '../../utils/TestErrorInjector.js';
+import { createModuleLogger } from '../../../logger.js';
 import { join } from 'path';
+
+const logger = createModuleLogger('compile-errors-e2e');
 
 describe('Build and Compile Error Display E2E Tests', () => {
   let client: Client;
@@ -66,6 +69,11 @@ describe('Build and Compile Error Display E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
+      logger.info({ 
+        buildResponse: text,
+        projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
+        scheme: testProjectManager.schemes.xcodeProject 
+      }, 'Compile error test - Build response');
       
       // Check for compile error display
       expect(text).toContain('❌ Build failed with');
