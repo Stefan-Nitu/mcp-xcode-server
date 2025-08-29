@@ -178,7 +178,8 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      expect(text).toContain('❌ Build failed');
+      expect(text).toContain('Full logs saved to');
       
       // Clean up
       execSync(`rm -rf ${brokenPackagePath}`, { stdio: 'pipe' });
@@ -197,8 +198,9 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
-      // Swift build should report unknown target
+      expect(text).toContain('❌ Build failed');
+      expect(text).toContain('Full logs saved to');
+      // Swift build reports unknown target in the logs
     });
 
     test('should handle invalid product', async () => {
@@ -214,8 +216,9 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
-      // Swift build should report unknown product
+      expect(text).toContain('❌ Build failed');
+      expect(text).toContain('Full logs saved to');
+      // Swift build reports unknown product in the logs
     });
   });
 

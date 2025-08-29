@@ -275,8 +275,9 @@ describe('BuildXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
-      // Xcode will report scheme not found
+      expect(text).toContain('❌ Build failed');
+      expect(text.toLowerCase()).toContain('scheme not found');
+      expect(text).toContain('Check available schemes with list_schemes tool');
     }, 30000);
 
     test('should handle custom configuration gracefully', async () => {

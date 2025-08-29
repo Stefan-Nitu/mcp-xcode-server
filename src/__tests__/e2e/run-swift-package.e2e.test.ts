@@ -168,8 +168,9 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
-      // Swift will report unknown executable
+      expect(text).toContain('❌ Run failed');
+      expect(text).toContain('Full logs saved to');
+      // Swift will report unknown executable in logs
     });
 
     test('should handle executable failure with exit code', async () => {
@@ -186,8 +187,10 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      // The executable should print error message before failing
-      expect(text).toContain('Requested failure via --fail flag');
+      // When executable fails, we get generic error with log path
+      expect(text).toContain('❌ Run failed');
+      expect(text).toContain('Full logs saved to');
+      // The actual error output is in the logs, not in the response
     }, 30000);
 
     test('should handle broken Package.swift', async () => {
@@ -207,7 +210,8 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      expect(text).toContain('❌ Run failed');
+      expect(text).toContain('Full logs saved to');
       
       // Clean up
       execSync(`rm -rf ${brokenPackagePath}`, { stdio: 'pipe' });

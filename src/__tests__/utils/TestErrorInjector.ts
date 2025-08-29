@@ -112,28 +112,50 @@ export class TestErrorInjector {
     
     let content = readFileSync(packageSwiftPath, 'utf8');
     
-    // Add a non-existent package dependency
-    const dependenciesMatch = content.match(/dependencies:\s*\[([^\]]*)\]/);
-    if (dependenciesMatch) {
-      const newDependency = '.package(url: "https://github.com/nonexistent/package.git", from: "1.0.0"),';
+    // In Swift Package Manager, the Package initializer arguments must be in order:
+    // name, platforms?, products, dependencies?, targets
+    // We need to insert dependencies after products but before targets
+    
+    // Find the end of products array and beginning of targets
+    // Use [\s\S]*? for non-greedy multiline matching
+    const regex = /(products:\s*\[[\s\S]*?\])(,\s*)(targets:)/;
+    const match = content.match(regex);
+    
+    if (match) {
+      // Insert dependencies between products and targets
+      // Use a non-existent package to trigger dependency resolution error
       content = content.replace(
-        dependenciesMatch[0],
-        `dependencies: [\n        ${newDependency}\n${dependenciesMatch[1]}]`
+        regex,
+        `$1,\n    dependencies: [\n        .package(url: "https://github.com/nonexistent-org/nonexistent-package.git", from: "1.0.0")\n    ]$2$3`
       );
     }
     
-    // Also add import to a source file to trigger the error
-    const sourcePath = join(packagePath, 'Sources');
-    if (existsSync(sourcePath)) {
-      const sourceFiles = require('fs').readdirSync(sourcePath, { recursive: true })
-        .filter((f: string) => f.endsWith('.swift'));
+    // Now add the dependency to a target so it tries to use it
+    // Find the first target that doesn't have dependencies yet
+    const targetRegex = /\.target\(\s*name:\s*"([^"]+)"\s*\)/;
+    const targetMatch = content.match(targetRegex);
+    
+    if (targetMatch) {
+      const targetName = targetMatch[1];
+      // Replace the target to add dependencies
+      content = content.replace(
+        targetMatch[0],
+        `.target(\n            name: "${targetName}",\n            dependencies: [\n                .product(name: "NonExistentPackage", package: "nonexistent-package")\n            ])`
+      );
       
-      if (sourceFiles.length > 0) {
-        const sourceFile = join(sourcePath, sourceFiles[0]);
-        this.backupFile(sourceFile);
-        let sourceContent = readFileSync(sourceFile, 'utf8');
-        sourceContent = 'import NonExistentPackage\n' + sourceContent;
-        writeFileSync(sourceFile, sourceContent);
+      // Also add import to a source file to trigger the error at compile time
+      const sourcePath = join(packagePath, 'Sources', targetName);
+      if (existsSync(sourcePath)) {
+        const sourceFiles = require('fs').readdirSync(sourcePath, { recursive: true })
+          .filter((f: string) => f.endsWith('.swift'));
+        
+        if (sourceFiles.length > 0) {
+          const sourceFile = join(sourcePath, sourceFiles[0]);
+          this.backupFile(sourceFile);
+          let sourceContent = readFileSync(sourceFile, 'utf8');
+          sourceContent = 'import NonExistentPackage\n' + sourceContent;
+          writeFileSync(sourceFile, sourceContent);
+        }
       }
     }
     

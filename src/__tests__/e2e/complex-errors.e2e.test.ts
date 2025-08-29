@@ -144,10 +144,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
   });
 
   describe('Swift Package Dependency Errors', () => {
-    test.skip('should display missing dependency error', async () => {
-      // Skip this test by default as it requires network access
-      // and can be slow
-      
+    test('should display missing dependency error', async () => {
       errorInjector.injectMissingDependency(testProjectManager.paths.swiftPackageXCTestDir);
       
       const response = await client.request({
@@ -162,8 +159,12 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       
-      // Should show dependency error
-      expect(text.toLowerCase()).toMatch(/dependency|package|module|cannot find/);
+      // Should show build failure with dependency resolution error
+      expect(text).toContain('❌ Build failed');
+      // Should show structured error with title, details, and suggestion
+      expect(text).toContain('📍 Failed to clone repository');
+      expect(text).toContain('Could not fetch dependency from https://github.com/nonexistent-org/nonexistent-package.git');
+      expect(text).toContain('💡 Verify the repository URL exists and is accessible');
       expect(text).toContain('📁 Full logs saved to:');
     }, 60000);
   });

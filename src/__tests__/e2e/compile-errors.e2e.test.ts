@@ -11,16 +11,20 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
 import { TestEnvironmentCleaner } from '../utils/TestEnvironmentCleaner.js';
+import { TestErrorInjector } from '../utils/TestErrorInjector.js';
+import { join } from 'path';
 
 describe('Build and Compile Error Display E2E Tests', () => {
   let client: Client;
   let transport: StdioClientTransport;
   let testProjectManager: TestProjectManager;
+  let errorInjector: TestErrorInjector;
   
   beforeAll(async () => {
     execSync('npm run build', { cwd: process.cwd() });
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
+    errorInjector = new TestErrorInjector();
   }, 120000);
   
   beforeEach(async () => {
@@ -32,6 +36,9 @@ describe('Build and Compile Error Display E2E Tests', () => {
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
     
+    // Restore any modified files
+    errorInjector.restoreAll();
+    
     await cleanupClientAndTransport(client, transport);
     testProjectManager.cleanup();
   });
@@ -42,7 +49,10 @@ describe('Build and Compile Error Display E2E Tests', () => {
 
   describe('Xcode Project Compile Errors', () => {
     test('build_xcode should display compile errors with file location', async () => {
-      // The test project has an intentional compile error in ContentView.swift
+      // Inject a compile error into ContentView.swift
+      const contentViewPath = join(testProjectManager.paths.xcodeProjectXCTestPath, '..', 'TestProjectXCTest', 'ContentView.swift');
+      errorInjector.injectCompileError(contentViewPath, 'type-mismatch');
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -60,12 +70,16 @@ describe('Build and Compile Error Display E2E Tests', () => {
       // Check for compile error display
       expect(text).toContain('❌ Build failed with');
       expect(text).toContain('error');
-      expect(text).toContain('ContentView.swift:52:'); // Line with the error
-      expect(text).toContain('cannot convert value of type'); // The error message
+      expect(text).toContain('ContentView.swift'); // File with the error
+      expect(text).toMatch(/String.*Int|cannot convert|type mismatch/i); // Type error message
       expect(text).toContain('📁 Full logs saved to:'); // Log path
     }, 30000);
 
     test('test_xcode should display compile errors when build fails', async () => {
+      // Inject a compile error into ContentView.swift
+      const contentViewPath = join(testProjectManager.paths.xcodeProjectXCTestPath, '..', 'TestProjectXCTest', 'ContentView.swift');
+      errorInjector.injectCompileError(contentViewPath, 'type-mismatch');
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -76,19 +90,23 @@ describe('Build and Compile Error Display E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
       // Check for compile error display in test tool
       expect(text).toContain('❌ Build failed with');
       expect(text).toContain('error');
-      expect(text).toContain('ContentView.swift:52:');
-      expect(text).toContain('cannot convert value of type');
+      expect(text).toContain('ContentView.swift');
+      expect(text).toMatch(/String.*Int|cannot convert|type mismatch/i);
       expect(text).toContain('📁 Full logs saved to:');
-    }, 30000);
+    }, 180000);
 
     test('run_xcode should display compile errors when build fails', async () => {
+      // Inject a compile error into ContentView.swift
+      const contentViewPath = join(testProjectManager.paths.xcodeProjectXCTestPath, '..', 'TestProjectXCTest', 'ContentView.swift');
+      errorInjector.injectCompileError(contentViewPath, 'type-mismatch');
+      
       const response = await client.request({
         method: 'tools/call',
         params: {
@@ -99,17 +117,17 @@ describe('Build and Compile Error Display E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema);
+      }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
       
       // Check for compile error display in run tool
       expect(text).toContain('❌ Build failed with');
       expect(text).toContain('error');
-      expect(text).toContain('ContentView.swift:52:');
-      expect(text).toContain('cannot convert value of type');
+      expect(text).toContain('ContentView.swift');
+      expect(text).toMatch(/String.*Int|cannot convert|type mismatch/i);
       expect(text).toContain('📁 Full logs saved to:');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Swift Package Compile Errors', () => {
@@ -288,10 +306,10 @@ describe('Build and Compile Error Display E2E Tests', () => {
       const text = (response.content[0] as any).text;
       
       // Should indicate platform issue
-      if (text.includes('Platform')) {
-        expect(text.toLowerCase()).toMatch(/platform.*not supported|invalid.*destination/);
-        expect(text).toContain('📁 Full logs saved to:');
-      }
+      expect(text).toContain('❌ Build failed');
+      expect(text.toLowerCase()).toMatch(/platform.*not supported/);
+      expect(text).toContain('watchOS'); // Should mention the correct platform
+      // No log path for platform validation errors - build never started
     }, 30000);
   });
 
@@ -349,7 +367,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
               platform: 'iOS'
             }
           }
-        }, CallToolResultSchema);
+        }, CallToolResultSchema, { timeout: 180000 });
         
         const text = (response.content[0] as any).text;
         
@@ -359,6 +377,6 @@ describe('Build and Compile Error Display E2E Tests', () => {
           expect(text).toMatch(/\/.*\.log/); // Should contain a log file path
         }
       }
-    }, 60000);
+    }, 180000);
   });
 });

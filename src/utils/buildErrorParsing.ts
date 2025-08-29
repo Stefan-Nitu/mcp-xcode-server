@@ -64,6 +64,34 @@ export function parseBuildErrors(output: string): BuildError[] {
     });
   }
   
+  // Check for Swift Package Manager dependency resolution errors
+  if (output.includes('Failed to clone repository')) {
+    const repoMatch = output.match(/Failed to clone repository (https?:\/\/[^\s:]+)/);
+    const repoUrl = repoMatch ? repoMatch[1].trim() : 'unknown repository';
+    errors.push({
+      type: 'dependency',
+      title: 'Failed to clone repository',
+      details: `Could not fetch dependency from ${repoUrl}`,
+      suggestion: 'Verify the repository URL exists and is accessible'
+    });
+  } else if (output.includes('repository') && output.includes('not found') && output.includes('fatal:')) {
+    const repoMatch = output.match(/repository '([^']+)'/);
+    errors.push({
+      type: 'dependency',
+      title: 'Repository not found',
+      details: repoMatch ? `Repository ${repoMatch[1]} does not exist` : 'Dependency repository not found',
+      suggestion: 'Check the package URL in Package.swift dependencies'
+    });
+  } else if (output.includes('unknown package') && output.includes('dependencies of target')) {
+    const packageMatch = output.match(/unknown package '([^']+)'/);
+    errors.push({
+      type: 'dependency',
+      title: 'Unknown package in dependencies',
+      details: packageMatch ? `Package '${packageMatch[1]}' is not defined in Package.swift` : 'Referenced package not found',
+      suggestion: 'Ensure the package is listed in the Package dependencies array'
+    });
+  }
+  
   // Check for configuration errors
   if (output.match(/configuration.*not found|invalid configuration/i)) {
     const configMatch = output.match(/configuration\s+"([^"]+)"/i);

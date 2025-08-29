@@ -295,7 +295,10 @@ describe('RunXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Run failed');
+      // When scheme doesn't exist, it fails during build phase
+      expect(text).toContain('❌ Build failed');
+      expect(text.toLowerCase()).toContain('scheme not found');
+      expect(text).toContain('Check available schemes with list_schemes tool');
     }, 60000);
 
     test('should require scheme parameter', async () => {

@@ -4,7 +4,7 @@ A Model Context Protocol (MCP) server for Xcode - build, test, run, and manage A
 
 ## Version: 0.6.0 (Beta)
 
-**⚠️ Beta Status:** Core functionality is stable with 57% of tools fully validated (12/21). See [test.md](test.md) for validation details.
+**⚠️ Beta Status:** Core functionality is stable with 67% of tools fully validated (14/21). See [test.md](test.md) for validation details.
 
 ## Overview
 
