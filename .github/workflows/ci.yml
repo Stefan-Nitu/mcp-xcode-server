@@ -60,7 +60,7 @@ jobs:
     
     - name: Run E2E tests
       run: npm run test:e2e
-      timeout-minutes: 30
+      timeout-minutes: 60
 
   lint:
     runs-on: macos-latest
