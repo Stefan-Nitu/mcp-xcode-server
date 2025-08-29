@@ -117,7 +117,9 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       if (text.includes('Build succeeded')) {
         expect(text).toContain('Target: TestSwiftPackageXCTest');
       } else {
-        expect(text.toLowerCase()).toContain('error');
+        // Should have specific error about target
+        expect(text).toContain('Error');
+        expect(text.toLowerCase()).toMatch(/target.*not found|no such target|unknown target/);
       }
     }, 30000);
 
@@ -138,7 +140,9 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       if (text.includes('Build succeeded')) {
         expect(text).toContain('Product: TestSwiftPackageXCTest');
       } else {
-        expect(text.toLowerCase()).toContain('error');
+        // Should have specific error about product
+        expect(text).toContain('Error');
+        expect(text.toLowerCase()).toMatch(/product.*not found|no such product|unknown product/);
       }
     }, 30000);
   });

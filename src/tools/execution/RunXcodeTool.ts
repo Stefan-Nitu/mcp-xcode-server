@@ -17,7 +17,7 @@ const logger = createModuleLogger('RunXcodeTool');
 
 export const runXcodeSchema = z.object({
   projectPath: safePathSchema,
-  scheme: z.string(),
+  scheme: z.string({ required_error: 'Scheme is required' }).min(1, 'Scheme cannot be empty'),
   platform: platformSchema.optional().default(Platform.iOS),
   deviceId: z.string().optional(),
   configuration: configurationSchema

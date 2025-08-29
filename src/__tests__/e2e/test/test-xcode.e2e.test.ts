@@ -74,9 +74,7 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('validation error');
-      expect(text.toLowerCase()).toContain('scheme');
-      expect(text.toLowerCase()).toContain('required');
+      expect(text).toContain('Validation error: Scheme is required');
     }, 180000);
 
     test('should run tests with Release configuration', async () => {
@@ -229,8 +227,10 @@ describe('TestXcodeTool E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      // The error might vary based on xcodebuild version
-      expect(text.toLowerCase()).toMatch(/(scheme|cannot find|not found|does not contain)/);
+      // Should get scheme not found error (build fails before tests run)
+      expect(text).toContain('❌ Build failed');
+      expect(text).toContain('Scheme not found');
+      expect(text).toContain('NonexistentScheme');
     }, 30000);
   });
 

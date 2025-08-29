@@ -118,8 +118,10 @@ describe('CleanBuildTool E2E Tests', () => {
       
       const result = JSON.parse((response.content[0] as any).text);
       expect(result.success).toBe(true);
-      // Should either clean or handle gracefully if no build exists
-      expect(result.message).toBeDefined();
+      // Verify the clean operation details
+      expect(result.message).toContain('Cleaned');
+      // Message should indicate what was cleaned (build folder or workspace)
+      expect(result.message.toLowerCase()).toMatch(/build.*folder|workspace|clean succeeded/);
     });
 
     test('should fail when project path not provided for build clean', async () => {

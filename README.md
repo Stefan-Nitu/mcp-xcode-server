@@ -31,7 +31,7 @@ This MCP server enables AI assistants and development tools to interact with App
 ### Prerequisites
 
 - macOS 14.0 or later
-- Xcode 15.0 or later
+- Xcode 16.0 or later
 - Node.js 18+
 - Xcode Command Line Tools
 - Simulators for target platforms (iOS, tvOS, watchOS, visionOS)

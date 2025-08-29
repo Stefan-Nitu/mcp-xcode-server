@@ -421,7 +421,9 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      // Should get error about app not existing
+      expect(text).toContain('Error');
+      expect(text.toLowerCase()).toMatch(/does not exist|not found|no such file/);
       expect(text).toContain('/non/existent/app.app');
     }, 30000);
 
@@ -440,7 +442,9 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toMatch(/(error|failed|not found|unable)/);
+      // Should get specific error about app not being installed
+      expect(text).toContain('Error');
+      expect(text.toLowerCase()).toMatch(/not installed|no app|uninstall.*failed/);
       expect(text).toContain('com.test.nonexistent');
     }, 30000);
 
@@ -476,7 +480,8 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      // Should get error about device not found
+      expect(text).toContain('Error: Device not found');
       expect(text).toContain('non-existent-device-id');
     }, 30000);
 
@@ -500,7 +505,9 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toMatch(/(no booted|simulator|device)/);
+      // Should get error about no booted simulator
+      expect(text).toContain('Error');
+      expect(text).toContain('No booted simulator found');
     }, 30000);
 
     test('should handle no booted devices for uninstall', async () => {
@@ -519,7 +526,9 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       }, CallToolResultSchema);
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toMatch(/(no booted|simulator|device|error)/);
+      // Should get error about no booted simulator
+      expect(text).toContain('Error');
+      expect(text).toContain('No booted simulator found');
     }, 30000);
   });
 

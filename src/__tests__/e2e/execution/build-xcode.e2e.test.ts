@@ -73,9 +73,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       // Should fail with validation error
-      expect(text.toLowerCase()).toContain('validation error');
-      expect(text.toLowerCase()).toContain('scheme');
-      expect(text.toLowerCase()).toContain('required');
+      expect(text).toContain('Validation error: Scheme is required');
     }, 30000);
 
     test('should build with Release configuration', async () => {

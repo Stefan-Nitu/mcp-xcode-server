@@ -204,8 +204,8 @@ describe('BootSimulatorTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
-      expect(text.toLowerCase()).toMatch(/required|missing/);
+      // Should get validation error for missing required field
+      expect(text).toContain('Validation error: Device ID is required');
     });
 
     test('should fail with empty deviceId', async () => {
@@ -221,7 +221,8 @@ describe('BootSimulatorTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      // Should get validation error for empty deviceId
+      expect(text).toContain('Validation error: Device ID is required');
     });
 
     test('should fail with non-existent device', async () => {
@@ -237,8 +238,9 @@ describe('BootSimulatorTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
-      expect(text.toLowerCase()).toMatch(/invalid|not found|unable/);
+      // Should get error for non-existent device
+      expect(text).toContain('Error: Device not found');
+      expect(text).toContain('non-existent-device-12345');
     });
   });
 

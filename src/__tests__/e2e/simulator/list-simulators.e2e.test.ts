@@ -188,7 +188,10 @@ describe('ListSimulatorsTool E2E Tests', () => {
       
       expect(response).toBeDefined();
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('error');
+      // Should get validation error for invalid platform enum value
+      expect(text).toContain('Validation error: Invalid enum value');
+      expect(text).toContain("Expected 'iOS' | 'macOS' | 'tvOS' | 'watchOS' | 'visionOS'");
+      expect(text).toContain("received 'InvalidPlatform'");
     }, 30000);
 
     test('should return empty array for macOS platform since it has no simulators', async () => {

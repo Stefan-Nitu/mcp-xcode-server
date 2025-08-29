@@ -141,7 +141,7 @@ class XcodeServer {
             content: [
               {
                 type: 'text',
-                text: `Validation error: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`
+                text: `Validation error: ${error.errors.map(e => e.message).join(', ')}`
               }
             ]
           };
