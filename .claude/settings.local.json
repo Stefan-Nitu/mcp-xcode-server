@@ -13,7 +13,6 @@
       "Bash(timeout 60 npx jest:*)",
       "Bash(grep:*)",
       "WebFetch(domain:docs.anthropic.com)",
-      "Bash(rm:*)",
       "Bash(xcodebuild:*)"
     ],
     "deny": [],

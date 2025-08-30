@@ -11,7 +11,7 @@ import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 import { execAsync } from '../../utils.js';
 import { formatCompileErrors } from '../../utils/errorFormatting.js';
-import { formatBuildErrors } from '../../utils/buildErrorParsing.js';
+import { formatBuildErrors, parseBuildErrors } from '../../utils/buildErrorParsing.js';
 
 const logger = createModuleLogger('BuildXcodeTool');
 
@@ -122,7 +122,12 @@ export class BuildXcodeTool {
       });
       
       if (!buildResult.success) {
-        throw new Error(buildResult.output);
+        // Parse the build errors to provide better error messages
+        const buildErrors = parseBuildErrors(buildResult.output);
+        const error: any = new Error(buildResult.output);
+        error.buildErrors = buildErrors;
+        error.logPath = buildResult.logPath;
+        throw error;
       }
       
       // Try to find the built app (if not already found)

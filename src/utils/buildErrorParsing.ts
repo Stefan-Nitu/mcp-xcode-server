@@ -103,8 +103,47 @@ export function parseBuildErrors(output: string): BuildError[] {
     });
   }
   
-  // Check for platform/destination errors
-  if (output.match(/platform.*not supported|invalid destination|no destinations/i)) {
+  // Check for SDK not installed errors
+  if (output.includes('is not installed. To use with Xcode, first download and install the platform')) {
+    const sdkMatch = output.match(/(\w+\s+[\d.]+)\s+is not installed/);
+    const sdkName = sdkMatch ? sdkMatch[1] : 'Required SDK';
+    errors.push({
+      type: 'configuration',
+      title: 'SDK not installed',
+      details: `${sdkName} SDK is not installed`,
+      suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
+    });
+  }
+  
+  // Check for "Unable to find a destination" errors (which often include available/ineligible destinations)
+  else if (output.includes('Unable to find a destination matching')) {
+    // Extract what destinations are available
+    const availableMatch = output.match(/Available destinations.*?:\s*((?:.*\n)*?)(?=\s*Ineligible|\s*$)/);
+    const ineligibleMatch = output.match(/Ineligible destinations.*?:\s*((?:.*\n)*?)(?=\s*$)/);
+    
+    let details = 'Unable to find a valid destination for building';
+    if (ineligibleMatch && ineligibleMatch[1].includes('is not installed')) {
+      // This is actually an SDK issue
+      const sdkMatch = ineligibleMatch[1].match(/(\w+\s+[\d.]+)\s+is not installed/);
+      const sdkName = sdkMatch ? sdkMatch[1] : 'Required SDK';
+      errors.push({
+        type: 'configuration',
+        title: 'SDK not installed',
+        details: `${sdkName} SDK is not installed`,
+        suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
+      });
+    } else {
+      errors.push({
+        type: 'configuration',
+        title: 'No valid destination found',
+        details: details,
+        suggestion: 'Check available simulators with "xcrun simctl list devices" or use a different platform'
+      });
+    }
+  }
+  
+  // Check for other platform/destination errors
+  else if (output.match(/platform.*not supported|invalid destination|no destinations/i)) {
     const platformMatch = output.match(/platform\s+'([^']+)'/i);
     errors.push({
       type: 'configuration',
