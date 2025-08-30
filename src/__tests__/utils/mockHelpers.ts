@@ -129,7 +129,7 @@ export class FilesystemMock {
    * Get mock for readFileSync
    */
   getReadFileSyncMock() {
-    return jest.fn((path: string, encoding?: string) => {
+    return jest.fn((path: string, encoding?: BufferEncoding) => {
       if (!this.files.has(path)) {
         const error: any = new Error(`ENOENT: no such file or directory, open '${path}'`);
         error.code = 'ENOENT';
@@ -322,27 +322,27 @@ export function setupCommonMocks() {
 export function createMockXcode() {
   return {
     open: jest.fn().mockReturnValue({
-      buildWithConfiguration: jest.fn().mockResolvedValue({
+      buildWithConfiguration: jest.fn<() => Promise<any>>().mockResolvedValue({
         success: true,
         stdout: 'Build succeeded',
         stderr: ''
       }),
-      test: jest.fn().mockResolvedValue({
+      test: jest.fn<() => Promise<any>>().mockResolvedValue({
         success: true,
         stdout: 'Test succeeded',
         stderr: ''
       }),
-      run: jest.fn().mockResolvedValue({
+      run: jest.fn<() => Promise<any>>().mockResolvedValue({
         success: true,
         stdout: 'Run succeeded',
         stderr: ''
       }),
-      clean: jest.fn().mockResolvedValue({
+      clean: jest.fn<() => Promise<any>>().mockResolvedValue({
         success: true,
         stdout: 'Clean succeeded',
         stderr: ''
       }),
-      archive: jest.fn().mockResolvedValue({
+      archive: jest.fn<() => Promise<any>>().mockResolvedValue({
         success: true,
         stdout: 'Archive succeeded',
         stderr: ''

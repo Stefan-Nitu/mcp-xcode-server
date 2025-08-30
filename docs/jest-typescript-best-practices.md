@@ -13,14 +13,27 @@ const mockFunction = jest.fn();
 mockFunction.mockResolvedValue({ success: true }); // Error: Argument not assignable to type 'never'
 ```
 
-**✅ Good Practice - Explicit type signature:**
+**❌ Old Syntax (pre-Jest 27) - Now causes TypeScript errors:**
 ```typescript
+// This syntax is deprecated and will cause TS2558 errors
+const mockFunction = jest.fn<ReturnType, ArgsType[]>();
+const mockBuild = jest.fn<any, any[]>(); // Error: Expected 0-1 type arguments, but got 2
+```
+
+**✅ Good Practice - Modern Jest syntax (Jest 27+):**
+```typescript
+// Correct: Use a single type parameter with the full function signature
 const mockFunction = jest.fn<() => Promise<{ success: boolean }>>();
 mockFunction.mockResolvedValue({ success: true }); // Works!
 
-// Or with parameters:
+// With parameters - include them in the function signature:
 const mockBuildProject = jest.fn<(options: BuildOptions) => Promise<BuildResult>>();
+
+// For functions with multiple parameters:
+const mockCallback = jest.fn<(error: Error | null, data?: string) => void>();
 ```
+
+**Important Note:** Jest's TypeScript definitions changed in version 27. The generic `jest.fn()` now takes a single type parameter representing the entire function signature, not separate return and argument types.
 
 ### 2. Never Use Type Casting - Fix the Root Cause
 
@@ -312,6 +325,16 @@ await expect(tool.execute({
 
 ### Problem: "Argument of type X is not assignable to parameter of type 'never'"
 **Solution**: Add explicit type signature to jest.fn()
+
+### Problem: "Expected 0-1 type arguments, but got 2" (TS2558)
+**Solution**: You're using old Jest syntax. Use `jest.fn<FunctionSignature>()` not `jest.fn<ReturnType, Args>()`. 
+```typescript
+// Wrong (old syntax):
+jest.fn<any, any[]>()
+
+// Correct (modern syntax):
+jest.fn<(...args: any[]) => any>()
+```
 
 ### Problem: "Cannot read property 'mockResolvedValue' of undefined"
 **Solution**: Ensure the mock is created before trying to set return values

@@ -1,9 +1,15 @@
-# Test Optimization Tracking
+# Test Optimization Plan
 
 ## Overview
 This document tracks the categorization and conversion of e2e tests to improve test suite performance.
 
-**Goal**: Reduce e2e tests from 145 to ~40, reduce runtime from 47 minutes to <10 minutes.
+**Goal**: Reduce e2e tests from 145 to ~29, reduce runtime from 47 minutes to <10 minutes.
+
+**Current Status** (as of 2025-08-29):
+- ✅ Created mock utilities for subprocess and filesystem operations
+- ✅ Converted first test (bootSimulator) to unit test as proof of concept
+- ✅ Fixed Jest TypeScript mocking issues and documented best practices
+- 🚧 144 tests remaining to be optimized
 
 ## Categorization Legend
 - **KEEP**: Must remain as e2e test (tests actual Xcode/simulator interaction)
@@ -268,9 +274,38 @@ This document tracks the categorization and conversion of e2e tests to improve t
    - Complex error scenarios
    - Performance tests
 
+### Implementation Progress
+
+#### Completed Conversions
+1. **bootSimulator.unit.test.ts** ✅
+   - Converted from e2e to unit test
+   - Uses dependency injection for mocking
+   - Runtime: ~2s (down from 30-60s)
+   - Demonstrates proper Jest TypeScript patterns
+
+#### Infrastructure Created
+1. **mockHelpers.ts** ✅
+   - SubprocessMock for mocking execSync/spawn
+   - FilesystemMock for mocking fs operations
+   - Common mock responses for Xcode/simulator commands
+   - Helper functions for creating typed mocks
+
+2. **jest-typescript-best-practices.md** ✅
+   - Documents proper mock typing patterns
+   - Explains Jest 27+ syntax changes
+   - Provides troubleshooting guide
+   - Real-world examples and case studies
+
 ### Next Steps
-1. Create mock utilities for subprocess and filesystem
-2. Start converting high-priority validation tests
+1. ~~Create mock utilities for subprocess and filesystem~~ ✅
+2. Start converting high-priority validation tests (in progress)
 3. Remove eliminated tests
 4. Add integration test layer for command building
 5. Run full suite and measure improvement
+
+### Files to Convert Next (High Priority)
+1. All validation tests ("require parameter" tests) - 15 tests
+2. Error message formatting tests - 8 tests
+3. Path validation tests - 10 tests
+4. Mock simctl response tests - 12 tests
+5. Mock xcodebuild error tests - 19 tests

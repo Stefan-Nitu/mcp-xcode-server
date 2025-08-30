@@ -134,4 +134,16 @@ export class TestEnvironmentCleaner {
       logger.warn({ deviceId }, 'Simulator already booted or boot failed');
     }
   }
+
+  /**
+   * Shutdown a specific simulator
+   * @param deviceId The simulator device ID to boot
+   */
+  static shutdownSimulator(deviceId: string): void {
+    try {
+      execSync(`xcrun simctl shutdown "${deviceId}"`, { stdio: 'ignore' });
+    } catch (error) {
+      logger.warn({ deviceId }, 'Simulator already booted or boot failed');
+    }
+  }
 }

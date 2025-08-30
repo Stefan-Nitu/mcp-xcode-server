@@ -59,7 +59,7 @@ export class BootSimulatorTool implements IBootSimulatorTool {
       logger.info({ deviceId: device.id, name: device.name }, 'Simulator booted successfully');
     } catch (error: any) {
       // Check if simulator is already booted - that's OK
-      if (error.message && error.message.includes('already booted')) {
+      if (error.message && error.message.includes('Unable to boot device in current state: Booted')) {
         logger.debug({ deviceId: device.id }, 'Simulator already in booted state');
         return {
           content: [
