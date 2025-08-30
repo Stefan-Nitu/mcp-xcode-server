@@ -11,7 +11,7 @@ import { execAsync } from '../../utils.js';
 import { existsSync } from 'fs';
 import path from 'path';
 import { formatCompileErrors } from '../../utils/errorFormatting.js';
-import { formatBuildErrors } from '../../utils/buildErrorParsing.js';
+import { formatBuildErrors, parseBuildErrors } from '../../utils/buildErrorParsing.js';
 
 const logger = createModuleLogger('RunXcodeTool');
 

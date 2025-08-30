@@ -14,8 +14,9 @@ export function parseBuildErrors(output: string): BuildError[] {
   const errors: BuildError[] = [];
   const lines = output.split('\n');
   
-  // Check for scheme not found
-  if (output.includes('xcodebuild: error:') && output.includes('scheme')) {
+  // Check for scheme not found - must be on same line as xcodebuild: error:
+  const schemeErrorMatch = output.match(/xcodebuild:\s*error:.*scheme/i);
+  if (schemeErrorMatch) {
     const schemeMatch = output.match(/xcodebuild: error:.*scheme\s+"([^"]+)"/i);
     errors.push({
       type: 'scheme',

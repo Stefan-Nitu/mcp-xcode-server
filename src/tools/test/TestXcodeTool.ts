@@ -8,7 +8,7 @@ import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 import { PlatformHandler } from '../../platformHandler.js';
 import { formatCompileErrors } from '../../utils/errorFormatting.js';
-import { formatBuildErrors } from '../../utils/buildErrorParsing.js';
+import { formatBuildErrors, parseBuildErrors } from '../../utils/buildErrorParsing.js';
 
 const logger = createModuleLogger('TestXcodeTool');
 
@@ -204,8 +204,24 @@ export class TestXcodeTool {
     } catch (error: any) {
       logger.error({ error, projectPath, scheme, platform }, 'Tests failed');
       
-      // Extract meaningful error message
+      // Parse build errors from the error message if available
       const errorMessage = error.message || 'Unknown test error';
+      const buildErrors = parseBuildErrors(errorMessage);
+      
+      // If we found structured build errors, format them nicely
+      if (buildErrors.length > 0) {
+        const errorText = formatBuildErrors(buildErrors);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `${errorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
+            }
+          ]
+        };
+      }
+      
+      // Fallback to simple error detection
       const isProjectNotFound = errorMessage.includes('does not exist');
       const isSchemeNotFound = errorMessage.includes('scheme');
       
@@ -215,14 +231,14 @@ export class TestXcodeTool {
       } else if (isSchemeNotFound) {
         displayMessage += `Scheme '${scheme}' not found in project`;
       } else {
-        displayMessage += `Test execution failed: ${errorMessage.split('\n')[0]}`;
+        displayMessage += `Build failed\n\n📍 ${errorMessage.split('\n')[0]}`;
       }
       
       return {
         content: [
           {
             type: 'text',
-            text: displayMessage
+            text: `${displayMessage}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
           }
         ]
       };

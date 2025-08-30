@@ -314,7 +314,8 @@ describe('BuildXcodeTool Unit Tests', () => {
       mockXcode.open.mockResolvedValue(mockXcodeProject);
       mockBuildProject.mockResolvedValue({
         success: false,
-        output: 'xcodebuild: error: Scheme "InvalidScheme" is not configured'
+        output: 'xcodebuild: error: Scheme "InvalidScheme" is not configured',
+        logPath: '/path/to/build.log'
       });
 
       const result = await tool.execute({
@@ -322,7 +323,9 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'InvalidScheme'
       });
 
-      expect(result.content[0].text).toContain('xcodebuild: error: Scheme "InvalidScheme" is not configured');
+      expect(result.content[0].text).toContain('Scheme not found: "InvalidScheme"');
+      expect(result.content[0].text).toContain('The specified scheme does not exist in the project');
+      expect(result.content[0].text).toContain('📁 Full logs saved to: /path/to/build.log');
     });
 
     test('should handle device not found', async () => {

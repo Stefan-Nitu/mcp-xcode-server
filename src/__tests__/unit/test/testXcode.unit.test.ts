@@ -223,7 +223,9 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toBe('❌ Project not found: /non/existent/project.xcodeproj');
+      expect(result.content[0].text).toContain('❌ Project not found: /non/existent/project.xcodeproj');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
     });
 
     test('should handle non-Xcode project', async () => {
@@ -235,7 +237,8 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: Not an Xcode project or workspace');
+      expect(result.content[0].text).toContain('Not an Xcode project or workspace');
+      expect(result.content[0].text).toContain('❌ Build failed');
     });
 
     test('should handle device not found', async () => {
@@ -251,7 +254,8 @@ describe('TestXcodeTool Unit Tests', () => {
         deviceId: 'non-existent'
       });
 
-      expect(result.content[0].text).toContain('Test execution failed: Device not found: non-existent');
+      expect(result.content[0].text).toContain('Device not found: non-existent');
+      expect(result.content[0].text).toContain('❌ Build failed');
     });
 
     test('should handle build/setup errors', async () => {
@@ -294,7 +298,8 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toBe('❌ Test execution failed: Unexpected test error');
+      expect(result.content[0].text).toContain('Unexpected test error');
+      expect(result.content[0].text).toContain('❌ Build failed');
     });
   });
 

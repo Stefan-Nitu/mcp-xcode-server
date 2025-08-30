@@ -194,6 +194,59 @@ describe('buildErrorParsing', () => {
       });
     });
 
+    describe('SDK errors', () => {
+      test('should parse SDK not installed error', () => {
+        const output = `iOS 18.0 is not installed. To use with Xcode, first download and install the platform`;
+        const errors = parseBuildErrors(output);
+        
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toEqual({
+          type: 'configuration',
+          title: 'SDK not installed',
+          details: 'iOS 18.0 SDK is not installed',
+          suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
+        });
+      });
+
+      test('should parse SDK not installed from destination error', () => {
+        const output = `xcodebuild: error: Unable to find a destination matching the provided destination specifier:
+		{ id:550E8400-E29B-41D4-A716-446655440000 }
+
+	Available destinations for the "TestProjectXCTest" scheme:
+		{ platform:macOS, arch:arm64, id:00006000-000430C93E02401E, name:My Mac }
+		{ platform:macOS, arch:x86_64, id:00006000-000430C93E02401E, name:My Mac }
+
+	Ineligible destinations for the "TestProjectXCTest" scheme:
+		{ platform:iOS, arch:arm64, id:550E8400-E29B-41D4-A716-446655440000, error:iOS 18.0 is not installed. To use with Xcode, first download and install the platform }`;
+        const errors = parseBuildErrors(output);
+        
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toEqual({
+          type: 'configuration',
+          title: 'SDK not installed',
+          details: 'iOS 18.0 SDK is not installed',
+          suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
+        });
+      });
+
+      test('should parse no valid destination when SDK is missing', () => {
+        const output = `xcodebuild: error: Unable to find a destination matching the provided destination specifier:
+		{ platform:iOS }
+
+	Available destinations for the "TestProject" scheme:
+		{ platform:macOS, arch:arm64, id:00006000-000430C93E02401E, name:My Mac }`;
+        const errors = parseBuildErrors(output);
+        
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toEqual({
+          type: 'configuration',
+          title: 'No valid destination found',
+          details: 'Unable to find a valid destination for building',
+          suggestion: 'Check available simulators with "xcrun simctl list devices" or use a different platform'
+        });
+      });
+    });
+
     describe('platform/destination errors', () => {
       test('should parse platform not supported', () => {
         const output = `error: platform 'tvOS' not supported by scheme`;

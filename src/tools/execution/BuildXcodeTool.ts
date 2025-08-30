@@ -194,7 +194,7 @@ App path: ${appPath || 'N/A'}${buildResult.logPath ? `
           content: [
             {
               type: 'text',
-              text: `${summary}\n${errorList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme || 'default'}\n\n📁 Full logs saved to: ${error.logPath}`
+              text: `${summary}\n${errorList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme || 'default'}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
             }
           ]
         };
@@ -208,7 +208,7 @@ App path: ${appPath || 'N/A'}${buildResult.logPath ? `
           content: [
             {
               type: 'text',
-              text: `${buildErrorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme || 'default'}\n\n📁 Full logs saved to: ${error.logPath}`
+              text: `${buildErrorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme || 'default'}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
             }
           ]
         };
