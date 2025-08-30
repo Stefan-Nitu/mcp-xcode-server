@@ -263,7 +263,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Project path does not exist');
+      expect(text).toContain('No Xcode project found at: /non/existent/project.xcodeproj');
     });
 
     test('should handle invalid scheme', async () => {

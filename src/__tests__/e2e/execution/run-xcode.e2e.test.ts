@@ -278,7 +278,7 @@ describe('RunXcodeTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('Run failed');
+      expect(text).toContain('No Xcode project found at: /non/existent/project.xcodeproj');
     }, 30000);
 
     test('should handle invalid scheme', async () => {
