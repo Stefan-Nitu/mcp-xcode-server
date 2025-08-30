@@ -51,7 +51,13 @@ export function handleXcodeError(error: any, options: ErrorFormatterOptions): Fo
     return createErrorResponse(errorText, formatterOptions);
   }
   
-  // 4. Fallback - show raw error with some intelligent parsing
+  // 4. Check if this is already a well-formatted error from xcode.open()
+  if (errorMessage.startsWith('No Xcode project found at:') || 
+      errorMessage.startsWith('No project found at:')) {
+    return createErrorResponse(`❌ ${errorMessage}`, formatterOptions);
+  }
+  
+  // 5. Fallback - show raw error with some intelligent parsing
   const displayMessage = formatFallbackError(errorMessage, options.scheme);
   return createErrorResponse(displayMessage, formatterOptions);
 }

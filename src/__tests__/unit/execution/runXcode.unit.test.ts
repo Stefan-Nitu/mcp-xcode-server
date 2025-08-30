@@ -444,7 +444,7 @@ describe('RunXcodeTool Unit Tests', () => {
     });
 
     test('should handle project not existing', async () => {
-      mockExistsSync.mockReturnValue(false);
+      mockXcode.open.mockRejectedValue(new Error('No Xcode project found at: /test/project.xcodeproj'));
 
       const result = await tool.execute({
         projectPath: '/test/project.xcodeproj',
@@ -452,7 +452,7 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('❌ No project found at: /test/project.xcodeproj');
+      expect(result.content[0].text).toContain('❌ No Xcode project found at: /test/project.xcodeproj');
       expect(result.content[0].text).toContain('Platform: iOS');
       expect(result.content[0].text).toContain('Configuration: Debug');
       expect(result.content[0].text).toContain('Scheme: MyScheme');

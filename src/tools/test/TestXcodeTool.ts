@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { Platform } from '../../types.js';
 import { createModuleLogger } from '../../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from '../validators.js';
-import { existsSync } from 'fs';
 import { Devices } from '../../utils/devices/Devices.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
@@ -89,13 +88,8 @@ export class TestXcodeTool {
     logger.info({ projectPath, scheme, platform, configuration, testTarget }, 'Running Xcode tests');
     
     try {
-      // Check if project exists
-      if (!existsSync(projectPath)) {
-        throw new Error(`Project path does not exist: ${projectPath}`);
-      }
-      
-      // Open the project using Xcode utility (auto-detects type)
-      const project = await this.xcode.open(projectPath);
+      // Open the project using Xcode utility, expecting Xcode project specifically
+      const project = await this.xcode.open(projectPath, 'xcode');
       
       // Ensure it's an Xcode project, not a Swift package
       if (!(project instanceof XcodeProject)) {

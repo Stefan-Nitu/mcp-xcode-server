@@ -46,7 +46,12 @@ export function handleSwiftPackageError(error: any, options: SwiftPackageErrorOp
     return createSwiftPackageErrorResponse(errorText, options, logPath);
   }
   
-  // 4. Fallback - show raw error
+  // 4. Check if this is already a well-formatted error from xcode.open()
+  if (errorMessage.startsWith('No Package.swift found at:')) {
+    return createSwiftPackageErrorResponse(`❌ ${errorMessage}`, options, logPath);
+  }
+  
+  // 5. Fallback - show raw error
   const displayMessage = formatFallbackError(errorMessage);
   return createSwiftPackageErrorResponse(displayMessage, options, logPath);
 }
@@ -95,7 +100,8 @@ function formatFallbackError(errorMessage: string): string {
   
   if (isPackageNotFound) {
     const pathMatch = errorMessage.match(/at:\s*(.+)$/);
-    displayMessage += `No Package.swift found${pathMatch ? ` at: ${pathMatch[1]}` : ''}`;
+    const path = pathMatch ? pathMatch[1] : 'unknown';
+    displayMessage += `No Package.swift found at: ${path}`;
   } else if (isDependencyError) {
     displayMessage += 'Package dependency error';
   } else {

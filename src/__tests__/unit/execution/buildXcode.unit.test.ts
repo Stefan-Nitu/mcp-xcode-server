@@ -57,7 +57,7 @@ describe('BuildXcodeTool Unit Tests', () => {
   
   // Mock Xcode
   const mockXcode = {
-    open: jest.fn<(path: string) => Promise<any>>()
+    open: jest.fn<(path: string, expectedType?: 'xcode' | 'swift-package' | 'auto') => Promise<any>>()
   };
   
   // Mock Device
@@ -132,7 +132,7 @@ describe('BuildXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(mockXcode.open).toHaveBeenCalledWith('/test/workspace.xcworkspace');
+      expect(mockXcode.open).toHaveBeenCalledWith('/test/workspace.xcworkspace', 'xcode');
       expect(mockBuildProject).toHaveBeenCalled();
     });
 
@@ -287,14 +287,14 @@ describe('BuildXcodeTool Unit Tests', () => {
 
   describe('Error Handling', () => {
     test('should handle non-existent project path', async () => {
-      mockExistsSync.mockReturnValue(false);
+      mockXcode.open.mockRejectedValue(new Error('No Xcode project found at: /non/existent/project.xcodeproj'));
 
       const result = await tool.execute({
         projectPath: '/non/existent/project.xcodeproj',
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('❌ No project found at: /non/existent/project.xcodeproj');
+      expect(result.content[0].text).toContain('❌ No Xcode project found at: /non/existent/project.xcodeproj');
       expect(result.content[0].text).toContain('Platform: iOS');
       expect(result.content[0].text).toContain('Configuration: Debug');
       expect(result.content[0].text).toContain('Scheme: MyScheme');

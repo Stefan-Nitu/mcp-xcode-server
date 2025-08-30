@@ -83,13 +83,8 @@ export class RunXcodeTool {
     logger.info({ projectPath, scheme, platform, configuration }, 'Building and running Xcode project');
     
     try {
-      // Check if project exists
-      if (!existsSync(projectPath)) {
-        throw new Error(`Project path does not exist: ${projectPath}`);
-      }
-      
-      // Open the project using Xcode utility
-      const project = await this.xcode.open(projectPath);
+      // Open the project using Xcode utility, expecting Xcode project specifically
+      const project = await this.xcode.open(projectPath, 'xcode');
       
       // Ensure it's an Xcode project, not a Swift package
       if (!(project instanceof XcodeProject)) {

@@ -16,8 +16,69 @@ export class Xcode {
   /**
    * Open a project at the specified path.
    * Automatically detects whether it's an Xcode project or Swift package.
+   * @param projectPath Path to the project
+   * @param expectedType Optional type to expect ('xcode' | 'swift-package' | 'auto')
    */
-  async open(projectPath: string): Promise<XcodeProject | SwiftPackage> {
+  async open(projectPath: string, expectedType: 'xcode' | 'swift-package' | 'auto' = 'auto'): Promise<XcodeProject | SwiftPackage> {
+    // If expecting Swift package specifically, only look for Package.swift
+    if (expectedType === 'swift-package') {
+      // Check if it's a Package.swift file directly
+      if (projectPath.endsWith('Package.swift')) {
+        if (!existsSync(projectPath)) {
+          throw new Error(`No Package.swift found at: ${projectPath}`);
+        }
+        const packageDir = path.dirname(projectPath);
+        logger.debug({ packageDir }, 'Opening Swift package from Package.swift');
+        return new SwiftPackage(packageDir);
+      }
+      
+      // Check if directory contains Package.swift
+      if (existsSync(projectPath)) {
+        const packageSwiftPath = path.join(projectPath, 'Package.swift');
+        if (existsSync(packageSwiftPath)) {
+          logger.debug({ projectPath }, 'Found Package.swift in directory');
+          return new SwiftPackage(projectPath);
+        }
+      }
+      
+      throw new Error(`No Package.swift found at: ${projectPath}`);
+    }
+    
+    // If expecting Xcode project specifically, only look for .xcodeproj/.xcworkspace
+    if (expectedType === 'xcode') {
+      // Check if it's an Xcode project or workspace
+      if (projectPath.endsWith('.xcodeproj') || projectPath.endsWith('.xcworkspace')) {
+        if (!existsSync(projectPath)) {
+          throw new Error(`No Xcode project found at: ${projectPath}`);
+        }
+        const type = projectPath.endsWith('.xcworkspace') ? 'workspace' : 'project';
+        logger.debug({ projectPath, type }, 'Opening Xcode project');
+        return new XcodeProject(projectPath, type);
+      }
+      
+      // Check directory for Xcode projects
+      if (existsSync(projectPath)) {
+        const files = await readdir(projectPath);
+        
+        const workspace = files.find(f => f.endsWith('.xcworkspace'));
+        if (workspace) {
+          const workspacePath = path.join(projectPath, workspace);
+          logger.debug({ workspacePath }, 'Found workspace in directory');
+          return new XcodeProject(workspacePath, 'workspace');
+        }
+        
+        const xcodeproj = files.find(f => f.endsWith('.xcodeproj'));
+        if (xcodeproj) {
+          const xcodeprojPath = path.join(projectPath, xcodeproj);
+          logger.debug({ xcodeprojPath }, 'Found Xcode project in directory');
+          return new XcodeProject(xcodeprojPath, 'project');
+        }
+      }
+      
+      throw new Error(`No Xcode project found at: ${projectPath}`);
+    }
+    
+    // Auto mode - original behavior
     // Check if it's an Xcode project or workspace
     if (projectPath.endsWith('.xcodeproj') || projectPath.endsWith('.xcworkspace')) {
       if (!existsSync(projectPath)) {

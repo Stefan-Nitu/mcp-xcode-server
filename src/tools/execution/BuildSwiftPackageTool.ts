@@ -73,10 +73,11 @@ export class BuildSwiftPackageTool implements IBuildSwiftPackageTool {
     logger.info({ packagePath, target, product, configuration }, 'Building Swift package');
     
     try {
-      // Open the package using Xcode utility
-      const project = await this.xcode.open(packagePath);
+      // Open the package using Xcode utility, expecting Swift package specifically
+      const project = await this.xcode.open(packagePath, 'swift-package');
       
-      // Ensure it's a Swift package, not an Xcode project
+      // This check is now redundant since we're using 'swift-package' mode,
+      // but keep it for extra safety
       if (!(project instanceof SwiftPackage)) {
         throw new Error(`No Package.swift found at: ${packagePath}`);
       }
@@ -89,7 +90,12 @@ export class BuildSwiftPackageTool implements IBuildSwiftPackageTool {
       });
       
       if (!buildResult.success) {
-        throw new Error(buildResult.output);
+        // Create error with attached metadata
+        const error: any = new Error(buildResult.output);
+        error.compileErrors = buildResult.compileErrors;
+        error.buildErrors = buildResult.buildErrors;
+        error.logPath = buildResult.logPath;
+        throw error;
       }
       
       // Success response with log path

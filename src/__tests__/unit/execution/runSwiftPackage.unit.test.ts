@@ -18,7 +18,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
   
   // Mock Xcode
   const mockXcode = {
-    open: jest.fn<(path: string) => Promise<any>>()
+    open: jest.fn<(path: string, expectedType?: 'xcode' | 'swift-package' | 'auto') => Promise<any>>()
   };
 
   beforeEach(() => {
@@ -161,7 +161,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/MyPackage'
       });
 
-      expect(mockXcode.open).toHaveBeenCalledWith('/test/MyPackage');
+      expect(mockXcode.open).toHaveBeenCalledWith('/test/MyPackage', 'swift-package');
     });
 
     test('should accept Package.swift path directly', async () => {
@@ -175,7 +175,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/MyPackage/Package.swift'
       });
 
-      expect(mockXcode.open).toHaveBeenCalledWith('/test/MyPackage/Package.swift');
+      expect(mockXcode.open).toHaveBeenCalledWith('/test/MyPackage/Package.swift', 'swift-package');
     });
   });
 
