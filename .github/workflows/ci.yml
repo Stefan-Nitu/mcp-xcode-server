@@ -50,6 +50,26 @@ jobs:
     - name: Select Xcode 16.0
       run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
     
+    - name: Diagnose CI Environment
+      run: |
+        echo "=== Xcode Version ==="
+        xcodebuild -version
+        echo ""
+        echo "=== Available Simulators ==="
+        xcrun simctl list devices
+        echo ""
+        echo "=== Available Runtimes ==="
+        xcrun simctl list runtimes
+        echo ""
+        echo "=== Test Project Schemes ==="
+        xcodebuild -list -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj || true
+        echo ""
+        echo "=== Test Validation Command ==="
+        xcodebuild -showBuildSettings -project "test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj" -scheme "TestProjectXCTest" -destination 'generic/platform=iOS Simulator' 2>&1 | head -20 || true
+        echo ""
+        echo "=== Check iOS Platform Support ==="
+        xcodebuild -showBuildSettings -project "test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj" -scheme "TestProjectXCTest" -destination 'generic/platform=iOS' 2>&1 | head -20 || true
+    
     - name: Use Node.js 20.x
       uses: actions/setup-node@v4
       with:
