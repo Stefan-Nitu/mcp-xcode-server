@@ -1,18 +1,43 @@
-import { CompileError } from './projects/XcodeBuild.js';
+/**
+ * Parse raw xcodebuild output into structured errors
+ */
 
-export interface BuildError {
-  type: 'compile' | 'scheme' | 'signing' | 'provisioning' | 'dependency' | 'configuration' | 'generic';
-  title: string;
-  details?: string;
-  suggestion?: string;
+import { BuildError, BuildErrorType, CompileError } from '../types.js';
+
+/**
+ * Parse compile errors from xcodebuild output
+ * These are actual code errors (syntax, type mismatches, etc.)
+ */
+export function parseCompileErrors(output: string): CompileError[] {
+  const errors: CompileError[] = [];
+  const lines = output.split('\n');
+  
+  // Match compile error patterns like:
+  // /path/to/file.swift:10:5: error: cannot convert value of type 'String' to expected argument type 'Int'
+  const errorPattern = /^(.+):(\d+):(\d+):\s*(error|warning|note):\s*(.+)$/;
+  
+  for (const line of lines) {
+    const match = line.match(errorPattern);
+    if (match) {
+      errors.push({
+        type: match[4] as 'error' | 'warning' | 'note',
+        file: match[1],
+        line: parseInt(match[2], 10),
+        column: parseInt(match[3], 10),
+        message: match[5]
+      });
+    }
+  }
+  
+  return errors;
 }
 
 /**
- * Parse various types of build errors from xcodebuild output
+ * Parse build configuration errors from xcodebuild output
+ * These are project configuration issues (scheme, SDK, signing, etc.)
  */
 export function parseBuildErrors(output: string): BuildError[] {
   const errors: BuildError[] = [];
-  const lines = output.split('\n');
   
   // Check for scheme not found - must be on same line as xcodebuild: error:
   const schemeErrorMatch = output.match(/xcodebuild:\s*error:.*scheme/i);
@@ -65,7 +90,19 @@ export function parseBuildErrors(output: string): BuildError[] {
     });
   }
   
-  // Check for Swift Package Manager dependency resolution errors
+  // Check for unknown package in dependencies
+  if (output.includes('unknown package') && output.includes('in dependencies')) {
+    const packageMatch = output.match(/unknown package '([^']+)'/);
+    const packageName = packageMatch ? packageMatch[1] : 'unknown';
+    errors.push({
+      type: 'dependency',
+      title: 'Unknown package in dependencies',
+      details: `Package '${packageName}' is not defined in Package.swift`,
+      suggestion: 'Ensure the package is listed in the Package dependencies array'
+    });
+  }
+  
+  // Check for repository clone failures (covers both "Failed to clone" and "fatal: repository not found")
   if (output.includes('Failed to clone repository')) {
     const repoMatch = output.match(/Failed to clone repository (https?:\/\/[^\s:]+)/);
     const repoUrl = repoMatch ? repoMatch[1].trim() : 'unknown repository';
@@ -75,22 +112,53 @@ export function parseBuildErrors(output: string): BuildError[] {
       details: `Could not fetch dependency from ${repoUrl}`,
       suggestion: 'Verify the repository URL exists and is accessible'
     });
-  } else if (output.includes('repository') && output.includes('not found') && output.includes('fatal:')) {
-    const repoMatch = output.match(/repository '([^']+)'/);
+  }
+  // Check for standalone repository not found (when not part of clone failure)
+  else if (output.includes('fatal: repository') && output.includes('not found')) {
+    const repoMatch = output.match(/repository '([^']+)' not found/);
+    const repoUrl = repoMatch ? repoMatch[1] : 'unknown repository';
     errors.push({
       type: 'dependency',
       title: 'Repository not found',
-      details: repoMatch ? `Repository ${repoMatch[1]} does not exist` : 'Dependency repository not found',
+      details: `Repository ${repoUrl} does not exist`,
       suggestion: 'Check the package URL in Package.swift dependencies'
     });
-  } else if (output.includes('unknown package') && output.includes('dependencies of target')) {
-    const packageMatch = output.match(/unknown package '([^']+)'/);
+  }
+  
+  // Check for SDK not installed errors
+  if (output.includes('is not installed. To use with Xcode, first download and install the platform')) {
+    const sdkMatch = output.match(/(\w+\s+[\d.]+)\s+is not installed/);
+    const sdkName = sdkMatch ? sdkMatch[1] : 'Required SDK';
     errors.push({
-      type: 'dependency',
-      title: 'Unknown package in dependencies',
-      details: packageMatch ? `Package '${packageMatch[1]}' is not defined in Package.swift` : 'Referenced package not found',
-      suggestion: 'Ensure the package is listed in the Package dependencies array'
+      type: 'sdk',
+      title: 'SDK not installed',
+      details: `${sdkName} SDK is not installed`,
+      suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
     });
+  }
+  
+  // Check for "Unable to find a destination" errors
+  else if (output.includes('Unable to find a destination matching')) {
+    const ineligibleMatch = output.match(/Ineligible destinations.*?:\s*((?:.*\n)*?)(?=\s*$)/);
+    
+    if (ineligibleMatch && ineligibleMatch[1].includes('is not installed')) {
+      // This is actually an SDK issue
+      const sdkMatch = ineligibleMatch[1].match(/(\w+\s+[\d.]+)\s+is not installed/);
+      const sdkName = sdkMatch ? sdkMatch[1] : 'Required SDK';
+      errors.push({
+        type: 'sdk',
+        title: 'SDK not installed',
+        details: `${sdkName} SDK is not installed`,
+        suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
+      });
+    } else {
+      errors.push({
+        type: 'destination',
+        title: 'No valid destination found',
+        details: 'Unable to find a valid destination for building',
+        suggestion: 'Check available simulators with "xcrun simctl list devices" or use a different platform'
+      });
+    }
   }
   
   // Check for configuration errors
@@ -104,46 +172,7 @@ export function parseBuildErrors(output: string): BuildError[] {
     });
   }
   
-  // Check for SDK not installed errors
-  if (output.includes('is not installed. To use with Xcode, first download and install the platform')) {
-    const sdkMatch = output.match(/(\w+\s+[\d.]+)\s+is not installed/);
-    const sdkName = sdkMatch ? sdkMatch[1] : 'Required SDK';
-    errors.push({
-      type: 'configuration',
-      title: 'SDK not installed',
-      details: `${sdkName} SDK is not installed`,
-      suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
-    });
-  }
-  
-  // Check for "Unable to find a destination" errors (which often include available/ineligible destinations)
-  else if (output.includes('Unable to find a destination matching')) {
-    // Extract what destinations are available
-    const availableMatch = output.match(/Available destinations.*?:\s*((?:.*\n)*?)(?=\s*Ineligible|\s*$)/);
-    const ineligibleMatch = output.match(/Ineligible destinations.*?:\s*((?:.*\n)*?)(?=\s*$)/);
-    
-    let details = 'Unable to find a valid destination for building';
-    if (ineligibleMatch && ineligibleMatch[1].includes('is not installed')) {
-      // This is actually an SDK issue
-      const sdkMatch = ineligibleMatch[1].match(/(\w+\s+[\d.]+)\s+is not installed/);
-      const sdkName = sdkMatch ? sdkMatch[1] : 'Required SDK';
-      errors.push({
-        type: 'configuration',
-        title: 'SDK not installed',
-        details: `${sdkName} SDK is not installed`,
-        suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
-      });
-    } else {
-      errors.push({
-        type: 'configuration',
-        title: 'No valid destination found',
-        details: details,
-        suggestion: 'Check available simulators with "xcrun simctl list devices" or use a different platform'
-      });
-    }
-  }
-  
-  // Check for other platform/destination errors
+  // Check for platform/destination errors
   else if (output.match(/platform.*not supported|invalid destination|no destinations/i)) {
     const platformMatch = output.match(/platform\s+'([^']+)'/i);
     errors.push({
@@ -156,7 +185,7 @@ export function parseBuildErrors(output: string): BuildError[] {
     });
   }
   
-  // Check for workspace/project errors (but not AXLoading errors about URLs)
+  // Check for workspace/project errors
   if (output.match(/workspace.*does not exist|\.xcodeproj.*does not exist|\.xcworkspace.*does not exist|could not find.*\.(xcodeproj|xcworkspace)/i) 
       && !output.includes('[AXLoading]')) {
     errors.push({
@@ -192,29 +221,4 @@ export function parseBuildErrors(output: string): BuildError[] {
   }
   
   return errors;
-}
-
-/**
- * Format build errors for display
- */
-export function formatBuildErrors(errors: BuildError[]): string {
-  if (errors.length === 0) {
-    return '';
-  }
-  
-  let output = '❌ Build failed\n';
-  
-  for (const error of errors) {
-    output += `\n📍 ${error.title}`;
-    
-    if (error.details) {
-      output += `\n   ${error.details}`;
-    }
-    
-    if (error.suggestion) {
-      output += `\n   💡 ${error.suggestion}`;
-    }
-  }
-  
-  return output;
 }

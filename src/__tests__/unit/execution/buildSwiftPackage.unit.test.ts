@@ -174,8 +174,7 @@ describe('BuildSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/project.xcodeproj'
       });
 
-      expect(result.content[0].text).toContain('Build failed');
-      expect(result.content[0].text).toContain('No Package.swift found');
+      expect(result.content[0].text).toContain('No Package.swift found at: /test/project.xcodeproj');
     });
 
     test('should handle build failure', async () => {

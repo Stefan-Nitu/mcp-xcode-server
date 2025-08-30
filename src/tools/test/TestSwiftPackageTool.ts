@@ -4,8 +4,7 @@ import { safePathSchema } from '../validators.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { SwiftPackage } from '../../utils/projects/SwiftPackage.js';
 import { XcodeError, XcodeErrorType } from '../../utils/projects/XcodeErrors.js';
-import { formatCompileErrors } from '../../utils/errorFormatting.js';
-import { formatBuildErrors } from '../../utils/buildErrorParsing.js';
+import { handleSwiftPackageError } from '../../utils/errors/index.js';
 import path from 'path';
 
 const logger = createModuleLogger('TestSwiftPackageTool');
@@ -76,32 +75,16 @@ export class TestSwiftPackageTool {
         configuration
       });
       
-      // Check for compile errors first
-      if (testResult.compileErrors && testResult.compileErrors.length > 0) {
-        const { summary, errorList } = formatCompileErrors(testResult.compileErrors);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${summary}\n${errorList}\n\nPackage: ${path.basename(project.path)}\nConfiguration: ${configuration}\n\n📁 Full logs saved to: ${testResult.logPath}`
-            }
-          ]
-        };
-      }
-      
-      // Check for build errors
-      if (testResult.buildErrors && testResult.buildErrors.length > 0) {
-        const errorText = formatBuildErrors(testResult.buildErrors);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${errorText}\n\nPackage: ${path.basename(project.path)}\nConfiguration: ${configuration}\n\n📁 Full logs saved to: ${testResult.logPath}`
-            }
-          ]
-        };
+      // Check if tests failed due to compile/build errors
+      if (testResult.compileErrors || testResult.buildErrors) {
+        const error: any = new Error('Test build failed');
+        error.compileErrors = testResult.compileErrors;
+        error.buildErrors = testResult.buildErrors;
+        error.logPath = testResult.logPath;
+        return handleSwiftPackageError(error, {
+          configuration,
+          target: filter
+        });
       }
       
       if (!testResult.success && testResult.failed === 0 && testResult.passed === 0) {
@@ -146,23 +129,11 @@ export class TestSwiftPackageTool {
     } catch (error: any) {
       logger.error({ error, packagePath }, 'Swift package tests failed');
       
-      // Handle XcodeError with context-specific message
-      let displayMessage = '❌ ';
-      if (error instanceof XcodeError && error.type === XcodeErrorType.ProjectNotFound) {
-        displayMessage += `No Package.swift found at: ${error.path}`;
-      } else {
-        const errorMessage = error.message || 'Unknown test error';
-        displayMessage += `Test execution failed: ${errorMessage.split('\n')[0]}`;
-      }
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: displayMessage
-          }
-        ]
-      };
+      // Use Swift Package error handler
+      return handleSwiftPackageError(error, {
+        configuration,
+        target: filter // filter is like "MyPackageTests.UserTests" which is effectively the target
+      });
     }
   }
 }

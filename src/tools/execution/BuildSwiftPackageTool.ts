@@ -4,8 +4,7 @@ import { safePathSchema } from '../validators.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { SwiftPackage } from '../../utils/projects/SwiftPackage.js';
 import { XcodeError, XcodeErrorType } from '../../utils/projects/XcodeErrors.js';
-import { formatCompileErrors } from '../../utils/errorFormatting.js';
-import { formatBuildErrors } from '../../utils/buildErrorParsing.js';
+import { handleSwiftPackageError } from '../../utils/errors/index.js';
 import path from 'path';
 
 const logger = createModuleLogger('BuildSwiftPackageTool');
@@ -107,48 +106,12 @@ Configuration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ?
     } catch (error: any) {
       logger.error({ error, packagePath }, 'Swift package build failed');
       
-      // Check if we have compile errors
-      if (error.compileErrors && error.compileErrors.length > 0) {
-        const { summary, errorList } = formatCompileErrors(error.compileErrors);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${summary}\n${errorList}\n\nConfiguration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}\n\n📁 Full logs saved to: ${error.logPath}`
-            }
-          ]
-        };
-      }
-      
-      // Check if we have build errors
-      if (error.buildErrors && error.buildErrors.length > 0) {
-        const errorText = formatBuildErrors(error.buildErrors);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${errorText}\n\nConfiguration: ${configuration}${target ? `\nTarget: ${target}` : ''}${product ? `\nProduct: ${product}` : ''}\n\n📁 Full logs saved to: ${error.logPath}`
-            }
-          ]
-        };
-      }
-      
-      // Handle XcodeError with context-specific message
-      let errorMessage = error.message || 'Unknown build error';
-      if (error instanceof XcodeError && error.type === XcodeErrorType.ProjectNotFound) {
-        errorMessage = `No Package.swift found at: ${error.path}`;
-      }
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ Build failed: ${errorMessage}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
-          }
-        ]
-      };
+      // Use Swift Package error handler
+      return handleSwiftPackageError(error, {
+        configuration,
+        target,
+        product
+      });
     }
   }
 }

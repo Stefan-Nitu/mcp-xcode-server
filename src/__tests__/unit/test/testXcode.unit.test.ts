@@ -223,7 +223,7 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('❌ Project not found: /non/existent/project.xcodeproj');
+      expect(result.content[0].text).toContain('❌ No project found at: /non/existent/project.xcodeproj');
       expect(result.content[0].text).toContain('Platform: iOS');
       expect(result.content[0].text).toContain('Configuration: Debug');
     });

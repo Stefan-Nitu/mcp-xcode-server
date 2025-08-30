@@ -1,7 +1,7 @@
-import { XcodeBuild, BuildOptions, TestOptions, CompileError } from './XcodeBuild.js';
+import { XcodeBuild, BuildOptions, TestOptions } from './XcodeBuild.js';
 import { XcodeArchive, ArchiveOptions, ExportOptions } from './XcodeArchive.js';
 import { XcodeInfo } from './XcodeInfo.js';
-import { BuildError } from '../buildErrorParsing.js';
+import { BuildError, CompileError } from '../errors/index.js';
 import { createModuleLogger } from '../../logger.js';
 import * as pathModule from 'path';
 import { Platform } from '../../types.js';

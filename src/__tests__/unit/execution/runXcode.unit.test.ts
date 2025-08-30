@@ -377,7 +377,7 @@ describe('RunXcodeTool Unit Tests', () => {
       mockGetDerivedDataPath.mockReturnValue('./DerivedData');
       
       // Build should throw an error when it fails, not return success: false
-      const buildError = new Error('Build failed: error message') as any;
+      const buildError = new Error('error message') as any;
       buildError.output = 'Build output with errors';
       buildError.logPath = '/path/to/log';
       mockBuildProject.mockRejectedValue(buildError);
@@ -388,7 +388,12 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('Run failed: Build failed: error message');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('📍 error message');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Scheme: MyScheme');
+      expect(result.content[0].text).toContain('📁 Full logs saved to: /path/to/log');
     });
 
     test('should handle missing app path', async () => {
@@ -411,7 +416,11 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('Run failed: Build succeeded but could not find app path');
+      expect(result.content[0].text).toContain('❌ Run failed');
+      expect(result.content[0].text).toContain('Build succeeded but the app bundle could not be located');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Scheme: MyScheme');
     });
 
     test('should handle device not found', async () => {
@@ -427,7 +436,11 @@ describe('RunXcodeTool Unit Tests', () => {
         deviceId: 'non-existent'
       });
 
-      expect(result.content[0].text).toContain('Run failed: Device not found: non-existent');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('Device not found: non-existent');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Scheme: MyScheme');
     });
 
     test('should handle project not existing', async () => {
@@ -439,7 +452,10 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('Run failed: Project path does not exist');
+      expect(result.content[0].text).toContain('❌ No project found at: /test/project.xcodeproj');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Scheme: MyScheme');
     });
   });
 

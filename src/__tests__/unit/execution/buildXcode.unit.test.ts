@@ -294,7 +294,10 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toBe('❌ Build failed: Project path does not exist: /non/existent/project.xcodeproj');
+      expect(result.content[0].text).toContain('❌ No project found at: /non/existent/project.xcodeproj');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Scheme: MyScheme');
     });
 
     test('should handle non-Xcode project', async () => {
@@ -306,7 +309,11 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Build failed: Not an Xcode project or workspace');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('Not an Xcode project or workspace');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Scheme: MyScheme');
     });
 
     test('should handle build failure', async () => {
@@ -341,7 +348,11 @@ describe('BuildXcodeTool Unit Tests', () => {
         deviceId: 'non-existent'
       });
 
-      expect(result.content[0].text).toContain('Build failed: Device not found: non-existent');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('Device not found: non-existent');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Scheme: MyScheme');
     });
 
     test('should handle general errors', async () => {
@@ -353,7 +364,11 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toBe('❌ Build failed: Unknown error');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('Unknown error');
+      expect(result.content[0].text).toContain('Platform: iOS');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Scheme: MyScheme');
     });
   });
 

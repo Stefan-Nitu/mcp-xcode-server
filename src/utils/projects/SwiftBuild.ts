@@ -5,8 +5,8 @@ import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { XMLParser } from 'fast-xml-parser';
 import { LogManager } from '../LogManager.js';
-import { CompileError } from './XcodeBuild.js';
-import { parseBuildErrors, BuildError } from '../buildErrorParsing.js';
+import { BuildError, CompileError } from '../errors/index.js';
+import { parseSwiftCompileErrors, parseSwiftBuildErrors } from '../errors/swift-package/index.js';
 
 const logger = createModuleLogger('SwiftBuild');
 
@@ -129,11 +129,11 @@ export class SwiftBuild {
         exitCode: error.code || 1
       });
       
-      // Parse compile errors
-      const compileErrors = this.parseCompileErrors(output);
+      // Parse compile errors using Swift-specific parser
+      const compileErrors = parseSwiftCompileErrors(output);
       
       // Parse build errors
-      const buildErrors = parseBuildErrors(output);
+      const buildErrors = parseSwiftBuildErrors(output);
       
       // Throw error with errors attached
       const buildError: any = new Error('Build failed');
@@ -206,10 +206,10 @@ export class SwiftBuild {
       });
       
       // Parse compile errors (build might fail before run)
-      const compileErrors = this.parseCompileErrors(output);
+      const compileErrors = parseSwiftCompileErrors(output);
       
       // Parse build errors
-      const buildErrors = parseBuildErrors(output);
+      const buildErrors = parseSwiftBuildErrors(output);
       
       // Throw error with errors attached
       const runError: any = new Error('Run failed');
@@ -334,10 +334,10 @@ export class SwiftBuild {
       this.cleanupXunitFiles(xunitPath, swiftTestingXunitPath);
       
       // Parse compile errors if the build failed
-      const compileErrors = this.parseCompileErrors(output);
+      const compileErrors = parseSwiftCompileErrors(output);
       
       // Parse build errors
-      const buildErrors = parseBuildErrors(output);
+      const buildErrors = parseSwiftBuildErrors(output);
       
       // Save the test output to logs
       const logPath = LogManager.saveLog('test', output, packageName, {

@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
 import { config } from '../../config.js';
 import { LogManager } from '../LogManager.js';
-import { parseBuildErrors, formatBuildErrors, BuildError } from '../buildErrorParsing.js';
+import { BuildError, CompileError, parseBuildErrors } from '../errors/index.js';
 
 const logger = createModuleLogger('XcodeBuild');
 
@@ -28,13 +28,7 @@ export interface TestOptions {
   testTarget?: string;
 }
 
-export interface CompileError {
-  file: string;
-  line: number;
-  column: number;
-  message: string;
-  type: 'error' | 'warning';
-}
+// CompileError type is now imported from the errors module
 
 /**
  * Handles xcodebuild commands for Xcode projects

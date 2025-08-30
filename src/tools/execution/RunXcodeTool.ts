@@ -10,8 +10,7 @@ import { config } from '../../config.js';
 import { execAsync } from '../../utils.js';
 import { existsSync } from 'fs';
 import path from 'path';
-import { formatCompileErrors } from '../../utils/errorFormatting.js';
-import { formatBuildErrors, parseBuildErrors } from '../../utils/buildErrorParsing.js';
+import { handleXcodeError } from '../../utils/errors/index.js';
 
 const logger = createModuleLogger('RunXcodeTool');
 
@@ -140,36 +139,9 @@ export class RunXcodeTool {
           derivedDataPath
         });
       } catch (buildError: any) {
-        // Check if we have compile errors in the error object
-        if (buildError.compileErrors && buildError.compileErrors.length > 0) {
-          const { summary, errorList } = formatCompileErrors(buildError.compileErrors);
-          
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `${summary}\n${errorList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${buildError.logPath}`
-              }
-            ]
-          };
-        }
-        
-        // Check if we have other build errors (scheme, signing, provisioning, etc.)
-        if (buildError.buildErrors && buildError.buildErrors.length > 0) {
-          const buildErrorText = formatBuildErrors(buildError.buildErrors);
-          
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `${buildErrorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${buildError.logPath}`
-              }
-            ]
-          };
-        }
-        
-        // Re-throw if not a handled error type
-        throw buildError;
+        // Attach error metadata and use unified handler
+        buildError.logPath = buildError.logPath || derivedDataPath;
+        return handleXcodeError(buildError, { platform, configuration, scheme });
       }
       
       // Get the app path from build result or find it
@@ -254,14 +226,8 @@ Status: App installed and launched`
     } catch (error: any) {
       logger.error({ error, projectPath }, 'Failed to run project');
       
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Run failed: ${error.message}`
-          }
-        ]
-      };
+      // Use unified error handler
+      return handleXcodeError(error, { platform, configuration, scheme });
     }
   }
 }

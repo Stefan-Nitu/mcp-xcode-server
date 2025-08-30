@@ -197,7 +197,8 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/project.xcodeproj'
       });
 
-      expect(result.content[0].text).toBe('❌ Test execution failed: No Package.swift found at: /test/project.xcodeproj');
+      expect(result.content[0].text).toContain('❌ No Package.swift found at: /test/project.xcodeproj');
+      expect(result.content[0].text).toContain('Configuration: Debug');
     });
 
     test('should handle build/setup errors', async () => {
@@ -232,7 +233,8 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/MyPackage'
       });
 
-      expect(result.content[0].text).toBe('❌ Test execution failed: Failed to resolve dependencies');
+      expect(result.content[0].text).toContain('❌ Package dependency error');
+      expect(result.content[0].text).toContain('Configuration: Debug');
     });
 
     test('should handle Xcode.open throwing error', async () => {
@@ -243,7 +245,9 @@ describe('TestSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/NonExistent'
       });
 
-      expect(result.content[0].text).toBe('❌ Test execution failed: Package.swift not found');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('📍 Package.swift not found');
+      expect(result.content[0].text).toContain('Configuration: Debug');
     });
   });
 

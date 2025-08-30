@@ -1,7 +1,6 @@
 import { SwiftBuild, SwiftBuildOptions, SwiftRunOptions, SwiftTestOptions } from './SwiftBuild.js';
 import { SwiftPackageInfo, Dependency, Product } from './SwiftPackageInfo.js';
-import { CompileError } from './XcodeBuild.js';
-import { BuildError } from '../buildErrorParsing.js';
+import { BuildError, CompileError } from '../errors/index.js';
 import { createModuleLogger } from '../../logger.js';
 import * as pathModule from 'path';
 import { existsSync } from 'fs';

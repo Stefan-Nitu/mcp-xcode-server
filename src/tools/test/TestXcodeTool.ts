@@ -7,8 +7,7 @@ import { Devices } from '../../utils/devices/Devices.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 import { PlatformHandler } from '../../platformHandler.js';
-import { formatCompileErrors } from '../../utils/errorFormatting.js';
-import { formatBuildErrors, parseBuildErrors } from '../../utils/buildErrorParsing.js';
+import { handleXcodeError } from '../../utils/errors/index.js';
 
 const logger = createModuleLogger('TestXcodeTool');
 
@@ -141,36 +140,13 @@ export class TestXcodeTool {
         testFilter
       });
       
-      // Check for compile errors that prevented tests from running
-      // Only report compile errors if tests didn't run at all (no test results)
-      const hasActualErrors = testResult.compileErrors?.some(e => e.type === 'error');
-      const testsRan = testResult.passed > 0 || testResult.failed > 0;
-      
-      if (hasActualErrors && !testsRan && testResult.compileErrors) {
-        const { summary, errorList } = formatCompileErrors(testResult.compileErrors);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${summary}\n${errorList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${testResult.logPath}`
-            }
-          ]
-        };
-      }
-      
-      // Check for build errors
-      if (testResult.buildErrors && testResult.buildErrors.length > 0) {
-        const errorText = formatBuildErrors(testResult.buildErrors);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${errorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}\n\n📁 Full logs saved to: ${testResult.logPath}`
-            }
-          ]
-        };
+      // Check if tests failed due to compile/build errors
+      if (testResult.compileErrors || testResult.buildErrors) {
+        const error: any = new Error('Test build failed');
+        error.compileErrors = testResult.compileErrors;
+        error.buildErrors = testResult.buildErrors;
+        error.logPath = testResult.logPath;
+        return handleXcodeError(error, { platform, configuration, scheme });
       }
       
       if (!testResult.success && testResult.failed === 0 && testResult.passed === 0) {
@@ -204,44 +180,8 @@ export class TestXcodeTool {
     } catch (error: any) {
       logger.error({ error, projectPath, scheme, platform }, 'Tests failed');
       
-      // Parse build errors from the error message if available
-      const errorMessage = error.message || 'Unknown test error';
-      const buildErrors = parseBuildErrors(errorMessage);
-      
-      // If we found structured build errors, format them nicely
-      if (buildErrors.length > 0) {
-        const errorText = formatBuildErrors(buildErrors);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${errorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
-            }
-          ]
-        };
-      }
-      
-      // Fallback to simple error detection
-      const isProjectNotFound = errorMessage.includes('does not exist');
-      const isSchemeNotFound = errorMessage.includes('scheme');
-      
-      let displayMessage = '❌ ';
-      if (isProjectNotFound) {
-        displayMessage += `Project not found: ${projectPath}`;
-      } else if (isSchemeNotFound) {
-        displayMessage += `Scheme '${scheme}' not found in project`;
-      } else {
-        displayMessage += `Build failed\n\n📍 ${errorMessage.split('\n')[0]}`;
-      }
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `${displayMessage}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
-          }
-        ]
-      };
+      // Use unified error handler
+      return handleXcodeError(error, { platform, configuration, scheme });
     }
   }
 }

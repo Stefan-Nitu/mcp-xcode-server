@@ -4,7 +4,7 @@
  */
 
 import { describe, test, expect } from '@jest/globals';
-import { parseBuildErrors, formatBuildErrors, BuildError } from '../../../utils/buildErrorParsing.js';
+import { parseBuildErrors, formatBuildErrors, BuildError } from '../../../utils/errors/index.js';
 
 describe('buildErrorParsing', () => {
   describe('parseBuildErrors', () => {
@@ -201,7 +201,7 @@ describe('buildErrorParsing', () => {
         
         expect(errors).toHaveLength(1);
         expect(errors[0]).toEqual({
-          type: 'configuration',
+          type: 'sdk',
           title: 'SDK not installed',
           details: 'iOS 18.0 SDK is not installed',
           suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
@@ -222,7 +222,7 @@ describe('buildErrorParsing', () => {
         
         expect(errors).toHaveLength(1);
         expect(errors[0]).toEqual({
-          type: 'configuration',
+          type: 'sdk',
           title: 'SDK not installed',
           details: 'iOS 18.0 SDK is not installed',
           suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
@@ -239,7 +239,7 @@ describe('buildErrorParsing', () => {
         
         expect(errors).toHaveLength(1);
         expect(errors[0]).toEqual({
-          type: 'configuration',
+          type: 'destination',
           title: 'No valid destination found',
           details: 'Unable to find a valid destination for building',
           suggestion: 'Check available simulators with "xcrun simctl list devices" or use a different platform'

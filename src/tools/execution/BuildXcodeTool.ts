@@ -10,8 +10,7 @@ import { config } from '../../config.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 import { execAsync } from '../../utils.js';
-import { formatCompileErrors } from '../../utils/errorFormatting.js';
-import { formatBuildErrors, parseBuildErrors } from '../../utils/buildErrorParsing.js';
+import { handleXcodeError } from '../../utils/errors/index.js';
 
 const logger = createModuleLogger('BuildXcodeTool');
 
@@ -122,10 +121,8 @@ export class BuildXcodeTool {
       });
       
       if (!buildResult.success) {
-        // Parse the build errors to provide better error messages
-        const buildErrors = parseBuildErrors(buildResult.output);
+        // Create error with output for handler to parse
         const error: any = new Error(buildResult.output);
-        error.buildErrors = buildErrors;
         error.logPath = buildResult.logPath;
         throw error;
       }
@@ -186,44 +183,8 @@ App path: ${appPath || 'N/A'}${buildResult.logPath ? `
     } catch (error: any) {
       logger.error({ error, projectPath, scheme, platform }, 'Build failed');
       
-      // Check if we have parsed compile errors
-      if (error.compileErrors && error.compileErrors.length > 0) {
-        const { summary, errorList } = formatCompileErrors(error.compileErrors);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${summary}\n${errorList}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme || 'default'}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
-            }
-          ]
-        };
-      }
-      
-      // Check if we have other build errors (scheme, signing, provisioning, etc.)
-      if (error.buildErrors && error.buildErrors.length > 0) {
-        const buildErrorText = formatBuildErrors(error.buildErrors);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${buildErrorText}\n\nPlatform: ${platform}\nConfiguration: ${configuration}\nScheme: ${scheme || 'default'}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
-            }
-          ]
-        };
-      }
-      
-      // Fallback for generic errors
-      const errorMessage = error.message || 'Unknown build error';
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ Build failed: ${errorMessage.split('\n')[0]}${error.logPath ? `\n\n📁 Full logs saved to: ${error.logPath}` : ''}`
-          }
-        ]
-      };
+      // Use unified error handler
+      return handleXcodeError(error, { platform, configuration, scheme: scheme || 'default' });
     }
   }
 }

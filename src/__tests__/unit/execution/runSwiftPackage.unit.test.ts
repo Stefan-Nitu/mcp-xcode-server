@@ -229,7 +229,8 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/project.xcodeproj'
       });
 
-      expect(result.content[0].text).toBe('❌ Run failed: No Package.swift found at: /test/project.xcodeproj');
+      expect(result.content[0].text).toContain('❌ No Package.swift found at: /test/project.xcodeproj');
+      expect(result.content[0].text).toContain('Configuration: Debug');
     });
 
     test('should handle run failure', async () => {
@@ -243,7 +244,9 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toBe('❌ Run failed: error: no such module \'Foundation\'');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('📍 error: no such module \'Foundation\'');
+      expect(result.content[0].text).toContain('Configuration: Debug');
     });
 
     test('should handle run throwing error', async () => {
@@ -257,7 +260,9 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toBe('❌ Run failed: Execution failed');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('📍 Execution failed');
+      expect(result.content[0].text).toContain('Configuration: Debug');
     });
 
     test('should handle Xcode.open throwing error', async () => {
@@ -268,7 +273,9 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/NonExistent'
       });
 
-      expect(result.content[0].text).toBe('❌ Run failed: Package.swift not found');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('📍 Package.swift not found');
+      expect(result.content[0].text).toContain('Configuration: Debug');
     });
 
     test('should handle missing executable', async () => {
@@ -283,7 +290,10 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         executable: 'NonExistent'
       });
 
-      expect(result.content[0].text).toBe('❌ Run failed: error: no executable product named \'NonExistent\'');
+      expect(result.content[0].text).toContain('❌ Build failed');
+      expect(result.content[0].text).toContain('no executable product named \'NonExistent\'');
+      expect(result.content[0].text).toContain('Configuration: Debug');
+      expect(result.content[0].text).toContain('Executable: NonExistent');
     });
   });
 
