@@ -57,8 +57,8 @@ jobs:
         sudo xcodebuild -downloadPlatform iOS -quiet || true
         sudo xcodebuild -downloadPlatform iOS 2>&1 | grep -v "DVTDownloadable" || true
         
-        # Also try installing via xcrun simctl
-        sudo xcrun simctl runtime add "iOS 18.0" || true
+        # Also try installing via xcrun simctl  
+        sudo xcrun simctl runtime add "iOS 18.5" || true
         
         # Wait for installation
         sleep 10
@@ -73,7 +73,7 @@ jobs:
         # Try with a specific simulator instead of generic
         xcodebuild -showBuildSettings -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
           -scheme TestProjectXCTest \
-          -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.4' 2>&1 | grep "SDKROOT" | head -2 || echo "Platform verification failed"
+          -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' 2>&1 | grep "SDKROOT" | head -2 || echo "Platform verification failed"
     
     - name: Diagnose CI Environment
       run: |
