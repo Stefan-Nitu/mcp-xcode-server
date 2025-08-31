@@ -84,7 +84,6 @@
 				F869856E2E52501D00123C68 /* TestProjectXCTestTests */,
 				F86985782E52501D00123C68 /* TestProjectXCTestUITests */,
 				F869855C2E52501A00123C68 /* Products */,
-				407EE87CF9BB35A9026D4B5B /* ContentView.swift */,
 			);
 			sourceTree = "<group>";
 		};
