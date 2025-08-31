@@ -53,11 +53,15 @@ jobs:
     - name: Install iOS Platform
       run: |
         echo "=== Installing iOS Platform ==="
-        # Force download and install iOS platform
+        # Install iOS runtime and simulators
+        sudo xcodebuild -downloadPlatform iOS -quiet || true
         sudo xcodebuild -downloadPlatform iOS 2>&1 | grep -v "DVTDownloadable" || true
         
-        # Wait for installation to complete
-        sleep 5
+        # Also try installing via xcrun simctl
+        sudo xcrun simctl runtime add "iOS 18.0" || true
+        
+        # Wait for installation
+        sleep 10
         
         # Verify installation
         echo ""
@@ -65,8 +69,11 @@ jobs:
         xcodebuild -showsdks
         
         echo ""
-        echo "=== Verifying iOS platform is available ==="
-        xcodebuild -showBuildSettings -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj -scheme TestProjectXCTest -destination 'generic/platform=iOS' 2>&1 | head -5 || echo "Platform verification failed"
+        echo "=== Verifying iOS platform with actual simulator ==="
+        # Try with a specific simulator instead of generic
+        xcodebuild -showBuildSettings -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
+          -scheme TestProjectXCTest \
+          -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.4' 2>&1 | grep "SDKROOT" | head -2 || echo "Platform verification failed"
     
     - name: Diagnose CI Environment
       run: |
