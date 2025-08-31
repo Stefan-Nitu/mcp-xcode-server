@@ -1,5 +1,7 @@
 # MCP Xcode Server
 
+[![CI](https://github.com/mcp-xcode/mcp-xcode-server/actions/workflows/ci.yml/badge.svg)](https://github.com/mcp-xcode/mcp-xcode-server/actions/workflows/ci.yml)
+
 A Model Context Protocol (MCP) server that enables AI assistants to build, test, run, and manage Apple platform projects through natural language interactions.
 
 ## Version: 0.6.0
