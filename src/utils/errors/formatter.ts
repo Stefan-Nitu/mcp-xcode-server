@@ -23,7 +23,8 @@ export function formatCompileErrors(errors: CompileError[], maxErrors: number = 
         ? `📍 ${error.file}:${error.line}:${error.column || 0}`
         : '';
       const icon = error.type === 'error' ? '❌' : error.type === 'warning' ? '⚠️' : 'ℹ️';
-      return `${icon} ${error.type}: ${error.message}${location ? `\n   ${location}` : ''}`;
+      const typeCapitalized = error.type.charAt(0).toUpperCase() + error.type.slice(1);
+      return `${icon} ${typeCapitalized}: ${error.message}${location ? `\n   ${location}` : ''}`;
     })
     .join('\n\n');
   

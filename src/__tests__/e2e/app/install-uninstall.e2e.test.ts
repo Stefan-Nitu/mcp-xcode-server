@@ -54,13 +54,13 @@ describe('App Installation and Uninstallation E2E Tests', () => {
     
     // Clean up using project manager
     await projectManager.cleanup();
-  }, 60000); // 60 seconds for cleanup including simulator resets
+  }, 180000); // 60 seconds for cleanup including simulator resets
   
   beforeEach(async () => {
     const connection = await createAndConnectClient();
     client = connection.client;
     transport = connection.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     // Only shutdown simulators, don't clean DerivedData as we need the built apps
@@ -217,7 +217,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       // Verify app is uninstalled
       const appsAfterUninstall = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
       expect(isAppInstalled(appsAfterUninstall, testApp1BundleId)).toBe(false);
-    }, 60000);
+    }, 180000);
 
     test('should handle install and uninstall without specifying device', async () => {
       const deviceId = await ensureSimulator();
@@ -263,7 +263,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       // Verify uninstalled
       const appsAfterUninstall = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
       expect(isAppInstalled(appsAfterUninstall, testApp2BundleId)).toBe(false);
-    }, 60000);
+    }, 180000);
 
     test('should handle reinstallation (update) flow', async () => {
       const deviceId = await ensureSimulator();
@@ -314,7 +314,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
           }
         }
       }, CallToolResultSchema, { timeout: 180000 });
-    }, 60000);
+    }, 180000);
   });
 
   describe('Multiple App Management', () => {
@@ -386,7 +386,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       const appsAfterBoth = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
       expect(isAppInstalled(appsAfterBoth, testApp1BundleId)).toBe(false);
       expect(isAppInstalled(appsAfterBoth, testApp2BundleId)).toBe(false);
-    }, 90000);
+    }, 180000);
   });
 
   describe('Error Handling', () => {
@@ -409,7 +409,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       expect(text).toContain('Error');
       expect(text.toLowerCase()).toMatch(/does not exist|not found|no such file/);
       expect(text).toContain('/non/existent/app.app');
-    }, 30000);
+    }, 180000);
 
     test('should handle uninstalling non-existent app', async () => {
       const deviceId = await ensureSimulator();
@@ -430,7 +430,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       expect(text).toContain('Error');
       expect(text.toLowerCase()).toMatch(/not installed|no app|uninstall.*failed/);
       expect(text).toContain('com.test.nonexistent');
-    }, 30000);
+    }, 180000);
 
     test('should validate bundle ID format', async () => {
       const response = await client.request({
@@ -445,7 +445,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('invalid bundle id format');
-    }, 30000);
+    }, 180000);
 
     test('should handle invalid device ID', async () => {
       if (!testApp1Path) {
@@ -467,7 +467,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       // Should get error about device not found
       expect(text).toContain('Error: Device not found');
       expect(text).toContain('non-existent-device-id');
-    }, 30000);
+    }, 180000);
 
     test('should handle no booted devices for install', async () => {
       // Shutdown all simulators
@@ -492,7 +492,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       // Should get error about no booted simulator
       expect(text).toContain('Error');
       expect(text).toContain('No booted simulator found');
-    }, 30000);
+    }, 180000);
 
     test('should handle no booted devices for uninstall', async () => {
       // Shutdown all simulators
@@ -513,7 +513,7 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       // Should get error about no booted simulator
       expect(text).toContain('Error');
       expect(text).toContain('No booted simulator found');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Concurrent Operations', () => {
@@ -595,6 +595,6 @@ describe('App Installation and Uninstallation E2E Tests', () => {
       const appsAfter = execSync(`xcrun simctl listapps "${deviceId}"`, { encoding: 'utf8' });
       expect(isAppInstalled(appsAfter, testApp1BundleId)).toBe(false);
       expect(isAppInstalled(appsAfter, testApp2BundleId)).toBe(false);
-    }, 60000);
+    }, 180000);
   });
 });

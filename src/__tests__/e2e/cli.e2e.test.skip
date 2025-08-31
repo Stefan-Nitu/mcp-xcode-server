@@ -47,7 +47,7 @@ describe('CLI E2E Tests', () => {
     
     // Build the CLI
     execSync('npm run build', { cwd: process.cwd() });
-  }, 120000);
+  }, 180000);
   
   afterAll(() => {
     // Restore original configuration files

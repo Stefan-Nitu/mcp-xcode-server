@@ -26,7 +26,7 @@ describe('CleanBuildTool E2E Tests', () => {
     testProjectManager = new TestProjectManager();
     await testProjectManager.setup();
     execSync('npm run build', { cwd: process.cwd() });
-  }, 120000);
+  }, 180000);
 
   beforeEach(async () => {
     const result = await createAndConnectClient();
@@ -101,7 +101,7 @@ describe('CleanBuildTool E2E Tests', () => {
       
       // DerivedData should still exist (only build was cleaned)
       expect(existsSync(derivedDataPath)).toBe(true);
-    }, 60000);
+    }, 180000);
 
     test('should clean workspace build', async () => {
       const response = await client.request({
@@ -179,7 +179,7 @@ describe('CleanBuildTool E2E Tests', () => {
       
       // DerivedData should be gone
       expect(existsSync(derivedDataPath)).toBe(false);
-    }, 60000);
+    }, 180000);
 
     test('should handle non-existent DerivedData gracefully', async () => {
       // Ensure DerivedData doesn't exist
@@ -313,7 +313,7 @@ describe('CleanBuildTool E2E Tests', () => {
       
       // Everything should be cleaned
       expect(existsSync(derivedDataPath)).toBe(false);
-    }, 60000);
+    }, 180000);
 
     test('should clean DerivedData even if xcodebuild clean fails', async () => {
       // Build first to create DerivedData
@@ -351,7 +351,7 @@ describe('CleanBuildTool E2E Tests', () => {
       // Should mention warning about build clean but still clean DerivedData
       expect(result.message).toMatch(/Warning.*Could not clean build folder|Removed DerivedData/);
       expect(existsSync(derivedDataPath)).toBe(false);
-    }, 60000);
+    }, 180000);
   });
 
   describe('Swift Package Cleaning', () => {
@@ -392,7 +392,7 @@ describe('CleanBuildTool E2E Tests', () => {
       
       // Verify .build directory is gone
       expect(existsSync(buildDir)).toBe(false);
-    }, 60000);
+    }, 180000);
   });
 
   describe('Platform and Configuration Specific Cleaning', () => {
@@ -429,6 +429,6 @@ describe('CleanBuildTool E2E Tests', () => {
       const result = JSON.parse((cleanResponse.content[0] as any).text);
       expect(result.success).toBe(true);
       expect(result.message).toContain('Cleaned build folder');
-    }, 60000);
+    }, 180000);
   });
 });

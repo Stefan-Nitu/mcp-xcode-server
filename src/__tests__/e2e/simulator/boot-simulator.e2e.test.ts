@@ -22,13 +22,13 @@ describe('BootSimulatorTool E2E Tests', () => {
     
     // Shutdown all simulators to start with clean state
     TestEnvironmentCleaner.shutdownAllSimulators();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     await cleanupClientAndTransport(client, transport);

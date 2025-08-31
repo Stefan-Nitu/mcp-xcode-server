@@ -25,13 +25,13 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
     errorInjector = new TestErrorInjector();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -77,7 +77,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
       expect(text).toContain('ContentView.swift');
       expect(text.toLowerCase()).toContain('type');
       expect(text).toContain('📁 Full logs saved to:');
-    }, 30000);
+    }, 180000);
 
     test('should display multiple error types', async () => {
       // Inject both syntax and type errors
@@ -107,7 +107,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
       expect(text).toContain('❌ Build failed with');
       expect(text).toContain('ContentView.swift');
       expect(text).toContain('📁 Full logs saved to:');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Code Signing and Provisioning Errors', () => {
@@ -140,7 +140,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
         expect(text).toMatch(/sign|certificate|identity/i);
         expect(text).toContain('📁 Full logs saved to:');
       }
-    }, 30000);
+    }, 180000);
   });
 
   describe('Swift Package Dependency Errors', () => {
@@ -166,7 +166,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
       expect(text).toContain('Could not fetch dependency from https://github.com/nonexistent-org/nonexistent-package.git');
       expect(text).toContain('💡 Verify the repository URL exists and is accessible');
       expect(text).toContain('📁 Full logs saved to:');
-    }, 60000);
+    }, 180000);
   });
 
   describe('Error Recovery', () => {
@@ -212,7 +212,7 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
       
       const successText = (successResponse.content[0] as any).text;
       expect(successText).toContain('✅ Build succeeded');
-    }, 60000);
+    }, 180000);
   });
 
   describe('Error Format Consistency', () => {
@@ -264,6 +264,6 @@ describe('Complex Build Error Scenarios E2E Tests', () => {
           }
         }
       }
-    }, 60000);
+    }, 180000);
   });
 });

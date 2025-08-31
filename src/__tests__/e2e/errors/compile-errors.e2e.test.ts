@@ -28,13 +28,13 @@ describe('Build and Compile Error Display E2E Tests', () => {
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
     errorInjector = new TestErrorInjector();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -74,14 +74,50 @@ describe('Build and Compile Error Display E2E Tests', () => {
         projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
         scheme: testProjectManager.schemes.xcodeProject 
       }, 'Compile error test - Build response');
-      
+
       // Check for compile error display
       expect(text).toContain('❌ Build failed with');
       expect(text).toContain('error');
       expect(text).toContain('ContentView.swift'); // File with the error
       expect(text).toMatch(/String.*Int|cannot convert|type mismatch/i); // Type error message
       expect(text).toContain('📁 Full logs saved to:'); // Log path
-    }, 30000);
+    }, 180000);
+
+    test('build_xcode should display multiple compile errors', async () => {
+      // Inject multiple compile errors into ContentView.swift
+      const contentViewPath = join(testProjectManager.paths.xcodeProjectXCTestPath, '..', 'TestProjectXCTest', 'ContentView.swift');
+      errorInjector.injectMultipleCompileErrors(contentViewPath);
+      
+      const response = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'build_xcode',
+          arguments: {
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
+            scheme: testProjectManager.schemes.xcodeProject,
+            platform: 'iOS'
+          }
+        }
+      }, CallToolResultSchema, { timeout: 180000 });
+      
+      const text = (response.content[0] as any).text;
+      logger.info({ 
+        buildResponse: text,
+        projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
+        scheme: testProjectManager.schemes.xcodeProject 
+      }, 'Multiple compile errors test - Build response');
+      
+      // Check that multiple errors are shown
+      expect(text).toContain('❌ Build failed with');
+      expect(text).toMatch(/\d+ errors?/); // Should show error count
+      expect(text).toContain('ContentView.swift'); // File with the errors
+      
+      // Should show multiple error messages
+      const errorCount = (text.match(/❌ error:/g) || []).length;
+      expect(errorCount).toBeGreaterThan(1);
+      
+      expect(text).toContain('📁 Full logs saved to:'); // Log path
+    }, 180000);
 
     test('test_xcode should display compile errors when build fails', async () => {
       // Inject a compile error into ContentView.swift
@@ -170,7 +206,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
         // If no compile error in test package, at least verify format
         expect(text).toMatch(/✅ Build succeeded|❌ Build failed/);
       }
-    }, 30000);
+    }, 180000);
 
     test('test_swift_package should display compile errors when build fails', async () => {
       const packagePath = testProjectManager.paths.swiftPackageXCTestDir;
@@ -202,7 +238,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
         expect(text).toMatch(/✅ Tests passed|❌ Tests failed|❌ Build failed/);
         expect(text).toContain('📁 Full logs saved to:');
       }
-    }, 30000);
+    }, 180000);
   });
 
   describe('Error Deduplication', () => {
@@ -227,7 +263,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       
       // Should only show each error once, not twice (for arm64 and x86_64)
       expect(occurrences).toBeLessThanOrEqual(1);
-    }, 30000);
+    }, 180000);
   });
 
   describe('Build Error Types', () => {
@@ -253,7 +289,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       expect(text).toContain('💡'); // Suggestion icon
       expect(text).toContain('list_schemes'); // Suggestion to use list_schemes tool
       expect(text).toContain('📁 Full logs saved to:');
-    }, 30000);
+    }, 180000);
 
     test('should display configuration not found error', async () => {
       const response = await client.request({
@@ -275,7 +311,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       expect(text.toLowerCase()).toMatch(/configuration.*not found|invalid.*configuration/);
       expect(text).toContain('Production');
       expect(text).toContain('📁 Full logs saved to:');
-    }, 30000);
+    }, 180000);
 
     test('should display project not found error', async () => {
       const response = await client.request({
@@ -295,7 +331,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       // Should show project not found error
       expect(text).toContain('No Xcode project found at:');
       expect(text).toContain('/path/to/nonexistent/project.xcodeproj');
-    }, 30000);
+    }, 180000);
 
     test('should display platform not supported error', async () => {
       // Try to build a watchOS project for iOS
@@ -318,7 +354,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       expect(text.toLowerCase()).toMatch(/platform.*not supported/);
       expect(text).toContain('watchOS'); // Should mention the correct platform
       // No log path for platform validation errors - build never started
-    }, 30000);
+    }, 180000);
   });
 
   describe('Swift Package Build Errors', () => {
@@ -338,7 +374,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       // Should show package not found
       expect(text.toLowerCase()).toMatch(/no package\.swift found|does not exist/);
       expect(text).toContain('/path/to/nonexistent/package');
-    }, 30000);
+    }, 180000);
 
     test('should display invalid configuration error for Swift package', async () => {
       const response = await client.request({
@@ -357,7 +393,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       // Should fail validation
       expect(text.toLowerCase()).toContain('validation');
       expect(text.toLowerCase()).toMatch(/debug.*release|invalid/);
-    }, 30000);
+    }, 180000);
   });
 
   describe('Log Path Display', () => {

@@ -50,6 +50,31 @@ export class TestErrorInjector {
   }
 
   /**
+   * Inject multiple compile errors into a file
+   */
+  injectMultipleCompileErrors(filePath: string) {
+    if (!existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+    
+    this.backupFile(filePath);
+    
+    let content = readFileSync(filePath, 'utf8');
+    
+    // Add multiple different types of errors
+    content = content.replace(
+      'let newItem = Item(timestamp: Date())',
+      `let x: String = 123  // Type mismatch error 1
+        let y: Int = "hello"  // Type mismatch error 2
+        let z = nonExistentFunction()  // Undefined function error
+        let newItem = Item(timestamp: Date())`
+    );
+    
+    writeFileSync(filePath, content);
+    logger.debug({ filePath }, 'Injected multiple compile errors');
+  }
+
+  /**
    * Remove code signing from a project to trigger signing errors
    */
   injectCodeSigningError(projectPath: string) {

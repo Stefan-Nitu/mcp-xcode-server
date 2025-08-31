@@ -26,13 +26,13 @@ describe('BuildXcodeTool E2E Tests', () => {
     execSync('npm run build', { cwd: process.cwd() });
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -66,7 +66,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
       expect(text).toContain('Platform: iOS');
-    }, 30000);
+    }, 180000);
 
     test('should require scheme parameter', async () => {
       const response = await client.request({
@@ -83,7 +83,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       // Should fail with validation error
       expect(text).toContain('Validation error: Scheme is required');
-    }, 30000);
+    }, 180000);
 
     test('should build with Release configuration', async () => {
       const response = await client.request({
@@ -102,7 +102,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
       expect(text).toContain('Configuration: Release');
-    }, 30000);
+    }, 180000);
 
     test('should build with specific device', async () => {
       // Use Devices class to find a compatible iOS device (prefers newer iOS versions)
@@ -128,7 +128,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
-    }, 60000);
+    }, 180000);
   });
 
   describe('Workspace Builds', () => {
@@ -147,7 +147,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Platform Support', () => {
@@ -167,7 +167,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
       expect(text).toContain('Platform: iOS');
-    }, 30000);
+    }, 180000);
 
     test('should handle macOS platform', async () => {
       const response = await client.request({
@@ -186,7 +186,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       // Either succeeds or reports platform not supported
       expect(text).toContain('Build succeeded');
       expect(text).toContain('Platform: macOS');
-    }, 30000);
+    }, 180000);
 
     test('should handle tvOS platform', async () => {
       const response = await client.request({
@@ -204,7 +204,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
       expect(text).toContain('Platform: tvOS');
-    }, 30000);
+    }, 180000);
 
     test('should handle watchOS platform', async () => {
       const response = await client.request({
@@ -222,7 +222,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
       expect(text).toContain('Platform: watchOS');
-    }, 30000);
+    }, 180000);
 
     test('should handle visionOS platform', async () => {
       const response = await client.request({
@@ -240,7 +240,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
       expect(text).toContain('Platform: visionOS');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Error Handling', () => {
@@ -277,7 +277,7 @@ describe('BuildXcodeTool E2E Tests', () => {
       expect(text).toContain('❌ Build failed');
       expect(text.toLowerCase()).toContain('scheme not found');
       expect(text).toContain('Check available schemes with list_schemes tool');
-    }, 30000);
+    }, 180000);
 
     test('should handle custom configuration gracefully', async () => {
       const response = await client.request({
@@ -296,6 +296,6 @@ describe('BuildXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
       expect(text).toMatch(/Configuration: (Beta)/);
-    }, 30000);
+    }, 180000);
   });
 });

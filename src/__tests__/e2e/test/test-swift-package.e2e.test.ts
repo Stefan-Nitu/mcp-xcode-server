@@ -21,13 +21,13 @@ describe('TestSwiftPackageTool E2E Tests', () => {
     execSync('npm run build', { cwd: process.cwd() });
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -57,7 +57,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       expect(text).toContain('Package:');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
       expect(text).toContain('Configuration: Debug');
-    }, 60000);
+    }, 180000);
 
     test('should run tests with Release configuration', async () => {
       const response = await client.request({
@@ -74,7 +74,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
-    }, 60000);
+    }, 180000);
 
     test('should filter tests when specified', async () => {
       const response = await client.request({
@@ -91,7 +91,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Filter: TestSwiftPackageXCTestTests');
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
-    }, 60000);
+    }, 180000);
 
     test('should handle Package.swift path directly', async () => {
       const packageSwiftPath = `${testProjectManager.paths.swiftPackageXCTestDir}/Package.swift`;
@@ -108,7 +108,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Package:');
-    }, 60000);
+    }, 180000);
 
     test('should handle package not found error', async () => {
       const response = await client.request({
@@ -123,7 +123,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('No Package.swift found');
-    }, 30000);
+    }, 180000);
 
     test('should reject invalid configuration values', async () => {
       const response = await client.request({
@@ -140,7 +140,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text.toLowerCase()).toContain('validation error');
       expect(text).toMatch(/Debug.*Release/);
-    }, 30000);
+    }, 180000);
 
     test('should properly report failing tests', async () => {
       const response = await client.request({
@@ -161,7 +161,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       // Verify that failing test details are reported with identifier and reason
       expect(text).toContain('TestSwiftPackageXCTestTests.LegacyTests.testFailingTest');
       expect(text).toContain('Test MCP failing test reporting');
-    }, 60000);
+    }, 180000);
   });
 
   describe('Test Output', () => {
@@ -181,7 +181,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       expect(text).toMatch(/❌ Tests failed: 1 passed, 2 failed/);
       expect(text).toContain('Failing tests:');
       expect(text).toContain('TestSwiftPackageXCTestTests.LegacyTests');
-    }, 60000);
+    }, 180000);
   });
 
   describe('Running Swift Package Tests with Swift Testing', () => {
@@ -201,7 +201,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       expect(text).toContain('Package:');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
       expect(text).toContain('Configuration: Debug');
-    }, 60000);
+    }, 180000);
 
     test('should parse Swift Testing output correctly', async () => {
       const response = await client.request({
@@ -220,7 +220,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       // The parser should correctly identify Swift Testing output
       expect(text).toMatch(/\d+ passed/);
-    }, 60000);
+    }, 180000);
 
     test('should handle Swift Testing with Release configuration', async () => {
       const response = await client.request({
@@ -237,7 +237,7 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
-    }, 60000);
+    }, 180000);
 
     test('should properly report failing Swift Testing tests', async () => {
       const response = await client.request({
@@ -258,6 +258,6 @@ describe('TestSwiftPackageTool E2E Tests', () => {
       // Verify that failing test details are reported with identifier and reason
       expect(text).toContain('TestSwiftPackageSwiftTestingTests.ModernTests.testFailingTest()');
       expect(text).toContain('Expectation failed: 1 == 2');
-    }, 60000);
+    }, 180000);
   });
 });

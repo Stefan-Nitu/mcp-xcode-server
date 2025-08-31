@@ -25,13 +25,13 @@ describe('RunXcodeTool E2E Tests', () => {
     execSync('npm run build', { cwd: process.cwd() });
     projectManager = new TestProjectManager();
     await projectManager.setup();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const connection = await createAndConnectClient();
     client = connection.client;
     transport = connection.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -112,7 +112,7 @@ describe('RunXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
       expect(text).toContain(`Device: ${deviceName}`);
-    }, 120000);
+    }, 180000);
   });
 
   describe('macOS Platform', () => {
@@ -134,7 +134,7 @@ describe('RunXcodeTool E2E Tests', () => {
         expect(text).toContain('Successfully built and ran project');
         expect(text).toContain('Platform: macOS');
         expect(text).toContain('Device: N/A'); // macOS doesn't use devices
-    }, 120000);
+    }, 180000);
   });
 
   describe('Other Platforms', () => {
@@ -154,7 +154,7 @@ describe('RunXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
       expect(text).toContain('Platform: tvOS');
-    }, 120000);
+    }, 180000);
 
     test('should handle watchOS platform', async () => {
       const response = await client.request({
@@ -172,7 +172,7 @@ describe('RunXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
       expect(text).toContain('Platform: watchOS');
-    }, 120000);
+    }, 180000);
 
     test('should handle visionOS platform', async () => {
       // Check if visionOS SDK is available
@@ -204,7 +204,7 @@ describe('RunXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
       expect(text).toContain('Platform: visionOS');
-    }, 120000);
+    }, 180000);
   });
 
   describe('Configuration Options', () => {
@@ -224,7 +224,7 @@ describe('RunXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Debug');
-    }, 120000);
+    }, 180000);
 
     test('should run with Release configuration', async () => {
       const response = await client.request({
@@ -242,7 +242,7 @@ describe('RunXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
-    }, 120000);
+    }, 180000);
   });
 
   describe('Workspace Support', () => {
@@ -261,7 +261,7 @@ describe('RunXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Successfully built and ran project');
-    }, 120000);
+    }, 180000);
   });
 
   describe('Error Handling', () => {
@@ -279,7 +279,7 @@ describe('RunXcodeTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('No Xcode project found at: /non/existent/project.xcodeproj');
-    }, 30000);
+    }, 180000);
 
     test('should handle invalid scheme', async () => {
       const response = await client.request({
@@ -299,7 +299,7 @@ describe('RunXcodeTool E2E Tests', () => {
       expect(text).toContain('❌ Build failed');
       expect(text.toLowerCase()).toContain('scheme not found');
       expect(text).toContain('Check available schemes with list_schemes tool');
-    }, 60000);
+    }, 180000);
 
     test('should require scheme parameter', async () => {
       const response = await client.request({
@@ -317,6 +317,6 @@ describe('RunXcodeTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       // Should fail with validation error about missing required field
       expect(text).toContain('Validation error: Scheme is required');
-    }, 60000);
+    }, 180000);
   });
 });

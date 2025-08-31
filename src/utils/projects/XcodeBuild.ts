@@ -329,7 +329,7 @@ export class XcodeBuild {
       logger.info('Running tests...');
       const { stdout, stderr } = await execAsync(command, {
         maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large test outputs
-        timeout: 600000 // 10 minute timeout for tests
+        timeout: 1800000 // 10 minute timeout for tests
       });
       
       output = stdout + (stderr ? '\n' + stderr : '');

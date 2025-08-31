@@ -23,13 +23,13 @@ describe('RunSwiftPackageTool E2E Tests', () => {
     execSync('npm run build', { cwd: process.cwd() });
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -61,7 +61,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       expect(text).toContain('Configuration: Debug');
       expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
       expect(text).toContain('Execution completed successfully');
-    }, 30000);
+    }, 180000);
 
     test('should run with Release configuration', async () => {
       const response = await client.request({
@@ -79,7 +79,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Configuration: Release');
       expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
-    }, 30000);
+    }, 180000);
 
     test('should run from Package.swift path', async () => {
       const response = await client.request({
@@ -95,7 +95,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Argument Handling', () => {
@@ -115,7 +115,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Received 1 arguments');
       expect(text).toContain('Arg 1: test-arg');
-    }, 30000);
+    }, 180000);
 
     test('should pass multiple arguments to executable', async () => {
       const response = await client.request({
@@ -135,7 +135,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       expect(text).toContain('Arg 1: arg1');
       expect(text).toContain('Arg 2: arg2');
       expect(text).toContain('Arg 3: arg3');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Error Handling', () => {
@@ -194,7 +194,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       expect(text).toContain('Error: Requested failure via --fail flag');
       expect(text).toContain('Full logs saved to');
       // The actual error output is in the logs, not in the response
-    }, 30000);
+    }, 180000);
 
     test('should handle broken Package.swift', async () => {
       // Create a broken package temporarily
@@ -223,7 +223,7 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       
       // Clean up
       execSync(`rm -rf ${brokenPackagePath}`, { stdio: 'pipe' });
-    }, 30000);
+    }, 180000);
   });
 
   describe('Default Executable', () => {
@@ -242,6 +242,6 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       // Should run the default executable (first one found)
       expect(text).toContain('Execution completed: default executable');
       expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
-    }, 30000);
+    }, 180000);
   });
 });

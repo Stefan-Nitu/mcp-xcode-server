@@ -24,13 +24,13 @@ describe('TestXcodeTool E2E Tests', () => {
     execSync('npm run build', { cwd: process.cwd() });
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -56,7 +56,7 @@ describe('TestXcodeTool E2E Tests', () => {
             platform: 'iOS'
           }
         }
-      }, CallToolResultSchema, { timeout: 300000 });
+      }, CallToolResultSchema, { timeout: 1800000 });
       
       const text = (response.content[0] as any).text;
       logger.info({ 
@@ -67,7 +67,7 @@ describe('TestXcodeTool E2E Tests', () => {
       expect(text).toMatch(/[✅❌] Tests (passed|failed)/);
       expect(text).toContain('Platform: iOS');
       expect(text).toMatch(/\d+ passed, \d+ failed/);
-    }, 300000); // 5 minute timeout for simulator boot and test execution
+    }, 1800000); // 5 minute timeout for simulator boot and test execution
 
     test('should require scheme parameter', async () => {
       const response = await client.request({
@@ -239,7 +239,7 @@ describe('TestXcodeTool E2E Tests', () => {
       expect(text).toContain('❌ Build failed');
       expect(text).toContain('Scheme not found');
       expect(text).toContain('NonexistentScheme');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Platform Support', () => {

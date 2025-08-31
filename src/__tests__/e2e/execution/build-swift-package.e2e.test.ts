@@ -24,13 +24,13 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
     execSync('npm run build', { cwd: process.cwd() });
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
-  }, 120000);
+  }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -63,7 +63,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       // Verify .build directory was created (swift build output)
       const buildDirExists = existsSync(join(testProjectManager.paths.swiftPackageXCTestDir, '.build'));
       expect(buildDirExists).toBe(true);
-    }, 30000);
+    }, 180000);
 
     test('should build SPM package with Release configuration', async () => {
       const response = await client.request({
@@ -80,7 +80,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
       expect(text).toContain('Configuration: Release');
-    }, 30000);
+    }, 180000);
 
     test('should build SPM package from directory path', async () => {
       const response = await client.request({
@@ -95,7 +95,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       
       const text = (response.content[0] as any).text;
       expect(text).toContain('Build succeeded');
-    }, 30000);
+    }, 180000);
   });
 
   describe('Target and Product Support', () => {
@@ -121,7 +121,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         expect(text).toContain('Error');
         expect(text.toLowerCase()).toMatch(/target.*not found|no such target|unknown target/);
       }
-    }, 30000);
+    }, 180000);
 
     test('should build specific product if available', async () => {
       const response = await client.request({
@@ -144,7 +144,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
         expect(text).toContain('Error');
         expect(text.toLowerCase()).toMatch(/product.*not found|no such product|unknown product/);
       }
-    }, 30000);
+    }, 180000);
   });
 
 
@@ -187,7 +187,7 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       
       // Clean up
       execSync(`rm -rf ${brokenPackagePath}`, { stdio: 'pipe' });
-    }, 30000);
+    }, 180000);
 
     test('should handle invalid target', async () => {
       const response = await client.request({

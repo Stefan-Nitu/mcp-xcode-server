@@ -50,6 +50,19 @@ jobs:
     - name: Select Xcode 16.0
       run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
     
+    - name: Install iOS Platform if needed
+      run: |
+        echo "=== Checking for iOS Platform ==="
+        if ! xcodebuild -showsdks | grep -q "iOS 18"; then
+          echo "iOS 18 SDK not found, attempting to download..."
+          xcodebuild -downloadPlatform iOS || true
+        else
+          echo "iOS 18 SDK already installed"
+        fi
+        echo ""
+        echo "=== Available SDKs after check ==="
+        xcodebuild -showsdks
+    
     - name: Diagnose CI Environment
       run: |
         echo "=== Xcode Version ==="

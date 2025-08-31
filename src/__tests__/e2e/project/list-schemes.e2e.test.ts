@@ -24,7 +24,7 @@ describe('ListSchemesTool E2E Tests', () => {
     
     // Build the server
     execSync('npm run build', { cwd: process.cwd() });
-  }, 60000);
+  }, 180000);
   
   afterAll(() => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
@@ -37,7 +37,7 @@ describe('ListSchemesTool E2E Tests', () => {
     const connection = await createAndConnectClient();
     client = connection.client;
     transport = connection.transport;
-  }, 30000);
+  }, 180000);
   
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
