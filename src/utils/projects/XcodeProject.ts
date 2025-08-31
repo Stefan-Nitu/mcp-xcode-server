@@ -64,6 +64,7 @@ export class XcodeProject {
     failed: number;
     failingTests?: Array<{ identifier: string; reason: string }>;
     compileErrors?: CompileError[];
+    compileWarnings?: CompileError[];
     buildErrors?: BuildError[];
     logPath: string;
   }> {

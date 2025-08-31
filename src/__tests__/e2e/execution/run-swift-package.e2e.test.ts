@@ -151,8 +151,8 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('failed');
-      expect(text).toContain('No Package.swift found');
+      expect(text).toContain('❌ No Package.swift found at:');
+      expect(text).toContain('/non/existent/package');
     });
 
     test('should handle non-existent executable', async () => {
@@ -168,9 +168,10 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('❌ Run failed');
+      expect(text).toContain('❌ Build failed');
+      expect(text).toContain('Executable not found: NonExistentExecutable');
+      expect(text).toContain("No executable product named 'NonExistentExecutable'");
       expect(text).toContain('Full logs saved to');
-      // Swift will report unknown executable in logs
     });
 
     test('should handle executable failure with exit code', async () => {
@@ -187,8 +188,10 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      // When executable fails, we get generic error with log path
-      expect(text).toContain('❌ Run failed');
+      expect(text).toContain('❌ Build failed');
+      expect(text).toContain('Executable failed with exit code 1:');
+      expect(text).toContain('TestSwiftPackageXCTestExecutable Executable Running');
+      expect(text).toContain('Error: Requested failure via --fail flag');
       expect(text).toContain('Full logs saved to');
       // The actual error output is in the logs, not in the response
     }, 30000);
@@ -210,7 +213,12 @@ describe('RunSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text).toContain('❌ Run failed');
+      expect(text).toContain('❌ Build failed');
+      expect(text).toContain('Outdated Swift tools version');
+      expect(text).toContain('Package.swift is using Swift tools version');
+      expect(text).toContain('which is no longer supported');
+      expect(text).toContain("Add '// swift-tools-version:");
+      expect(text).toContain('at the top of your Package.swift file');
       expect(text).toContain('Full logs saved to');
       
       // Clean up

@@ -38,8 +38,8 @@ export function handleXcodeError(error: any, options: ErrorFormatterOptions): Fo
   const errorMessage = error.message || error.toString() || 'Unknown error';
   
   // First try to parse compile errors from the message
-  const compileErrors = parseCompileErrors(errorMessage);
-  if (compileErrors.length > 0 && compileErrors.some(e => e.type === 'error')) {
+  const { errors: compileErrors } = parseCompileErrors(errorMessage);
+  if (compileErrors.length > 0) {
     const { summary, errorList } = formatCompileErrors(compileErrors, options.maxErrors);
     return createErrorResponse(`${summary}\n${errorList}`, formatterOptions);
   }

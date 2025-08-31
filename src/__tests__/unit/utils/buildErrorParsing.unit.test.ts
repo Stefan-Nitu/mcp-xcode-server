@@ -240,9 +240,9 @@ describe('buildErrorParsing', () => {
         expect(errors).toHaveLength(1);
         expect(errors[0]).toEqual({
           type: 'destination',
-          title: 'No valid destination found',
-          details: 'Unable to find a valid destination for building',
-          suggestion: 'Check available simulators with "xcrun simctl list devices" or use a different platform'
+          title: 'Destination not available',
+          details: 'iOS platform is not available',
+          suggestion: 'Install iOS support via Xcode > Settings > Platforms or xcodebuild -downloadPlatform iOS'
         });
       });
     });

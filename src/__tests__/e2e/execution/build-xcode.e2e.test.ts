@@ -12,6 +12,8 @@ import { createAndConnectClient, cleanupClientAndTransport } from '../../utils/t
 import { TestProjectManager } from '../../utils/TestProjectManager.js';
 import { TestEnvironmentCleaner } from '../../utils/TestEnvironmentCleaner.js';
 import { createModuleLogger } from '../../../logger.js';
+import { Devices } from '../../../utils/devices/Devices.js';
+import { Platform } from '../../../types.js';
 
 const logger = createModuleLogger('build-xcode-e2e');
 
@@ -103,37 +105,29 @@ describe('BuildXcodeTool E2E Tests', () => {
     }, 30000);
 
     test('should build with specific device', async () => {
-      // Get a simulator first
-      const listResponse = await client.request({
+      // Use Devices class to find a compatible iOS device (prefers newer iOS versions)
+      const devices = new Devices();
+      const device = await devices.findForPlatform(Platform.iOS);
+      
+      // Device should always be available in test environment
+      expect(device).toBeDefined();
+      expect(device).not.toBeNull();
+      
+      const response = await client.request({
         method: 'tools/call',
         params: {
-          name: 'list_simulators',
+          name: 'build_xcode',
           arguments: {
-            platform: 'iOS'
+            projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
+            scheme: testProjectManager.schemes.xcodeProject,
+            platform: 'iOS',
+            deviceId: device!.id
           }
         }
       }, CallToolResultSchema, { timeout: 180000 });
       
-      const simulators = JSON.parse((listResponse.content[0] as any).text);
-      const availableSimulator = simulators.find((s: any) => s.isAvailable);
-      
-      if (availableSimulator) {
-        const response = await client.request({
-          method: 'tools/call',
-          params: {
-            name: 'build_xcode',
-            arguments: {
-              projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
-              scheme: testProjectManager.schemes.xcodeProject,
-              platform: 'iOS',
-              deviceId: availableSimulator.udid
-            }
-          }
-        }, CallToolResultSchema, { timeout: 180000 });
-        
-        const text = (response.content[0] as any).text;
-        expect(text).toContain('Build succeeded');
-      }
+      const text = (response.content[0] as any).text;
+      expect(text).toContain('Build succeeded');
     }, 60000);
   });
 

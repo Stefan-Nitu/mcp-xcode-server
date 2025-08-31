@@ -161,8 +161,8 @@ describe('BuildSwiftPackageTool E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      expect(text.toLowerCase()).toContain('failed');
-      expect(text).toContain('No Package.swift found');
+      expect(text.toLowerCase()).toContain('no package.swift found');
+      expect(text.toLowerCase()).toContain('/non/existent/package.swift');
     });
 
     test('should handle broken SPM package', async () => {

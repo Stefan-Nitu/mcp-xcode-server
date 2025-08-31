@@ -12,6 +12,8 @@ import { TestProjectManager } from '../../utils/TestProjectManager';
 import { TestEnvironmentCleaner } from '../../utils/TestEnvironmentCleaner';
 import { createModuleLogger } from '../../../logger';
 import { createAndConnectClient, cleanupClientAndTransport } from '../../utils/testHelpers';
+import { Devices } from '../../../utils/devices/Devices';
+import { Platform } from '../../../types';
 
 const logger = createModuleLogger('install-uninstall-e2e');
 
@@ -140,58 +142,31 @@ describe('App Installation and Uninstallation E2E Tests', () => {
     }
   }
 
-  async function getBootedSimulator(): Promise<string | null> {
-    try {
-      const output = execSync('xcrun simctl list devices booted -j', { encoding: 'utf8' });
-      const data = JSON.parse(output);
-      const devices = Object.values(data.devices).flat() as any[];
-      const booted = devices.find(d => d.state === 'Booted');
-      return booted?.udid || null;
-    } catch {
-      return null;
-    }
-  }
-
-  async function bootSimulator(): Promise<string | null> {
-    try {
-      // Get available iOS simulators
-      const output = execSync('xcrun simctl list devices available -j', { encoding: 'utf8' });
-      const data = JSON.parse(output);
-      const iosDevices = Object.entries(data.devices)
-        .filter(([key]) => key.includes('iOS'))
-        .flatMap(([, devices]) => devices as any[])
-        .filter(d => d.isAvailable);
-      
-      if (iosDevices.length === 0) return null;
-      
-      const device = iosDevices[0];
-      TestEnvironmentCleaner.bootSimulator(device.udid);
-      bootedSimulators.push(device.udid);
-      
-      // Wait for boot
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      return device.udid;
-    } catch {
-      return null;
-    }
-  }
+  const devices = new Devices();
 
   async function ensureSimulator(): Promise<string> {
-    let deviceId = await getBootedSimulator();
-    if (!deviceId) {
-      deviceId = await bootSimulator();
+    // First check if there's already a booted device
+    let device = await devices.getBooted();
+    
+    if (!device) {
+      // Find the best iOS device (prefers newer versions)
+      device = await devices.findForPlatform(Platform.iOS);
+      
+      if (!device) {
+        throw new Error('No iOS simulator available');
+      }
+      
+      // Boot the device
+      await device.ensureBooted();
+      bootedSimulators.push(device.id);
     } else {
       // Track already-booted simulator for cleanup
-      if (!bootedSimulators.includes(deviceId)) {
-        bootedSimulators.push(deviceId);
+      if (!bootedSimulators.includes(device.id)) {
+        bootedSimulators.push(device.id);
       }
     }
     
-    if (!deviceId) {
-      throw new Error('No simulator available');
-    }
-    
-    return deviceId;
+    return device.id;
   }
 
   describe('Basic App Lifecycle', () => {

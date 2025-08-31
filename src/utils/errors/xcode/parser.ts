@@ -5,31 +5,95 @@
 import { BuildError, BuildErrorType, CompileError } from '../types.js';
 
 /**
- * Parse compile errors from xcodebuild output
- * These are actual code errors (syntax, type mismatches, etc.)
+ * Parse compile errors and warnings from xcodebuild output
+ * Returns them separated for easy handling
  */
-export function parseCompileErrors(output: string): CompileError[] {
+export function parseCompileErrors(output: string): { 
+  errors: CompileError[]; 
+  warnings: CompileError[];
+} {
   const errors: CompileError[] = [];
+  const warnings: CompileError[] = [];
   const lines = output.split('\n');
   
-  // Match compile error patterns like:
-  // /path/to/file.swift:10:5: error: cannot convert value of type 'String' to expected argument type 'Int'
-  const errorPattern = /^(.+):(\d+):(\d+):\s*(error|warning|note):\s*(.+)$/;
+  // Track seen items to avoid duplicates
+  const seen = new Set<string>();
   
   for (const line of lines) {
-    const match = line.match(errorPattern);
-    if (match) {
-      errors.push({
-        type: match[4] as 'error' | 'warning' | 'note',
-        file: match[1],
-        line: parseInt(match[2], 10),
-        column: parseInt(match[3], 10),
-        message: match[5]
-      });
+    // Look for lines containing ": error:" or ": warning:"
+    const errorIndex = line.indexOf(': error:');
+    const warningIndex = line.indexOf(': warning:');
+    const noteIndex = line.indexOf(': note:');
+    
+    let typeIndex = -1;
+    let type: 'error' | 'warning' | 'note' | null = null;
+    
+    if (errorIndex !== -1) {
+      typeIndex = errorIndex;
+      type = 'error';
+    } else if (warningIndex !== -1) {
+      typeIndex = warningIndex;
+      type = 'warning';
+    } else if (noteIndex !== -1) {
+      typeIndex = noteIndex;
+      type = 'note';
+    }
+    
+    if (type && typeIndex > 0) {
+      // Extract the file:line:column part before the type
+      const beforeType = line.substring(0, typeIndex).trim();
+      const afterType = line.substring(typeIndex + type.length + 3).trim(); // +3 for ": :" 
+      
+      // Try to find file:line:column pattern
+      // Look for the last occurrence of :number:number pattern
+      const lastColonIndex = beforeType.lastIndexOf(':');
+      if (lastColonIndex === -1) continue;
+      
+      const beforeLastColon = beforeType.substring(0, lastColonIndex);
+      const afterLastColon = beforeType.substring(lastColonIndex + 1);
+      
+      // Check if after last colon is a number (column)
+      const column = parseInt(afterLastColon, 10);
+      if (isNaN(column)) continue;
+      
+      // Find the second-to-last colon for line number
+      const secondLastColonIndex = beforeLastColon.lastIndexOf(':');
+      if (secondLastColonIndex === -1) continue;
+      
+      const beforeSecondLastColon = beforeLastColon.substring(0, secondLastColonIndex);
+      const afterSecondLastColon = beforeLastColon.substring(secondLastColonIndex + 1);
+      
+      // Check if this is a line number
+      const lineNum = parseInt(afterSecondLastColon, 10);
+      if (isNaN(lineNum)) continue;
+      
+      // Everything before should be the file path
+      const file = beforeSecondLastColon.trim();
+      if (!file) continue;
+      
+      // Create unique key for deduplication
+      const key = `${file}:${lineNum}:${column}:${afterType}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      
+      const item: CompileError = {
+        type,
+        file,
+        line: lineNum,
+        column,
+        message: afterType
+      };
+      
+      if (type === 'error') {
+        errors.push(item);
+      } else if (type === 'warning') {
+        warnings.push(item);
+      }
+      // Note: we ignore 'note' type for now
     }
   }
   
-  return errors;
+  return { errors, warnings };
 }
 
 /**
@@ -139,6 +203,13 @@ export function parseBuildErrors(output: string): BuildError[] {
   
   // Check for "Unable to find a destination" errors
   else if (output.includes('Unable to find a destination matching')) {
+    // Extract the requested destination
+    const requestedDestMatch = output.match(/Unable to find a destination matching.*?:\s*\{([^}]+)\}/);
+    let requestedDetails = '';
+    if (requestedDestMatch) {
+      requestedDetails = requestedDestMatch[1].trim();
+    }
+    
     const ineligibleMatch = output.match(/Ineligible destinations.*?:\s*((?:.*\n)*?)(?=\s*$)/);
     
     if (ineligibleMatch && ineligibleMatch[1].includes('is not installed')) {
@@ -152,11 +223,74 @@ export function parseBuildErrors(output: string): BuildError[] {
         suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
       });
     } else {
+      // Extract specific issue from requested destination
+      let details = 'Unable to find a valid destination for building';
+      let suggestion = 'Check available simulators with "xcrun simctl list devices"';
+      
+      if (requestedDetails) {
+        // Check if it's a specific device ID
+        if (requestedDetails.includes('id:')) {
+          const idMatch = requestedDetails.match(/id:([^,\s]+)/);
+          if (idMatch) {
+            const deviceId = idMatch[1];
+            
+            // Try to determine why the device isn't available by looking at the output
+            const hasAvailableDestinations = output.includes('Available destinations');
+            const hasOSVersions = output.includes('OS:');
+            
+            if (hasAvailableDestinations && hasOSVersions) {
+              // The output shows other devices WITH OS versions, suggesting this is a compatibility issue
+              // TODO: We should parse the actual minimum iOS version from available devices
+              details = `Device '${deviceId}' is incompatible with project requirements`;
+              suggestion = 'The device likely has an older iOS version than required. Check available destinations in the log for compatible devices.';
+            } else if (hasAvailableDestinations) {
+              // We see available destinations but no OS versions - device probably doesn't exist
+              details = `Device '${deviceId}' not found`;
+              suggestion = 'The device ID may be invalid. Use list_simulators to find valid device IDs.';
+            } else {
+              // Generic error - we don't have enough information
+              details = `Device '${deviceId}' could not be used`;
+              suggestion = 'Check if the device exists and is compatible with the project requirements.';
+            }
+          }
+        } else if (requestedDetails.includes('name:')) {
+          const nameMatch = requestedDetails.match(/name:([^,]+)/);
+          if (nameMatch) {
+            details = `Device '${nameMatch[1].trim()}' not found`;
+            suggestion = 'Check device name or use list_simulators to find available devices';
+          }
+        } else {
+          // Check if this is a platform availability issue
+          // If requesting just a platform (e.g., "platform:iOS") and available destinations don't include it
+          const trimmed = requestedDetails.trim();
+          if (trimmed.startsWith('platform:')) {
+            // Extract platform name (everything after "platform:")
+            const requestedPlatform = trimmed.substring('platform:'.length).trim();
+            
+            // Check if the requested platform appears in the available destinations
+            if (output.includes('Available destinations')) {
+              const availableSection = output.substring(output.indexOf('Available destinations'));
+              if (!availableSection.includes(`platform:${requestedPlatform}`)) {
+                // Platform is not in the available list
+                details = `${requestedPlatform} platform is not available`;
+                suggestion = `Install ${requestedPlatform} support via Xcode > Settings > Platforms or xcodebuild -downloadPlatform ${requestedPlatform}`;
+              } else {
+                details = `Destination not found: ${requestedDetails}`;
+              }
+            } else {
+              details = `Destination not found: ${requestedDetails}`;
+            }
+          } else {
+            details = `Destination not found: ${requestedDetails}`;
+          }
+        }
+      }
+      
       errors.push({
         type: 'destination',
-        title: 'No valid destination found',
-        details: 'Unable to find a valid destination for building',
-        suggestion: 'Check available simulators with "xcrun simctl list devices" or use a different platform'
+        title: 'Destination not available',
+        details,
+        suggestion
       });
     }
   }
@@ -175,13 +309,46 @@ export function parseBuildErrors(output: string): BuildError[] {
   // Check for platform/destination errors
   else if (output.match(/platform.*not supported|invalid destination|no destinations/i)) {
     const platformMatch = output.match(/platform\s+'([^']+)'/i);
+    
+    // Try to extract the correct platform from available destinations or platforms list
+    let correctPlatform: string | undefined;
+    
+    // First check for "Available platforms: ..." format from validatePlatformSupport
+    const availablePlatformsMatch = output.match(/Available platforms:\s*(.+)/i);
+    if (availablePlatformsMatch) {
+      const platforms = availablePlatformsMatch[1].split(',').map(p => p.trim());
+      if (platforms.length > 0) {
+        correctPlatform = platforms[0];
+      }
+    }
+    
+    // Otherwise check for xcodebuild's "Available destinations" output
+    if (!correctPlatform) {
+      const availableDestMatch = output.match(/Available destinations.*?scheme[:\s]*\n([\s\S]*?)(?:\n\n|\z)/);
+      if (availableDestMatch) {
+        // Extract unique platforms from the destination list
+        const platformRegex = /platform:(\w+)/g;
+        const platforms = new Set<string>();
+        let match;
+        while ((match = platformRegex.exec(availableDestMatch[1])) !== null) {
+          platforms.add(match[1]);
+        }
+        // Get the first platform (they're usually all the same for a scheme)
+        if (platforms.size > 0) {
+          correctPlatform = Array.from(platforms)[0];
+        }
+      }
+    }
+    
     errors.push({
       type: 'configuration',
       title: 'Platform/Destination error',
       details: platformMatch 
         ? `Platform '${platformMatch[1]}' not supported by scheme`
         : 'Invalid or unsupported destination',
-      suggestion: 'Check scheme settings or use a different platform'
+      suggestion: correctPlatform 
+        ? `Use platform: ${correctPlatform}`
+        : 'Check scheme settings or use a different platform'
     });
   }
   

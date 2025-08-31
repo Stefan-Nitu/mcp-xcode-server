@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
 import { config } from '../../config.js';
 import { LogManager } from '../LogManager.js';
-import { BuildError, CompileError, parseBuildErrors } from '../errors/index.js';
+import { BuildError, CompileError, parseBuildErrors, parseCompileErrors } from '../errors/index.js';
 
 const logger = createModuleLogger('XcodeBuild');
 
@@ -203,28 +203,12 @@ export class XcodeBuild {
       output = (error.stdout || '') + (error.stderr ? `\n${error.stderr}` : '');
       exitCode = error.code || 1;
       
-      // Parse compile errors and warnings from output
-      const errors: Array<{ file: string; line: number; column: number; message: string; type: 'error' | 'warning' }> = [];
-      const lines = output.split('\n');
-      const errorRegex = /^(.+?):(\d+):(\d+): (error|warning): (.+)$/;
-      const seenErrors = new Set<string>();
+      // Parse compile errors and warnings using the unified parser
+      const { errors: compileErrors, warnings: compileWarnings } = parseCompileErrors(output);
       
-      for (const line of lines) {
-        const match = line.match(errorRegex);
-        if (match) {
-          // Create a unique key for deduplication (same file, line, column, message)
-          const errorKey = `${match[1]}:${match[2]}:${match[3]}:${match[5]}`;
-          if (!seenErrors.has(errorKey)) {
-            seenErrors.add(errorKey);
-            errors.push({
-              file: match[1],
-              line: parseInt(match[2], 10),
-              column: parseInt(match[3], 10),
-              type: match[4] as 'error' | 'warning',
-              message: match[5]
-            });
-          }
-        }
+      // Log for debugging
+      if (compileErrors.length === 0 && output.toLowerCase().includes('error:')) {
+        logger.warn({ outputSample: output.substring(0, 500) }, 'Output contains "error:" but no compile errors were parsed');
       }
       
       // Save the build output to logs
@@ -234,12 +218,14 @@ export class XcodeBuild {
         platform,
         exitCode,
         command,
-        errors
+        errors: compileErrors,
+        warnings: compileWarnings
       });
       
       // Save debug data with parsed errors
-      if (errors.length > 0) {
-        LogManager.saveDebugData('build-errors', errors, projectName);
+      if (compileErrors.length > 0) {
+        LogManager.saveDebugData('build-errors', compileErrors, projectName);
+        logger.info({ errorCount: compileErrors.length, warningCount: compileWarnings.length }, 'Parsed compile errors');
       }
       
       // Also check for non-compile build errors
@@ -248,7 +234,7 @@ export class XcodeBuild {
       // Create error with both compile and build errors
       const errorWithDetails = new Error('Build failed') as any;
       errorWithDetails.output = output;
-      errorWithDetails.compileErrors = errors; // Compile errors
+      errorWithDetails.compileErrors = compileErrors; // Compile errors
       errorWithDetails.buildErrors = buildErrors; // Other build errors
       errorWithDetails.logPath = logPath;
       
@@ -270,6 +256,7 @@ export class XcodeBuild {
     failed: number; 
     failingTests?: Array<{ identifier: string; reason: string }>;
     compileErrors?: CompileError[];
+    compileWarnings?: CompileError[];
     buildErrors?: BuildError[];
     logPath: string;
   }> {
@@ -353,26 +340,8 @@ export class XcodeBuild {
       logger.debug({ code }, 'Tests completed with failures');
     }
     
-    // Check for compile errors first
-    const errorRegex = /^(.+?):(\d+):(\d+): (error|warning): (.+)$/gm;
-    const compileErrors: Array<{ file: string; line: number; column: number; message: string; type: 'error' | 'warning' }> = [];
-    const seenErrors = new Set<string>();
-    
-    let match;
-    while ((match = errorRegex.exec(output)) !== null) {
-      // Create a unique key for deduplication (same file, line, column, message)
-      const errorKey = `${match[1]}:${match[2]}:${match[3]}:${match[5]}`;
-      if (!seenErrors.has(errorKey)) {
-        seenErrors.add(errorKey);
-        compileErrors.push({
-          file: match[1],
-          line: parseInt(match[2], 10),
-          column: parseInt(match[3], 10),
-          type: match[4] as 'error' | 'warning',
-          message: match[5]
-        });
-      }
-    }
+    // Parse compile errors and warnings using the central parser
+    const { errors: compileErrors, warnings: compileWarnings } = parseCompileErrors(output);
     
     // Save the full test output to logs
     const projectName = path.basename(projectPath, path.extname(projectPath));
@@ -382,7 +351,8 @@ export class XcodeBuild {
       platform,
       exitCode: code,
       command,
-      compileErrors: compileErrors.length > 0 ? compileErrors : undefined
+      compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
+      compileWarnings: compileWarnings.length > 0 ? compileWarnings : undefined
     });
     logger.debug({ logPath }, 'Test output saved to log file');
     
@@ -647,6 +617,7 @@ export class XcodeBuild {
       success: code === 0 && testResult.failed === 0,
       output,
       compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
+      compileWarnings: compileWarnings.length > 0 ? compileWarnings : undefined,
       buildErrors: buildErrors.length > 0 ? buildErrors : undefined
     };
     

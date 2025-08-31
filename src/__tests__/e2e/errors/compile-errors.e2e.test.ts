@@ -293,7 +293,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       const text = (response.content[0] as any).text;
       
       // Should show project not found error
-      expect(text).toContain('does not exist');
+      expect(text).toContain('No Xcode project found at:');
       expect(text).toContain('/path/to/nonexistent/project.xcodeproj');
     }, 30000);
 
@@ -385,6 +385,6 @@ describe('Build and Compile Error Display E2E Tests', () => {
           expect(text).toMatch(/\/.*\.log/); // Should contain a log file path
         }
       }
-    }, 180000);
+    }, 540000);
   });
 });

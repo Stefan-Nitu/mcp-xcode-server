@@ -105,8 +105,8 @@ function formatFallbackError(errorMessage: string): string {
   } else if (isDependencyError) {
     displayMessage += 'Package dependency error';
   } else {
-    // Show first line of error
-    displayMessage += `Build failed\n\n📍 ${errorMessage.split('\n')[0]}`;
+    // For all other errors including executable failures
+    displayMessage += `Build failed\n\n📍 ${errorMessage}`;
   }
   
   return displayMessage;

@@ -291,7 +291,7 @@ describe('RunSwiftPackageTool Unit Tests', () => {
       });
 
       expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('no executable product named \'NonExistent\'');
+      expect(result.content[0].text).toContain('No executable product named \'NonExistent\'');
       expect(result.content[0].text).toContain('Configuration: Debug');
       expect(result.content[0].text).toContain('Executable: NonExistent');
     });

@@ -193,8 +193,9 @@ export class SwiftBuild {
     } catch (error: any) {
       logger.error({ error: error.message, packagePath }, 'Run failed');
       
-      // Get full output
-      const output = (error.stdout || '') + (error.stderr ? `\n${error.stderr}` : '');
+      // Get full output - for swift run, build output is in stderr, executable output is in stdout
+      // We want to show them in chronological order: build first, then executable
+      const output = (error.stderr || '') + (error.stdout ? `\n${error.stdout}` : '');
       
       // Save log
       const packageName = path.basename(packagePath);
@@ -211,8 +212,31 @@ export class SwiftBuild {
       // Parse build errors
       const buildErrors = parseSwiftBuildErrors(output);
       
+      // Check if build succeeded but executable failed
+      // If the build completed and we have output from the executable, use that as the error
+      let errorMessage = output.trim() || 'Run failed';
+      
+      if (output.includes('Build of product') && output.includes('complete!')) {
+        // Build succeeded, executable failed
+        // In swift run output, build comes first, then executable output after "complete!"
+        // Format is: "Build of product 'name' complete! (X.XXs)\n[executable output]"
+        const completeLineEnd = output.indexOf('\n', output.lastIndexOf('complete!'));
+        if (completeLineEnd !== -1) {
+          // Get everything after the build completion line
+          const executableOutput = output.substring(completeLineEnd + 1).trim();
+          
+          if (executableOutput) {
+            errorMessage = `Executable failed with exit code ${error.code || 1}:\n${executableOutput}`;
+          } else {
+            errorMessage = `Executable failed with exit code ${error.code || 1}`;
+          }
+        } else {
+          errorMessage = `Executable failed with exit code ${error.code || 1}`;
+        }
+      }
+      
       // Throw error with errors attached
-      const runError: any = new Error('Run failed');
+      const runError: any = new Error(errorMessage);
       runError.compileErrors = compileErrors;
       runError.buildErrors = buildErrors;
       runError.logPath = logPath;

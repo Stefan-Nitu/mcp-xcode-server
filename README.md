@@ -1,30 +1,81 @@
 # MCP Xcode Server
 
-A Model Context Protocol (MCP) server for Xcode - build, test, run, and manage Apple platform projects (iOS, macOS, tvOS, watchOS, visionOS).
+A Model Context Protocol (MCP) server that enables AI assistants to build, test, run, and manage Apple platform projects through natural language interactions.
 
-## Version: 0.6.0 (Beta)
+## Version: 0.6.0
 
-**⚠️ Beta Status:** Core functionality is stable with 67% of tools fully validated (14/21). See [test.md](test.md) for validation details.
+## Purpose
 
-## Overview
+This MCP server bridges the gap between AI assistants and Apple's development ecosystem. It allows AI tools like Claude to directly execute Xcode and Swift Package Manager commands, enabling automated development workflows without manual intervention. The server is designed for token efficiency, providing concise output while maintaining comprehensive error reporting and debugging capabilities.
 
-This MCP server enables AI assistants and development tools to interact with Apple's development ecosystem directly. It provides comprehensive control over Xcode projects, Swift packages, and simulators.
+## Why Use MCP Xcode Server?
 
-## Key Features
+### Key Advantages
 
-- **Multi-platform Support**: Build and test for iOS, macOS, tvOS, watchOS, and visionOS
-- **Xcode Project Management**: Build, run, and test Xcode projects and workspaces
-- **Swift Package Manager**: Full SPM support across all Apple platforms
-- **Smart Simulator Management**: Automatically reuses running simulators
-- **Visual UI Development**: Capture and view simulator screens directly
-- **Comprehensive Testing**: Support for XCTest and Swift Testing frameworks
-- **App Management**: Install and uninstall apps on simulators
-- **Device Logs**: Retrieve and filter device logs for debugging
-- **Build Maintenance**: Clean build folders, DerivedData, and test results
-- **Xcode Sync Hook**: Automatically sync file operations with Xcode projects
-- **Dependency Management**: Manage Swift Package Manager dependencies
-- **Error Detection**: Comprehensive compile error, scheme error, and code signing issue reporting
-- **Persistent Logging**: All operations save full logs to `~/.mcp-xcode-server/logs/` with 7-day retention
+- **AI-Native Development**: Enables AI assistants to build, test, and run iOS/macOS apps directly
+- **Token Efficiency**: Optimized output shows only essential information (errors, warnings, test results)
+- **Smart Error Handling**: Parses build errors and provides actionable suggestions
+- **Visual Debugging**: Capture simulator screenshots to verify UI changes
+- **Automatic Simulator Management**: Intelligently reuses running simulators to save time
+- **Xcode Integration**: Auto-syncs file operations with Xcode projects via hooks
+- **Persistent Logging**: All operations saved to `~/.mcp-xcode-server/logs/` for debugging
+- **Multi-Platform**: Supports iOS, macOS, tvOS, watchOS, and visionOS from a single interface
+
+### Use Cases
+
+- **Automated Testing**: AI can run your test suites and analyze failures
+- **Build Verification**: Quickly verify code changes compile across platforms
+- **UI Development**: Build and screenshot apps to verify visual changes
+- **Dependency Management**: Add, update, or remove Swift packages programmatically
+- **Cross-Platform Development**: Test the same code on multiple Apple platforms
+- **CI/CD Integration**: Automate build and test workflows through natural language
+
+## Limitations
+
+### What It Can't Do
+
+- **No SwiftUI Previews**: Xcode's live preview requires the full IDE
+- **No Interactive UI Testing**: Cannot simulate user interactions (taps, swipes)
+- **No Physical Devices**: Simulator-only for iOS/tvOS/watchOS/visionOS
+- **No Debugging**: No breakpoints, step-through debugging, or LLDB access
+- **No Xcode UI Features**: Project configuration, storyboard editing require Xcode
+- **Platform Requirements**: Requires macOS 14+, Xcode 16+, iOS 17+ simulators
+
+### When You Still Need Xcode
+
+- Designing UI with Interface Builder or SwiftUI previews
+- Debugging with breakpoints and variable inspection
+- Profiling with Instruments
+- Managing certificates and provisioning profiles
+- Testing on physical devices
+- Using Xcode-specific features (Playgrounds, AR tools, etc.)
+
+## Core Features
+
+### Build & Test Automation
+- Build and run Xcode projects/workspaces
+- Execute Swift Package Manager packages
+- Run XCTest and Swift Testing suites
+- **Xcode projects**: Support for custom build configurations (Debug, Release, Beta, Staging, etc.)
+- **Swift packages**: Standard SPM configurations (Debug/Release only - SPM limitation)
+
+### Simulator Management
+- List and boot simulators for any Apple platform
+- Capture screenshots for visual verification
+- Install/uninstall apps
+- Retrieve device logs with filtering
+
+### Error Intelligence
+- **Compile Errors**: Shows file, line, column with error message
+- **Scheme Errors**: Suggests using `list_schemes` tool
+- **Code Signing**: Identifies certificate and provisioning issues
+- **Dependencies**: Detects missing modules and version conflicts
+
+### File Sync Hooks
+- Automatically syncs file operations with Xcode projects
+- Intelligently assigns files to correct build phases (Sources, Resources, etc.)
+- Respects `.no-xcode-sync` opt-out files
+- Maintains proper group structure in Xcode
 
 ## Installation
 
@@ -34,11 +85,10 @@ This MCP server enables AI assistants and development tools to interact with App
 - Xcode 16.0 or later
 - Node.js 18+
 - Xcode Command Line Tools
-- Simulators for target platforms (iOS, tvOS, watchOS, visionOS)
+- Simulators for target platforms
 
-### Quick Setup (Recommended)
+### Quick Setup
 
-#### Global Installation
 ```bash
 # Install globally
 npm install -g mcp-xcode-server
@@ -47,21 +97,15 @@ npm install -g mcp-xcode-server
 mcp-xcode-server setup
 ```
 
-#### Project-specific Installation
-```bash
-# In your Xcode project directory
-npm install mcp-xcode-server
-npx mcp-xcode-server setup
-```
-
 The setup wizard will:
-- Configure the MCP server (globally or per-project)
-- Optionally set up Xcode sync hooks for file operations
+- Configure the MCP server for Claude
+- Optionally set up Xcode sync hooks
 - Build necessary helper tools
 
 ### Manual Configuration
 
-#### Global (~/.claude.json)
+Add to `~/.claude.json` (global) or `.claude/settings.json` (project):
+
 ```json
 {
   "mcpServers": {
@@ -75,384 +119,121 @@ The setup wizard will:
 }
 ```
 
-#### Project-specific (.claude/settings.json)
-```json
-{
-  "mcpServers": {
-    "mcp-xcode-server": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["mcp-xcode-server", "serve"],
-      "env": {}
-    }
-  }
-}
-```
-
-After updating configuration, restart Claude Code for changes to take effect.
-
 ## Available Tools
 
-### Build & Run Tools
+### Building
 
-#### `build_xcode`
-Build an Xcode project or workspace
-- `projectPath`: Path to .xcodeproj or .xcworkspace
-- `scheme`: Xcode scheme to build (required)
-- `platform`: Target platform (default: iOS)
-- `deviceId`: Simulator device name or UDID (optional)
-- `configuration`: Build configuration (default: Debug)
+- **`build_xcode`**: Build Xcode projects/workspaces (supports custom configurations)
+- **`build_swift_package`**: Build Swift packages (Debug/Release only per SPM spec)
+- **`run_xcode`**: Build and run on simulator/macOS
+- **`run_swift_package`**: Execute Swift package executables
 
-#### `build_swift_package`
-Build a Swift Package Manager package
-- `packagePath`: Path to Package.swift or package directory
-- `configuration`: Build configuration (Debug/Release, default: Debug)
-- `target`: Specific target (optional)
-- `product`: Specific product (optional)
+### Testing
 
-#### `run_xcode`
-Build and run an Xcode project or workspace
-- `projectPath`: Path to .xcodeproj or .xcworkspace
-- `scheme`: Xcode scheme to build and run (required)
-- `platform`: Target platform (default: iOS)
-- `deviceId`: Simulator device name or UDID (optional)
-- `configuration`: Build configuration (default: Debug)
+- **`test_xcode`**: Run XCTest/Swift Testing suites
+- **`test_swift_package`**: Test Swift packages
+- Supports test filtering by class/method
 
-#### `run_swift_package`
-Build and run a Swift Package Manager executable
-- `packagePath`: Path to Package.swift or package directory
-- `executable`: The executable product to run (optional)
-- `configuration`: Build configuration (Debug/Release, default: Debug)
-- `arguments`: Arguments to pass to the executable (optional)
+### Project Information
 
-### Testing Tools
+- **`list_schemes`**: Get available Xcode schemes
+- **`get_project_info`**: Comprehensive project details
+- **`list_targets`**: List all build targets
+- **`get_build_settings`**: Get scheme configuration
 
-#### `test_xcode`
-Run tests for an Xcode project or workspace
-- `projectPath`: Path to .xcodeproj or .xcworkspace (required)
-- `scheme`: Xcode scheme to test (required)
-- `platform`: Target platform (default: iOS)
-- `deviceId`: Simulator device name or UDID (optional)
-- `configuration`: Build configuration (default: Debug)
-- `testTarget`: Specific test target (optional)
-- `testFilter`: Filter for specific test classes or methods (optional)
+### Simulator Management
 
-#### `test_swift_package`
-Run tests for a Swift Package Manager package
-- `packagePath`: Path to Package.swift or package directory (required)
-- `configuration`: Build configuration (Debug/Release, default: Debug)
-- `filter`: Filter for specific tests (optional)
+- **`list_simulators`**: Show available devices
+- **`boot_simulator`**: Start a simulator
+- **`shutdown_simulator`**: Stop a simulator
+- **`view_simulator_screen`**: Capture screenshot
 
-### Project Information Tools
+### App Management
 
-#### `list_schemes`
-List all available schemes in an Xcode project or workspace
-- `projectPath`: Path to .xcodeproj or .xcworkspace
-- Returns: JSON array of scheme names
+- **`install_app`**: Install app on simulator
+- **`uninstall_app`**: Remove app by bundle ID
+- **`get_device_logs`**: Retrieve filtered device logs
 
-#### `get_build_settings`
-Get build settings for a scheme
-- `projectPath`: Path to .xcodeproj or .xcworkspace
-- `scheme`: Xcode scheme name
-- `platform`: Target platform (optional, default: iOS)
-- `configuration`: Debug or Release (optional)
-- Returns: Dictionary of build settings
+### Distribution
 
-#### `get_project_info`
-Get comprehensive project information
-- `projectPath`: Path to .xcodeproj or .xcworkspace
-- Returns: Project name, schemes, targets, and configurations
+- **`archive_project`**: Create .xcarchive
+- **`export_ipa`**: Export IPA from archive
 
-#### `list_targets`
-List all targets in a project
-- `projectPath`: Path to .xcodeproj or .xcworkspace
-- Returns: Array of target names
+### Maintenance
 
-### Simulator Management Tools
-
-#### `list_simulators`
-List available simulators
-- `showAll`: Show unavailable simulators too
-- `platform`: Filter by platform
-
-#### `boot_simulator`
-Boot a specific simulator
-- `deviceId`: Device UDID or name
-
-#### `shutdown_simulator`
-Shutdown a simulator
-- `deviceId`: Device UDID or name
-
-#### `view_simulator_screen`
-Capture and return simulator screen as image data
-- `deviceId`: Device UDID or name (optional, uses booted device)
-- Returns: Base64-encoded PNG image data
-
-### App Management Tools
-
-#### `install_app`
-Install an app bundle on simulator
-- `appPath`: Path to .app bundle
-- `deviceId`: Device UDID or name (optional, uses booted device)
-
-#### `uninstall_app`
-Uninstall an app by bundle ID
-- `bundleId`: Bundle identifier of the app
-- `deviceId`: Device UDID or name (optional, uses booted device)
-
-### Advanced Tools
-
-#### `archive_project`
-Create an archive of your project
-- `projectPath`: Path to .xcodeproj or .xcworkspace
-- `scheme`: Xcode scheme to archive
-- `platform`: Target platform (default: iOS)
-- `configuration`: Release or Debug (default: Release)
-- `archivePath`: Custom archive path (optional)
-- Returns: Path to created .xcarchive
-
-#### `export_ipa`
-Export an IPA from an archive
-- `archivePath`: Path to .xcarchive
-- `exportPath`: Custom export directory (optional)
-- `exportMethod`: development, app-store, ad-hoc, or enterprise (default: development)
-- Returns: Path to exported IPA
-
-#### `manage_dependencies`
-Manage Swift Package Manager dependencies
-- `projectPath`: Path to .xcodeproj or Package.swift
-- `action`: "list", "resolve", "update", "add", or "remove"
-- `packageURL`: URL of the Swift package (for add action)
-- `packageName`: Name of the package (for remove action)
-- `version`: Version requirement (optional)
-
-#### `get_device_logs`
-Retrieve device logs
-- `deviceId`: Device UDID or name (optional, uses booted device)
-- `predicate`: Log filter predicate
-- `last`: Time interval (e.g., "1m", "5m", "1h")
-
-#### `clean_build`
-Clean build artifacts, DerivedData, or test results
-- `projectPath`: Path to .xcodeproj or .xcworkspace (optional for DerivedData-only cleaning)
-- `scheme`: Xcode scheme (optional)
-- `platform`: Target platform (default: iOS)
-- `configuration`: Debug or Release (default: Debug)
-- `cleanTarget`: What to clean:
-  - `"build"`: Run `xcodebuild clean` (default)
-  - `"derivedData"`: Remove DerivedData folder
-  - `"testResults"`: Clear only test results
-  - `"all"`: Clean everything
-- `derivedDataPath`: Path to DerivedData (default: ./DerivedData)
-
-## Xcode Sync Hook
-
-Automatically syncs file operations with Xcode projects when using Claude Code.
-
-### Features
-- **Automatic Detection**: Detects file operations via Claude Code tools
-- **Smart File Type Handling**:
-  - Source files (.swift, .m, .mm, .c, .cpp) → Sources build phase
-  - Resources (.png, .json, .plist, .xib, .storyboard) → Resources build phase
-  - Documentation (.md, .txt) → Project only (visible but not compiled)
-  - Frameworks (.framework, .a, .dylib) → Frameworks build phase
-- **Group Management**: Creates groups matching folder structure
-- **Opt-out Support**: Via `.no-xcode-sync` file or settings
-
-### Supported File Types
-- **Source**: .swift, .m, .mm, .c, .cpp, .cc, .cxx, .h, .hpp, .hxx
-- **Resources**: .png, .jpg, .jpeg, .gif, .pdf, .svg, .json, .plist, .xcassets, .storyboard, .xib, .strings
-- **Documentation**: .md, .txt, .rtf
-- **Configuration**: .xcconfig, .entitlements
-- **Web**: .html, .css, .js, .ts, .tsx, .jsx
-- **Data**: .xml, .yaml, .yml, .toml
-
-### Opting Out
-Create a `.no-xcode-sync` file in the project root or set `xcodeSync: false` in `.claude/settings.json`.
-
-## Error Handling
-
-The server provides comprehensive error detection and reporting:
-
-### Compile Errors
-- File location with line and column numbers
-- Clear error messages with proper formatting
-- Deduplication across architectures
-- Icons: ❌ for errors, ⚠️ for warnings
-
-### Build Configuration Errors
-- Scheme not found - with suggestion to use `list_schemes` tool
-- Configuration not found
-- Platform incompatibility
-- Project not found
-
-### Code Signing & Provisioning
-- Missing certificates
-- Provisioning profile issues
-- Team ID problems
-- Entitlements conflicts
-
-### Dependency Errors
-- Missing modules
-- Version conflicts
-- Import failures
-
-## Logging
-
-All operations save comprehensive logs to `~/.mcp-xcode-server/logs/`:
-- **Organization**: Daily folders (e.g., `2025-01-27/`)
-- **Retention**: 7-day automatic cleanup
-- **Content**: Complete xcodebuild/swift output, test results, and metadata
+- **`clean_build`**: Clean build artifacts/DerivedData
+- **`manage_dependencies`**: Add/remove/update Swift packages
 
 ## Platform Support
 
-- **iOS**: Requires iOS Simulator (default: iPhone 16 Pro, iOS 17+)
-- **macOS**: Runs natively on host machine (macOS 14+)
-- **tvOS**: Requires tvOS Simulator (default: Apple TV)
-- **watchOS**: Requires watchOS Simulator (default: Apple Watch Series 10 46mm)
-- **visionOS**: Requires visionOS Simulator (default: Apple Vision Pro)
-
-## Test Framework Support
-
-Automatically detects and parses output from:
-- **XCTest**: Traditional Objective-C/Swift testing framework
-- **Swift Testing**: New Swift 6.0+ testing framework with `@Test` annotations
-
-Both frameworks provide:
-- Accurate test counting (passed/failed)
-- Failing test name extraction
-- Unified result format
-- Automatic framework detection
-
-## Example Usage
-
-### Test an iOS App
-```json
-{
-  "tool": "test_xcode",
-  "arguments": {
-    "projectPath": "/path/to/MyApp.xcodeproj",
-    "scheme": "MyApp",
-    "platform": "iOS",
-    "testTarget": "MyAppTests"
-  }
-}
-```
-
-### View Simulator Screen
-```json
-{
-  "tool": "view_simulator_screen",
-  "arguments": {
-    "deviceId": "iPhone 16 Pro"
-  }
-}
-```
-
-### Build and Run macOS App
-```json
-{
-  "tool": "run_xcode",
-  "arguments": {
-    "projectPath": "/path/to/MacApp.xcodeproj",
-    "scheme": "MacApp",
-    "platform": "macOS",
-    "configuration": "Release"
-  }
-}
-```
-
-### Test Swift Package
-```json
-{
-  "tool": "test_swift_package",
-  "arguments": {
-    "packagePath": "/path/to/MyPackage",
-    "configuration": "Debug"
-  }
-}
-```
+| Platform | Simulator Required | Default Device | Min Version |
+|----------|-------------------|----------------|-------------|
+| iOS | Yes | iPhone 16 Pro | iOS 17+ |
+| macOS | No | Host machine | macOS 14+ |
+| tvOS | Yes | Apple TV | tvOS 17+ |
+| watchOS | Yes | Apple Watch Series 10 | watchOS 10+ |
+| visionOS | Yes | Apple Vision Pro | visionOS 1.0+ |
 
 ## Architecture
 
-The server follows SOLID principles with modular, class-based architecture:
+The server follows SOLID principles with a modular, class-based architecture:
 
-### Core Components
-- **`index.ts`**: MCP server with tool registry and request handling
-- **`types.ts`**: Type definitions and interfaces
-- **`logger.ts`**: Structured logging with Pino
-- **`platformHandler.ts`**: Platform-specific configuration
-- **`validation.ts`**: Zod schemas with security validation
-- **`config.ts`**: Centralized configuration management
-- **`cli.ts`**: Command-line interface for setup
+### Core Structure
+```
+src/
+├── index.ts           # MCP server entry point
+├── tools/            # Self-contained tool implementations
+├── utils/            # Shared utilities
+│   ├── devices/      # Simulator management
+│   ├── projects/     # Xcode/SPM operations
+│   └── errors/       # Error parsing and handling
+└── validation.ts     # Zod schemas for security
+```
 
-### Utility Modules
+### Key Design Principles
+- **Single Responsibility**: Each class has one clear purpose
+- **Dependency Injection**: Testable, mockable components
+- **Type Safety**: Full TypeScript with Zod validation
+- **Security First**: Path validation, command injection protection
+- **Error Recovery**: Graceful handling with helpful suggestions
 
-#### Device Management (`utils/devices/`)
-- **`Devices.ts`**: Device discovery and management
-- **`SimulatorDevice.ts`**: Unified simulator interface
-- **`SimulatorBoot.ts`**: Boot/shutdown operations
-- **`SimulatorApps.ts`**: App installation and management
-- **`SimulatorUI.ts`**: UI operations (screenshots, appearance)
-- **`SimulatorInfo.ts`**: Device state and logging
-- **`SimulatorReset.ts`**: Device reset operations
+## Logging
 
-#### Build Operations (`utils/projects/`)
-- **`Xcode.ts`**: Factory for Xcode operations
-- **`XcodeProject.ts`**: Xcode project building and running
-- **`XcodeBuild.ts`**: Build and test execution
-- **`SwiftPackage.ts`**: Swift Package Manager operations
-- **`SwiftBuild.ts`**: Swift package build and test execution
-
-### Tool Architecture
-Each tool in the `tools/` directory is a self-contained class implementing the Tool interface:
-- Individual tool classes encapsulate validation, execution logic, and MCP definition
-- No inheritance - tools are independent
-- Dependency injection for testability
-- Consistent error handling with structured validation
+All operations are logged to `~/.mcp-xcode-server/logs/`:
+- Daily folders (e.g., `2025-01-27/`)
+- 7-day automatic retention
+- Full xcodebuild/swift output preserved
+- Symlinks to latest logs for easy access
 
 ## Development
 
-### Building
 ```bash
+# Build
 npm run build
+
+# Test
+npm test              # All tests
+npm run test:unit    # Unit tests only
+npm run test:e2e     # End-to-end tests
+npm run test:coverage # With coverage
+
+# Development
+npm run dev          # Build and run
 ```
-
-### Testing
-```bash
-npm test              # Run all tests
-npm run test:unit     # Unit tests only
-npm run test:e2e      # End-to-end tests
-npm run test:coverage # With coverage report
-```
-
-### Test Artifacts
-The `test_artifacts/` directory contains real Xcode projects used for testing. Any modifications to these test projects must be committed to Git as the test runner restores them to pristine state before each test run.
-
-### CI/CD
-GitHub Actions pipeline runs on all pushes and pull requests:
-- Tests across Node.js 18.x, 20.x, 22.x
-- TypeScript compilation checks
-- Test coverage reporting
-- Automated releases on main branch
-
-## Production Features
-
-- **Input Validation**: All tool arguments validated using Zod schemas
-- **Structured Logging**: Pino-based logging with environment-aware configuration
-- **Graceful Shutdown**: Proper cleanup handling for SIGTERM and SIGINT signals
-- **Error Handling**: Comprehensive error handling with detailed messages
-- **Test Coverage**: Unit, integration, and end-to-end tests
-- **Security**: Command injection protection and path validation
 
 ## Contributing
 
-Contributions are welcome! Please ensure:
-- All tests pass (`npm test`)
-- Code follows existing patterns and SOLID principles
-- New features include appropriate tests
-- Documentation is updated
+Contributions welcome! Please ensure:
+- Tests pass (`npm test`)
+- Code follows SOLID principles
+- New tools include tests
+- Documentation updated
 
 ## License
 
 MIT
+
+## Support
+
+- Report issues: [GitHub Issues](https://github.com/yourusername/mcp-xcode-server/issues)
+- Documentation: [MCP Protocol](https://modelcontextprotocol.io)

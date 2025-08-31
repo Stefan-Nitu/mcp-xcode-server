@@ -44,16 +44,8 @@ export class Devices {
         return null;
       }
       
-      // Sort to prefer available and booted devices
-      matchingDevices.sort((a, b) => {
-        // First priority: available devices
-        if (a.isAvailable && !b.isAvailable) return -1;
-        if (!a.isAvailable && b.isAvailable) return 1;
-        // Second priority: booted devices (fresh state from listing)
-        if (a.state === 'Booted' && b.state !== 'Booted') return -1;
-        if (a.state !== 'Booted' && b.state === 'Booted') return 1;
-        return 0;
-      });
+      // Sort to prefer available, booted, and newer devices
+      this.sortDevices(matchingDevices);
       
       const selected = matchingDevices[0];
       
@@ -178,6 +170,25 @@ export class Devices {
   }
 
   /**
+   * Extract version number from runtime string
+   */
+  private getVersionFromRuntime(runtime: string): number {
+    const match = runtime.match(/(\d+)[.-](\d+)/);
+    return match ? parseFloat(`${match[1]}.${match[2]}`) : 0;
+  }
+
+  /**
+   * Sort devices preferring: available > booted > newer iOS versions
+   */
+  private sortDevices(devices: Array<{device: SimulatorDevice, state: string, isAvailable: boolean}>): void {
+    devices.sort((a, b) => {
+      if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+      if (a.state === 'Booted' !== (b.state === 'Booted')) return a.state === 'Booted' ? -1 : 1;
+      return this.getVersionFromRuntime(b.device.runtime) - this.getVersionFromRuntime(a.device.runtime);
+    });
+  }
+
+  /**
    * Check if a runtime matches a platform
    */
   private matchesPlatform(extractedPlatform: string, targetPlatform: Platform): boolean {
@@ -222,7 +233,11 @@ export class Devices {
         return booted;
       }
       
-      // Otherwise just return the first available device
+      // Sort by runtime version (prefer newer) and return the first
+      platformDevices.sort((a, b) => 
+        this.getVersionFromRuntime(b.runtime) - this.getVersionFromRuntime(a.runtime)
+      );
+      
       const selected = platformDevices[0];
       logger.debug({ 
         device: selected.name, 
