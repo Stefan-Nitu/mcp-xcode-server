@@ -81,19 +81,63 @@ jobs:
         xcodebuild -version
         echo ""
         echo "=== Available Simulators ==="
-        xcrun simctl list devices
+        xcrun simctl list devices | head -50
         echo ""
         echo "=== Available Runtimes ==="
         xcrun simctl list runtimes
         echo ""
-        echo "=== Test Project Schemes ==="
-        xcodebuild -list -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj || true
+        echo "=== Test Different Destination Formats ==="
         echo ""
-        echo "=== Test Validation Command ==="
-        xcodebuild -showBuildSettings -project "test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj" -scheme "TestProjectXCTest" -destination 'generic/platform=iOS Simulator' 2>&1 | head -20 || true
+        echo "1. Testing generic/platform=iOS"
+        xcodebuild -showdestinations -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj -scheme TestProjectXCTest 2>&1 | grep -A5 -B5 "iOS" || true
         echo ""
-        echo "=== Check iOS Platform Support ==="
-        xcodebuild -showBuildSettings -project "test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj" -scheme "TestProjectXCTest" -destination 'generic/platform=iOS' 2>&1 | head -20 || true
+        echo "2. Testing with specific simulator (iPhone 16)"
+        xcodebuild -showBuildSettings -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
+          -scheme TestProjectXCTest \
+          -destination 'platform=iOS Simulator,name=iPhone 16' 2>&1 | grep -E "PLATFORM|SDK|error" | head -10 || true
+        echo ""
+        echo "3. Testing with OS version (iPhone 16, iOS 18.5)"
+        xcodebuild -showBuildSettings -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
+          -scheme TestProjectXCTest \
+          -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' 2>&1 | grep -E "PLATFORM|SDK|error" | head -10 || true
+        echo ""
+        echo "4. Testing macOS platform (should work)"
+        xcodebuild -showBuildSettings -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
+          -scheme TestProjectXCTest \
+          -destination 'platform=macOS' 2>&1 | grep -E "PLATFORM|SDK" | head -5 || true
+        echo ""
+        echo "=== Check what platforms the project actually supports ==="
+        xcodebuild -showBuildSettings -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
+          -scheme TestProjectXCTest 2>&1 | grep -E "SUPPORTED_PLATFORMS|SDKROOT|IPHONEOS_DEPLOYMENT_TARGET" || true
+    
+    - name: Test iOS Build Directly
+      run: |
+        echo "=== Attempting direct iOS build ==="
+        echo "1. Try building with generic iOS destination"
+        xcodebuild build \
+          -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
+          -scheme TestProjectXCTest \
+          -destination 'generic/platform=iOS' \
+          CODE_SIGNING_ALLOWED=NO \
+          -derivedDataPath ./DerivedData 2>&1 | tail -20 || true
+        
+        echo ""
+        echo "2. Try building with specific simulator"
+        xcodebuild build \
+          -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
+          -scheme TestProjectXCTest \
+          -destination 'platform=iOS Simulator,name=iPhone 16' \
+          CODE_SIGNING_ALLOWED=NO \
+          -derivedDataPath ./DerivedData 2>&1 | tail -20 || true
+        
+        echo ""
+        echo "3. Try building for macOS (baseline - should work)"
+        xcodebuild build \
+          -project test_artifacts/TestProjectXCTest/TestProjectXCTest.xcodeproj \
+          -scheme TestProjectXCTest \
+          -destination 'platform=macOS' \
+          CODE_SIGNING_ALLOWED=NO \
+          -derivedDataPath ./DerivedData 2>&1 | tail -20 || true
     
     - name: Use Node.js 20.x
       uses: actions/setup-node@v4
