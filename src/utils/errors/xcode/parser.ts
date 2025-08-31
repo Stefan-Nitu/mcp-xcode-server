@@ -189,16 +189,20 @@ export function parseBuildErrors(output: string): BuildError[] {
     });
   }
   
-  // Check for SDK not installed errors
-  if (output.includes('is not installed. To use with Xcode, first download and install the platform')) {
-    const sdkMatch = output.match(/(\w+\s+[\d.]+)\s+is not installed/);
-    const sdkName = sdkMatch ? sdkMatch[1] : 'Required SDK';
-    errors.push({
-      type: 'sdk',
-      title: 'SDK not installed',
-      details: `${sdkName} SDK is not installed`,
-      suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
-    });
+  // Check for SDK not installed errors (check multiple patterns)
+  // Pattern 1: Explicit "is not installed" message
+  if (output.includes('is not installed')) {
+    const sdkMatch = output.match(/(\w+\s+[\d.]+)\s+(?:SDK\s+)?is not installed/);
+    if (sdkMatch) {
+      const sdkName = sdkMatch[1];
+      errors.push({
+        type: 'sdk',
+        title: 'SDK not installed',
+        details: `${sdkName} SDK is not installed`,
+        suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
+      });
+      return errors; // Return early to prevent misclassification as platform/scheme issue
+    }
   }
   
   // Check for "Unable to find a destination" errors
@@ -222,6 +226,7 @@ export function parseBuildErrors(output: string): BuildError[] {
         details: `${sdkName} SDK is not installed`,
         suggestion: 'Install via: xcodebuild -downloadPlatform iOS or Xcode > Settings > Platforms'
       });
+      return errors; // Return early to prevent misclassification
     } else {
       // Extract specific issue from requested destination
       let details = 'Unable to find a valid destination for building';
