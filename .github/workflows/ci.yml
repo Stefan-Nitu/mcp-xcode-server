@@ -41,7 +41,7 @@ jobs:
         fail_ci_if_error: false
 
   e2e-test:
-    runs-on: macos-15  # Use macOS-15 which has iOS 18.0 SDK pre-installed
+    runs-on: macos-15  # Use macOS-15 which has Xcode 16.0+
     needs: test  # Run after unit tests complete
     
     steps:
