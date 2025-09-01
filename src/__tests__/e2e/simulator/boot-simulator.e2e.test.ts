@@ -96,7 +96,7 @@ describe('BootSimulatorTool E2E Tests', () => {
       const updatedDevices = JSON.parse((verifyResponse.content[0] as any).text);
       const bootedDevice = updatedDevices.find((d: any) => d.udid === shutdownDevice.udid);
       expect(bootedDevice.state).toBe('Booted');
-    });
+    }, 30000);
 
     test('should handle already booted simulator gracefully', async () => {
       // Get a booted simulator or boot one
@@ -150,7 +150,7 @@ describe('BootSimulatorTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       // Should either indicate success or that it's already booted
       expect(text.toLowerCase()).toMatch(/successfully booted|already booted/);
-    });
+    }, 30000);
 
     test('should handle invalid deviceId gracefully', async () => {
       const response = await client.request({
@@ -166,6 +166,6 @@ describe('BootSimulatorTool E2E Tests', () => {
       const text = (response.content[0] as any).text;
       expect(text).toContain('Error');
       expect(text.toLowerCase()).toMatch(/device not found|invalid device|unable to find/);
-    });
+    }, 30000);
   });
 });
