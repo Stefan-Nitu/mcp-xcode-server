@@ -1,7 +1,7 @@
 import { XcodeBuild, BuildOptions, TestOptions } from './XcodeBuild.js';
 import { XcodeArchive, ArchiveOptions, ExportOptions } from './XcodeArchive.js';
 import { XcodeInfo } from './XcodeInfo.js';
-import { BuildError, CompileError } from '../errors/index.js';
+import { Issue } from '../errors/index.js';
 import { createModuleLogger } from '../../logger.js';
 import * as pathModule from 'path';
 import { Platform } from '../../types.js';
@@ -46,7 +46,7 @@ export class XcodeProject {
     output: string;
     appPath?: string;
     logPath?: string;
-    errors?: CompileError[];
+    errors?: Issue[];
   }> {
     logger.info({ path: this.path, options }, 'Building Xcode project');
     
@@ -63,9 +63,9 @@ export class XcodeProject {
     passed: number;
     failed: number;
     failingTests?: Array<{ identifier: string; reason: string }>;
-    compileErrors?: CompileError[];
-    compileWarnings?: CompileError[];
-    buildErrors?: BuildError[];
+    compileErrors?: Issue[];
+    compileWarnings?: Issue[];
+    buildErrors?: Issue[];
     logPath: string;
   }> {
     logger.info({ path: this.path, options }, 'Testing Xcode project');

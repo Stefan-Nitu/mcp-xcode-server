@@ -150,8 +150,9 @@ describe('RunXcodeTool Unit Tests', () => {
         './DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
       );
       
-      expect(result.content[0].text).toContain('Successfully built and ran project: MyScheme');
-      expect(result.content[0].text).toContain('Device: Mock Device');
+      const output = result.content[0].text;
+      expect(output).toContain('Successfully built and ran project: MyScheme');
+      expect(output).toContain('Device: Mock Device');
     });
 
     test('should work without deviceId', async () => {
@@ -224,7 +225,8 @@ describe('RunXcodeTool Unit Tests', () => {
         expect.stringContaining('MyApp.app')
       );
       
-      expect(result.content[0].text).toContain('Successfully built and ran project');
+      const output = result.content[0].text;
+      expect(output).toContain('Successfully built and ran project');
     });
 
     test('should handle macOS app launch failure gracefully', async () => {
@@ -388,12 +390,12 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('📍 error message');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Scheme: MyScheme');
-      expect(result.content[0].text).toContain('📁 Full logs saved to: /path/to/log');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ error message');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
+      expect(output).toContain('📁 Full logs saved to: /path/to/log');
     });
 
     test('should handle missing app path', async () => {
@@ -416,11 +418,11 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('❌ Run failed');
-      expect(result.content[0].text).toContain('Build succeeded but the app bundle could not be located');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Scheme: MyScheme');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Build succeeded but could not find app path');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
 
     test('should handle device not found', async () => {
@@ -436,11 +438,11 @@ describe('RunXcodeTool Unit Tests', () => {
         deviceId: 'non-existent'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('Device not found: non-existent');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Scheme: MyScheme');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Device not found: non-existent');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
 
     test('should handle project not existing', async () => {
@@ -452,10 +454,11 @@ describe('RunXcodeTool Unit Tests', () => {
         platform: 'iOS'
       });
 
-      expect(result.content[0].text).toContain('❌ No Xcode project found at: /test/project.xcodeproj');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Scheme: MyScheme');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ No Xcode project found at: /test/project.xcodeproj');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
   });
 

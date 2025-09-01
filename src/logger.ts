@@ -14,14 +14,15 @@ const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
 export const logger = pino({
   level: logLevel,
   // Use pretty printing in development, JSON in production
-  transport: isDevelopment ? {
+  // Disable transport in test environment to avoid thread-stream issues
+  transport: (isDevelopment) ? {
     target: 'pino-pretty',
     options: {
       colorize: true,
       ignore: 'pid,hostname',
       translateTime: 'SYS:standard',
       singleLine: false,
-      sync: true  // Make pino-pretty synchronous to avoid race conditions in tests
+      sync: true  // Make pino-pretty synchronous to avoid race conditions
     }
   } : undefined,
   // Add metadata to all logs

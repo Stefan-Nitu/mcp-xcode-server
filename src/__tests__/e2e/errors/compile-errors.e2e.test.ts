@@ -12,10 +12,7 @@ import { createAndConnectClient, cleanupClientAndTransport } from '../../utils/t
 import { TestProjectManager } from '../../utils/TestProjectManager.js';
 import { TestEnvironmentCleaner } from '../../utils/TestEnvironmentCleaner.js';
 import { TestErrorInjector } from '../../utils/TestErrorInjector.js';
-import { createModuleLogger } from '../../../logger.js';
 import { join } from 'path';
-
-const logger = createModuleLogger('compile-errors-e2e');
 
 describe('Build and Compile Error Display E2E Tests', () => {
   let client: Client;
@@ -27,13 +24,13 @@ describe('Build and Compile Error Display E2E Tests', () => {
     execSync('npm run build', { cwd: process.cwd() });
     testProjectManager = new TestProjectManager();
     testProjectManager.setup();
-    errorInjector = new TestErrorInjector();
   }, 180000);
   
   beforeEach(async () => {
     const setup = await createAndConnectClient();
     client = setup.client;
     transport = setup.transport;
+    errorInjector = new TestErrorInjector();
   }, 180000);
   
   afterEach(async () => {
@@ -69,11 +66,6 @@ describe('Build and Compile Error Display E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      logger.info({ 
-        buildResponse: text,
-        projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
-        scheme: testProjectManager.schemes.xcodeProject 
-      }, 'Compile error test - Build response');
 
       // Check for compile error display
       expect(text).toContain('❌ Build failed with');
@@ -101,11 +93,6 @@ describe('Build and Compile Error Display E2E Tests', () => {
       }, CallToolResultSchema, { timeout: 180000 });
       
       const text = (response.content[0] as any).text;
-      logger.info({ 
-        buildResponse: text,
-        projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
-        scheme: testProjectManager.schemes.xcodeProject 
-      }, 'Multiple compile errors test - Build response');
       
       // Check that multiple errors are shown
       expect(text).toContain('❌ Build failed with');
@@ -398,9 +385,14 @@ describe('Build and Compile Error Display E2E Tests', () => {
 
   describe('Log Path Display', () => {
     test('all tools should display log path on failure', async () => {
-      const tools = ['build_xcode', 'run_xcode', 'test_xcode'];
+      // Test Xcode tools
+      const xcodeTools = ['build_xcode', 'run_xcode', 'test_xcode'];
       
-      for (const tool of tools) {
+      // Inject an error to make Xcode builds fail
+      const contentViewPath = join(testProjectManager.paths.xcodeProjectXCTestPath, '..', 'TestProjectXCTest', 'ContentView.swift');
+      errorInjector.injectCompileError(contentViewPath, 'type-mismatch');
+      
+      for (const tool of xcodeTools) {
         const response = await client.request({
           method: 'tools/call',
           params: {
@@ -416,6 +408,33 @@ describe('Build and Compile Error Display E2E Tests', () => {
         const text = (response.content[0] as any).text;
         
         // All tools should show log path when there's an error
+        expect(text).toContain('📁 Full logs saved to:');
+        expect(text).toMatch(/\/.*\.log/); // Should contain a log file path
+      }
+      
+      // Clean up Xcode error
+      errorInjector.restoreAll();
+      
+      // Test Swift Package tools
+      const swiftTools = ['build_swift_package', 'run_swift_package', 'test_swift_package'];
+      
+      // Inject an error to make Swift package builds fail
+      errorInjector.injectMissingDependency(testProjectManager.paths.swiftPackageXCTestDir);
+      
+      for (const tool of swiftTools) {
+        const response = await client.request({
+          method: 'tools/call',
+          params: {
+            name: tool,
+            arguments: {
+              packagePath: testProjectManager.paths.swiftPackageXCTestDir
+            }
+          }
+        }, CallToolResultSchema, { timeout: 180000 });
+        
+        const text = (response.content[0] as any).text;
+        
+        // All Swift package tools should show log path when there's an error
         expect(text).toContain('📁 Full logs saved to:');
         expect(text).toMatch(/\/.*\.log/); // Should contain a log file path
       }

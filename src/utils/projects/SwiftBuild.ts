@@ -5,8 +5,7 @@ import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { XMLParser } from 'fast-xml-parser';
 import { LogManager } from '../LogManager.js';
-import { BuildError, CompileError } from '../errors/index.js';
-import { parseSwiftCompileErrors, parseSwiftBuildErrors } from '../errors/swift-package/index.js';
+import { parseXcbeautifyOutput, formatParsedOutput, Issue, XcbeautifyOutput } from '../errors/xcbeautify-parser.js';
 
 const logger = createModuleLogger('SwiftBuild');
 
@@ -34,8 +33,8 @@ export class SwiftBuild {
   /**
    * Parse compile errors from Swift compiler output
    */
-  private parseCompileErrors(output: string): CompileError[] {
-    const errors: CompileError[] = [];
+  private parseCompileErrors(output: string): Issue[] {
+    const errors: Issue[] = [];
     const lines = output.split('\n');
     
     // Swift compiler error format:
@@ -61,7 +60,8 @@ export class SwiftBuild {
             line: parseInt(lineNum, 10),
             column: parseInt(column, 10),
             message,
-            type: type as 'error' | 'warning'
+            type: type as 'error' | 'warning',
+            rawLine: line
           });
         }
       }
@@ -75,7 +75,7 @@ export class SwiftBuild {
   async build(
     packagePath: string,
     options: SwiftBuildOptions = {}
-  ): Promise<{ success: boolean; output: string; logPath?: string; compileErrors?: CompileError[]; buildErrors?: BuildError[] }> {
+  ): Promise<{ success: boolean; output: string; logPath?: string; errors?: Issue[]; warnings?: Issue[] }> {
     const { configuration = 'Debug', product, target } = options;
     
     // Convert to lowercase for swift command
@@ -129,11 +129,10 @@ export class SwiftBuild {
         exitCode: error.code || 1
       });
       
-      // Parse compile errors using Swift-specific parser
-      const compileErrors = parseSwiftCompileErrors(output);
-      
-      // Parse build errors
-      const buildErrors = parseSwiftBuildErrors(output);
+      // Parse errors using unified xcbeautify parser
+      const parsed = parseXcbeautifyOutput(output);
+      const compileErrors = parsed.errors;
+      const buildErrors: Issue[] = [];
       
       // Throw error with errors attached
       const buildError: any = new Error('Build failed');
@@ -151,7 +150,7 @@ export class SwiftBuild {
   async run(
     packagePath: string,
     options: SwiftRunOptions = {}
-  ): Promise<{ success: boolean; output: string; logPath?: string; compileErrors?: CompileError[]; buildErrors?: BuildError[] }> {
+  ): Promise<{ success: boolean; output: string; logPath?: string; errors?: Issue[]; warnings?: Issue[] }> {
     const { executable, arguments: args = [], configuration = 'Debug' } = options;
     
     // Convert to lowercase for swift command
@@ -206,11 +205,10 @@ export class SwiftBuild {
         exitCode: error.code || 1
       });
       
-      // Parse compile errors (build might fail before run)
-      const compileErrors = parseSwiftCompileErrors(output);
-      
-      // Parse build errors
-      const buildErrors = parseSwiftBuildErrors(output);
+      // Parse errors using unified xcbeautify parser
+      const parsed = parseXcbeautifyOutput(output);
+      const compileErrors = parsed.errors;
+      const buildErrors: Issue[] = [];
       
       // Check if build succeeded but executable failed
       // If the build completed and we have output from the executable, use that as the error
@@ -257,8 +255,8 @@ export class SwiftBuild {
     passed: number;
     failed: number;
     failingTests?: Array<{ identifier: string; reason: string }>;
-    compileErrors?: CompileError[];
-    buildErrors?: BuildError[];
+    errors?: Issue[];
+    warnings?: Issue[];
     logPath: string;
   }> {
     const { filter, configuration = 'Debug' } = options;
@@ -357,11 +355,8 @@ export class SwiftBuild {
       // Clean up XUnit files
       this.cleanupXunitFiles(xunitPath, swiftTestingXunitPath);
       
-      // Parse compile errors if the build failed
-      const compileErrors = parseSwiftCompileErrors(output);
-      
-      // Parse build errors
-      const buildErrors = parseSwiftBuildErrors(output);
+      // Parse errors using unified xcbeautify parser
+      const parsed = parseXcbeautifyOutput(output);
       
       // Save the test output to logs
       const logPath = LogManager.saveLog('test', output, packageName, {
@@ -370,16 +365,16 @@ export class SwiftBuild {
         exitCode,
         command,
         testResults: testResult,
-        compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
-        buildErrors: buildErrors.length > 0 ? buildErrors : undefined
+        errors: parsed.errors.length > 0 ? parsed.errors : undefined,
+        warnings: parsed.warnings.length > 0 ? parsed.warnings : undefined
       });
       
       return {
         ...testResult,
         success: false,
         output,
-        compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
-        buildErrors: buildErrors.length > 0 ? buildErrors : undefined,
+        errors: parsed.errors.length > 0 ? parsed.errors : undefined,
+        warnings: parsed.warnings.length > 0 ? parsed.warnings : undefined,
         logPath
       };
     }

@@ -229,8 +229,9 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/project.xcodeproj'
       });
 
-      expect(result.content[0].text).toContain('❌ No Package.swift found at: /test/project.xcodeproj');
-      expect(result.content[0].text).toContain('Configuration: Debug');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ No Package.swift found at: /test/project.xcodeproj');
+      expect(output).toContain('configuration: Debug');
     });
 
     test('should handle run failure', async () => {
@@ -244,9 +245,9 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('📍 error: no such module \'Foundation\'');
-      expect(result.content[0].text).toContain('Configuration: Debug');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ error: no such module \'Foundation\'');
+      expect(output).toContain('configuration: Debug');
     });
 
     test('should handle run throwing error', async () => {
@@ -260,9 +261,9 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/package'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('📍 Execution failed');
-      expect(result.content[0].text).toContain('Configuration: Debug');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Execution failed');
+      expect(output).toContain('configuration: Debug');
     });
 
     test('should handle Xcode.open throwing error', async () => {
@@ -273,9 +274,9 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/NonExistent'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('📍 Package.swift not found');
-      expect(result.content[0].text).toContain('Configuration: Debug');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Package.swift not found');
+      expect(output).toContain('configuration: Debug');
     });
 
     test('should handle missing executable', async () => {
@@ -290,10 +291,10 @@ describe('RunSwiftPackageTool Unit Tests', () => {
         executable: 'NonExistent'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('No executable product named \'NonExistent\'');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Executable: NonExistent');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ error: no executable product named \'NonExistent\'');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('executable: NonExistent');
     });
   });
 

@@ -322,6 +322,27 @@ Following the Testing Trophy approach from testing-philosophy.md, we need to add
 
 ### Implementation Progress
 
+#### Integration Test Findings (2025-09-01)
+
+**Challenge**: Creating true integration tests proved more complex than anticipated due to:
+1. **Deep call chains**: BuildXcodeTool → Xcode → XcodeProject → XcodeBuild → multiple execAsync calls
+2. **Complex mocking**: Each build requires 3+ execAsync calls (validation, build, find app)
+3. **File system dependencies**: Log management, DerivedData paths, config files
+4. **Validation at multiple layers**: Zod validation throws errors vs returning error results
+
+**Results**:
+- Simple integration test (3 tests): ✅ All passing, ~1.8s runtime
+- Full integration test (20 tests): ❌ 19/20 failing due to mock sequencing issues
+- Performance: Integration tests run in 3-4s vs 180s+ for E2E (45x faster when working)
+
+**Key Learning**: The current architecture makes integration testing difficult. The tools are tightly coupled with their dependencies, making it hard to test at an integration level without essentially creating unit tests.
+
+**Recommendation**: 
+1. Keep existing unit tests (mock at high level - XcodeProject.buildProject)
+2. Keep critical E2E tests for real validation
+3. Skip integration layer for now - the complexity isn't worth the benefit
+4. Consider refactoring architecture to support better testability (dependency injection, ports/adapters)
+
 #### Infrastructure Created
 1. **mockHelpers.ts** ✅
    - SubprocessMock for mocking execSync/spawn
@@ -335,13 +356,14 @@ Following the Testing Trophy approach from testing-philosophy.md, we need to add
    - Provides troubleshooting guide
    - Real-world examples and case studies
 
-### Next Steps
+### Revised Next Steps (Based on Findings)
 1. ~~Create mock utilities for subprocess and filesystem~~ ✅
 2. ~~Document Jest TypeScript best practices~~ ✅
-3. **Create integration test directory structure** (src/__tests__/integration/)
-4. **Convert Tier 1 tests** (build-xcode, test-xcode, run-xcode) to integration tests
-5. **Measure performance improvement** after first batch of conversions
-6. **Remove redundant tests** identified in analysis
+3. ~~Attempt integration test layer~~ ❌ Too complex with current architecture
+4. **Focus on optimizing existing unit tests** - ensure comprehensive coverage
+5. **Reduce E2E tests to critical paths only** (1-2 per tool max)
+6. **Remove redundant E2E tests** identified in analysis
+7. **Consider architecture refactoring** for better testability in future
 
 ### Conversion Roadmap
 

@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
 import { config } from '../../config.js';
 import { LogManager } from '../LogManager.js';
-import { BuildError, CompileError, parseBuildErrors, parseCompileErrors } from '../errors/index.js';
+import { parseXcbeautifyOutput, formatParsedOutput } from '../errors/xcbeautify-parser.js';
 
 const logger = createModuleLogger('XcodeBuild');
 
@@ -28,7 +28,7 @@ export interface TestOptions {
   testTarget?: string;
 }
 
-// CompileError type is now imported from the errors module
+// Using unified xcbeautify parser for all error handling
 
 /**
  * Handles xcodebuild commands for Xcode projects
@@ -112,7 +112,7 @@ export class XcodeBuild {
     projectPath: string, 
     isWorkspace: boolean,
     options: BuildOptions = {}
-  ): Promise<{ success: boolean; output: string; appPath?: string; logPath?: string; errors?: CompileError[] }> {
+  ): Promise<{ success: boolean; output: string; appPath?: string; logPath?: string; errors?: any[] }> {
     const {
       scheme,
       configuration = 'Debug',
@@ -144,6 +144,9 @@ export class XcodeBuild {
     
     command += ` -derivedDataPath "${derivedDataPath}" build`;
     
+    // Pipe through xcbeautify for clean output
+    command = `set -o pipefail && ${command} 2>&1 | xcbeautify`;
+    
     logger.debug({ command }, 'Build command');
     
     let output = '';
@@ -152,7 +155,8 @@ export class XcodeBuild {
     
     try {
       const { stdout, stderr } = await execAsync(command, { 
-        maxBuffer: 50 * 1024 * 1024 
+        maxBuffer: 50 * 1024 * 1024,
+        shell: '/bin/bash'
       });
       
       output = stdout + (stderr ? `\n${stderr}` : '');
@@ -203,12 +207,12 @@ export class XcodeBuild {
       output = (error.stdout || '') + (error.stderr ? `\n${error.stderr}` : '');
       exitCode = error.code || 1;
       
-      // Parse compile errors and warnings using the unified parser
-      const { errors: compileErrors, warnings: compileWarnings } = parseCompileErrors(output);
+      // Parse errors using the unified xcbeautify parser
+      const parsed = parseXcbeautifyOutput(output);
       
       // Log for debugging
-      if (compileErrors.length === 0 && output.toLowerCase().includes('error:')) {
-        logger.warn({ outputSample: output.substring(0, 500) }, 'Output contains "error:" but no compile errors were parsed');
+      if (parsed.errors.length === 0 && output.toLowerCase().includes('error:')) {
+        logger.warn({ outputSample: output.substring(0, 500) }, 'Output contains "error:" but no errors were parsed');
       }
       
       // Save the build output to logs
@@ -218,24 +222,20 @@ export class XcodeBuild {
         platform,
         exitCode,
         command,
-        errors: compileErrors,
-        warnings: compileWarnings
+        errors: parsed.errors,
+        warnings: parsed.warnings
       });
       
       // Save debug data with parsed errors
-      if (compileErrors.length > 0) {
-        LogManager.saveDebugData('build-errors', compileErrors, projectName);
-        logger.info({ errorCount: compileErrors.length, warningCount: compileWarnings.length }, 'Parsed compile errors');
+      if (parsed.errors.length > 0) {
+        LogManager.saveDebugData('build-errors', parsed.errors, projectName);
+        logger.info({ errorCount: parsed.errors.length, warningCount: parsed.warnings.length }, 'Parsed errors');
       }
       
-      // Also check for non-compile build errors
-      const buildErrors = parseBuildErrors(output);
-      
-      // Create error with both compile and build errors
-      const errorWithDetails = new Error('Build failed') as any;
+      // Create error with parsed details
+      const errorWithDetails = new Error(formatParsedOutput(parsed)) as any;
       errorWithDetails.output = output;
-      errorWithDetails.compileErrors = compileErrors; // Compile errors
-      errorWithDetails.buildErrors = buildErrors; // Other build errors
+      errorWithDetails.parsed = parsed;
       errorWithDetails.logPath = logPath;
       
       throw errorWithDetails;
@@ -255,9 +255,8 @@ export class XcodeBuild {
     passed: number; 
     failed: number; 
     failingTests?: Array<{ identifier: string; reason: string }>;
-    compileErrors?: CompileError[];
-    compileWarnings?: CompileError[];
-    buildErrors?: BuildError[];
+    errors?: any[];
+    warnings?: any[];
     logPath: string;
   }> {
     const {
@@ -319,6 +318,9 @@ export class XcodeBuild {
     
     command += ' test';
     
+    // Pipe through xcbeautify for clean output
+    command = `set -o pipefail && ${command} 2>&1 | xcbeautify`;
+    
     logger.debug({ command }, 'Test command');
     
     // Use execAsync instead of spawn to ensure the xcresult is fully written when we get the result
@@ -329,7 +331,8 @@ export class XcodeBuild {
       logger.info('Running tests...');
       const { stdout, stderr } = await execAsync(command, {
         maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large test outputs
-        timeout: 1800000 // 10 minute timeout for tests
+        timeout: 1800000, // 10 minute timeout for tests
+        shell: '/bin/bash'
       });
       
       output = stdout + (stderr ? '\n' + stderr : '');
@@ -341,7 +344,7 @@ export class XcodeBuild {
     }
     
     // Parse compile errors and warnings using the central parser
-    const { errors: compileErrors, warnings: compileWarnings } = parseCompileErrors(output);
+    const parsed = parseXcbeautifyOutput(output);
     
     // Save the full test output to logs
     const projectName = path.basename(projectPath, path.extname(projectPath));
@@ -351,8 +354,8 @@ export class XcodeBuild {
       platform,
       exitCode: code,
       command,
-      compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
-      compileWarnings: compileWarnings.length > 0 ? compileWarnings : undefined
+      errors: parsed.errors.length > 0 ? parsed.errors : undefined,
+      warnings: parsed.warnings.length > 0 ? parsed.warnings : undefined
     });
     logger.debug({ logPath }, 'Test output saved to log file');
     
@@ -610,15 +613,14 @@ export class XcodeBuild {
         }
         
     // Parse build errors from output
-    const buildErrors = parseBuildErrors(output);
+    // Errors are already parsed by xcbeautify parser
     
     const result = {
       ...testResult,
       success: code === 0 && testResult.failed === 0,
       output,
-      compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
-      compileWarnings: compileWarnings.length > 0 ? compileWarnings : undefined,
-      buildErrors: buildErrors.length > 0 ? buildErrors : undefined
+      errors: parsed.errors.length > 0 ? parsed.errors : undefined,
+      warnings: parsed.warnings.length > 0 ? parsed.warnings : undefined
     };
     
     // Clean up the result bundle if tests passed (keep failed results for debugging)

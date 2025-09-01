@@ -1,6 +1,6 @@
 import { SwiftBuild, SwiftBuildOptions, SwiftRunOptions, SwiftTestOptions } from './SwiftBuild.js';
 import { SwiftPackageInfo, Dependency, Product } from './SwiftPackageInfo.js';
-import { BuildError, CompileError } from '../errors/index.js';
+import { Issue } from '../errors/index.js';
 import { createModuleLogger } from '../../logger.js';
 import * as pathModule from 'path';
 import { existsSync } from 'fs';
@@ -45,8 +45,8 @@ export class SwiftPackage {
     success: boolean;
     output: string;
     logPath?: string;
-    compileErrors?: CompileError[];
-    buildErrors?: BuildError[];
+    compileErrors?: Issue[];
+    buildErrors?: Issue[];
   }> {
     logger.info({ path: this.path, options }, 'Building Swift package');
     
@@ -60,8 +60,8 @@ export class SwiftPackage {
     success: boolean;
     output: string;
     logPath?: string;
-    compileErrors?: CompileError[];
-    buildErrors?: BuildError[];
+    compileErrors?: Issue[];
+    buildErrors?: Issue[];
   }> {
     logger.info({ path: this.path, options }, 'Running Swift package');
     
@@ -77,8 +77,8 @@ export class SwiftPackage {
     passed: number;
     failed: number;
     failingTests?: Array<{ identifier: string; reason: string }>;
-    compileErrors?: CompileError[];
-    buildErrors?: BuildError[];
+    compileErrors?: Issue[];
+    buildErrors?: Issue[];
     logPath: string;
   }> {
     logger.info({ path: this.path, options }, 'Testing Swift package');

@@ -223,9 +223,11 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('❌ No Xcode project found at: /non/existent/project.xcodeproj');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ No Xcode project found at: /non/existent/project.xcodeproj');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
 
     test('should handle non-Xcode project', async () => {
@@ -237,8 +239,11 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Not an Xcode project or workspace');
-      expect(result.content[0].text).toContain('❌ Build failed');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Not an Xcode project or workspace');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
 
     test('should handle device not found', async () => {
@@ -254,8 +259,11 @@ describe('TestXcodeTool Unit Tests', () => {
         deviceId: 'non-existent'
       });
 
-      expect(result.content[0].text).toContain('Device not found: non-existent');
-      expect(result.content[0].text).toContain('❌ Build failed');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Device not found: non-existent');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
 
     test('should handle build/setup errors', async () => {
@@ -281,8 +289,12 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Missing dependency');
-      expect(result.content[0].text).toContain('Module \'Foundation\' not found');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Test build failed');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
+      expect(output).toContain('📁 Full logs saved to: /path/to/log');
     });
 
     test('should handle test method throwing error', async () => {
@@ -298,8 +310,11 @@ describe('TestXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('Unexpected test error');
-      expect(result.content[0].text).toContain('❌ Build failed');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Unexpected test error');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
   });
 

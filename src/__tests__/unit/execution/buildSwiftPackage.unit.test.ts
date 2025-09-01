@@ -203,7 +203,9 @@ describe('BuildSwiftPackageTool Unit Tests', () => {
       });
 
       // The tool should handle the error and return the output
-      expect(result.content[0].text).toContain('Build failed');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Build process failed');
+      expect(output).toContain('configuration: Debug');
     });
 
     test('should handle Xcode.open throwing error', async () => {
@@ -214,8 +216,9 @@ describe('BuildSwiftPackageTool Unit Tests', () => {
         packagePath: '/test/NonExistent'
       });
 
-      expect(result.content[0].text).toContain('Build failed');
-      expect(result.content[0].text).toContain('Package.swift not found');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Package.swift not found');
+      expect(output).toContain('configuration: Debug');
     });
   });
 

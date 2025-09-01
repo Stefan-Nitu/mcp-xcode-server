@@ -11,11 +11,8 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types';
 import { createAndConnectClient, cleanupClientAndTransport } from '../../utils/testHelpers.js';
 import { TestProjectManager } from '../../utils/TestProjectManager.js';
 import { TestEnvironmentCleaner } from '../../utils/TestEnvironmentCleaner.js';
-import { createModuleLogger } from '../../../logger.js';
 import { Devices } from '../../../utils/devices/Devices.js';
 import { Platform } from '../../../types.js';
-
-const logger = createModuleLogger('build-xcode-e2e');
 
 describe('BuildXcodeTool E2E Tests', () => {
   let client: Client;
@@ -47,10 +44,6 @@ describe('BuildXcodeTool E2E Tests', () => {
 
   describe('Xcode Project Builds', () => {
     test('should build iOS project with scheme', async () => {
-      logger.info({ 
-        projectPath: testProjectManager.paths.xcodeProjectXCTestPath,
-        scheme: testProjectManager.schemes.xcodeProject 
-      }, 'Starting build test');
       const response = await client.request({
         method: 'tools/call',
         params: {

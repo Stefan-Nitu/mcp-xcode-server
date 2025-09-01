@@ -294,10 +294,11 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('❌ No Xcode project found at: /non/existent/project.xcodeproj');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Scheme: MyScheme');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ No Xcode project found at: /non/existent/project.xcodeproj');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
 
     test('should handle non-Xcode project', async () => {
@@ -309,11 +310,11 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('Not an Xcode project or workspace');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Scheme: MyScheme');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Not an Xcode project or workspace');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
 
     test('should handle build failure', async () => {
@@ -330,9 +331,12 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'InvalidScheme'
       });
 
-      expect(result.content[0].text).toContain('Scheme not found: "InvalidScheme"');
-      expect(result.content[0].text).toContain('The specified scheme does not exist in the project');
-      expect(result.content[0].text).toContain('📁 Full logs saved to: /path/to/build.log');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ xcodebuild: error: Scheme "InvalidScheme" is not configured');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: InvalidScheme');
+      expect(output).toContain('📁 Full logs saved to: /path/to/build.log');
     });
 
     test('should handle device not found', async () => {
@@ -348,11 +352,11 @@ describe('BuildXcodeTool Unit Tests', () => {
         deviceId: 'non-existent'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('Device not found: non-existent');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Scheme: MyScheme');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Device not found: non-existent');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
 
     test('should handle general errors', async () => {
@@ -364,11 +368,11 @@ describe('BuildXcodeTool Unit Tests', () => {
         scheme: 'MyScheme'
       });
 
-      expect(result.content[0].text).toContain('❌ Build failed');
-      expect(result.content[0].text).toContain('Unknown error');
-      expect(result.content[0].text).toContain('Platform: iOS');
-      expect(result.content[0].text).toContain('Configuration: Debug');
-      expect(result.content[0].text).toContain('Scheme: MyScheme');
+      const output = result.content[0].text;
+      expect(output).toContain('❌ Unknown error');
+      expect(output).toContain('platform: iOS');
+      expect(output).toContain('configuration: Debug');
+      expect(output).toContain('scheme: MyScheme');
     });
   });
 

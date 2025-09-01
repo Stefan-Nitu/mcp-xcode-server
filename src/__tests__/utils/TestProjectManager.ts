@@ -162,7 +162,13 @@ export class TestProjectManager {
         stdio: 'pipe'
       });
       
-      // Reset any modified tracked files
+      // First unstage any staged changes
+      execSync('git reset HEAD test_artifacts/', { 
+        cwd: resolve(process.cwd()),
+        stdio: 'pipe'
+      });
+      
+      // Then reset any modified tracked files
       execSync('git checkout -- test_artifacts/', { 
         cwd: resolve(process.cwd()),
         stdio: 'pipe'
