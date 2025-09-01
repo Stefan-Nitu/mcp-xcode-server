@@ -115,6 +115,16 @@ jobs:
     - name: Run E2E tests
       run: npm run test:e2e
       timeout-minutes: 90
+    
+    - name: Upload test logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-logs
+        path: |
+          ~/.mcp-xcode-server/logs/
+          /var/folders/**/T/ResultBundle*.xcresult
+        retention-days: 7
 
   lint:
     runs-on: macos-latest

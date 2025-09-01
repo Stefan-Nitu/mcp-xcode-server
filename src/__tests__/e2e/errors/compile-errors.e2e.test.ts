@@ -113,7 +113,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       expect(text).toContain('ContentView.swift'); // File with the errors
       
       // Should show multiple error messages
-      const errorCount = (text.match(/❌ error:/g) || []).length;
+      const errorCount = (text.match(/❌ Error:/g) || []).length;
       expect(errorCount).toBeGreaterThan(1);
       
       expect(text).toContain('📁 Full logs saved to:'); // Log path
@@ -398,7 +398,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
 
   describe('Log Path Display', () => {
     test('all tools should display log path on failure', async () => {
-      const tools = ['build_xcode', 'test_xcode', 'run_xcode'];
+      const tools = ['build_xcode', 'run_xcode', 'test_xcode'];
       
       for (const tool of tools) {
         const response = await client.request({
@@ -416,10 +416,8 @@ describe('Build and Compile Error Display E2E Tests', () => {
         const text = (response.content[0] as any).text;
         
         // All tools should show log path when there's an error
-        if (text.includes('❌')) {
-          expect(text).toContain('📁 Full logs saved to:');
-          expect(text).toMatch(/\/.*\.log/); // Should contain a log file path
-        }
+        expect(text).toContain('📁 Full logs saved to:');
+        expect(text).toMatch(/\/.*\.log/); // Should contain a log file path
       }
     }, 540000);
   });
