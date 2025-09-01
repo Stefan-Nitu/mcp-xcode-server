@@ -50,38 +50,45 @@ jobs:
     - name: Select Xcode 16.0
       run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
     
-    - name: Install iOS Platform
+    - name: Install Required Platforms
       run: |
-        echo "=== Check existing iOS runtimes ==="
-        xcrun simctl list runtimes | grep iOS || true
+        echo "=== Installing required platforms for tests ==="
         
-        echo ""
-        echo "=== Installing iOS Platform ==="
-        # Try to download iOS platform with retries
-        for i in 1 2 3; do
-          echo "Attempt $i to download iOS platform..."
-          if sudo xcodebuild -downloadPlatform iOS 2>&1 | tee /tmp/download.log; then
-            echo "Download succeeded"
-            break
-          else
-            echo "Download failed, checking error..."
-            cat /tmp/download.log | tail -20
-            if [ $i -lt 3 ]; then
-              echo "Retrying in 10 seconds..."
-              sleep 10
+        # Function to install a platform with retries
+        install_platform() {
+          local platform=$1
+          echo ""
+          echo "=== Installing $platform Platform ==="
+          
+          for i in 1 2 3; do
+            echo "Attempt $i to download $platform platform..."
+            if sudo xcodebuild -downloadPlatform "$platform" 2>&1 | tee /tmp/download-$platform.log; then
+              echo "$platform download succeeded"
+              return 0
+            else
+              echo "$platform download failed, checking error..."
+              cat /tmp/download-$platform.log | tail -20
+              if [ $i -lt 3 ]; then
+                echo "Retrying in 10 seconds..."
+                sleep 10
+              fi
             fi
-          fi
-        done
+          done
+          
+          echo "WARNING: Failed to install $platform after 3 attempts"
+          return 1
+        }
         
-        # Check if iOS 18.0 runtime is available
+        # Install all required platforms
+        install_platform iOS
+        install_platform tvOS
+        install_platform watchOS
+        install_platform visionOS
+        
+        # Check installed runtimes
         echo ""
-        echo "=== Checking for iOS 18.0 runtime ==="
-        if xcrun simctl list runtimes | grep -q "iOS 18.0"; then
-          echo "iOS 18.0 runtime is available"
-        else
-          echo "iOS 18.0 runtime not found, trying to add it..."
-          sudo xcrun simctl runtime add "iOS 18.0" || echo "Failed to add iOS 18.0 runtime"
-        fi
+        echo "=== Installed runtimes ==="
+        xcrun simctl list runtimes
         
         # Wait for installation to settle
         sleep 5
