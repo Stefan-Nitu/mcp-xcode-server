@@ -3,13 +3,37 @@
 ## Overview
 This document tracks the categorization and conversion of e2e tests to improve test suite performance.
 
-**Goal**: Reduce e2e tests from 145 to ~29, reduce runtime from 47 minutes to <10 minutes.
+**Goal**: Reduce e2e tests from 140 to ~29, reduce runtime from 47 minutes to <10 minutes.
 
-**Current Status** (as of 2025-08-29):
-- ✅ Created mock utilities for subprocess and filesystem operations
-- ✅ Converted first test (bootSimulator) to unit test as proof of concept
+**Current Status** (as of 2025-09-01):
+- ✅ Created mock utilities for subprocess and filesystem operations (mockHelpers.ts)
+- ✅ Created 13 new unit test files (not converted from e2e yet)
 - ✅ Fixed Jest TypeScript mocking issues and documented best practices
-- 🚧 144 tests remaining to be optimized
+- ⚠️ E2E tests remain at 140 tests across 13 files (no conversions completed yet)
+- 🚧 Need to start converting e2e tests to unit/integration tests
+
+## Test Execution Time Analysis
+
+Based on actual measurements, tests are prioritized by execution time:
+
+### Tier 1 - Longest Running (Highest Priority for Optimization)
+- **test-xcode.e2e.test.ts** - 14 tests
+- **build-xcode.e2e.test.ts** - 13 tests  
+- **run-xcode.e2e.test.ts** - 12 tests
+- **test-swift-package.e2e.test.ts** - 12 tests
+- **build-swift-package.e2e.test.ts** - 9 tests
+- **run-swift-package.e2e.test.ts** - 10 tests
+
+### Tier 2 - Medium Running
+- **compile-errors.e2e.test.ts** - 14 tests
+- **complex-errors.e2e.test.ts** - 6 tests
+
+### Tier 3 - Shorter Running
+- **clean-build.e2e.test.ts** - 10 tests
+- **boot-simulator.e2e.test.ts** - 3 tests (already partially converted)
+- **list-simulators.e2e.test.ts** - 12 tests
+- **list-schemes.e2e.test.ts** - 14 tests
+- **install-uninstall.e2e.test.ts** - 11 tests
 
 ## Categorization Legend
 - **KEEP**: Must remain as e2e test (tests actual Xcode/simulator interaction)
@@ -20,20 +44,14 @@ This document tracks the categorization and conversion of e2e tests to improve t
 
 ## Test Files Analysis
 
-### 1. `boot-simulator.e2e.test.ts` (9 tests)
-| Test | Current Type | Decision | Reason |
+### 1. `boot-simulator.e2e.test.ts` (3 tests currently in E2E)
+| Test | Current Type | Decision | Status |
 |------|--------------|----------|---------|
-| should boot a simulator by UDID | E2E | KEEP | Core functionality - needs real simulator |
-| should boot a simulator by name | E2E | ELIMINATE | Redundant with UDID test |
-| should handle already booted simulator gracefully | E2E | CONVERT | Can mock simctl response |
-| should fail with missing deviceId | E2E | CONVERT | Validation test |
-| should fail with empty deviceId | E2E | CONVERT | Validation test |
-| should fail with non-existent device | E2E | CONVERT | Can mock error response |
-| should open Simulator.app when booting | E2E | ELIMINATE | Side effect, not critical |
-| should boot multiple simulators sequentially | E2E | ELIMINATE | Redundant with single boot |
-| should boot simulator within reasonable time | E2E | ELIMINATE | Unreliable in CI |
+| should boot a simulator by UDID | E2E | KEEP | 🔄 Remains in E2E |
+| should boot a simulator by name | E2E | KEEP | 🔄 Remains in E2E |
+| should handle already booted simulator gracefully | E2E | KEEP | 🔄 Remains in E2E |
 
-**Summary**: Keep 1, Convert 4, Eliminate 4
+**Note**: Original plan had 9 tests, but current implementation only has 3 tests. The validation and error tests may have been moved to unit tests during initial development.
 
 ### 2. `list-simulators.e2e.test.ts` (12 tests)
 | Test | Current Type | Decision | Reason |
@@ -247,41 +265,62 @@ This document tracks the categorization and conversion of e2e tests to improve t
 
 ## Summary Statistics
 
-### Total Tests: 145
-- **KEEP**: 29 tests (20%)
-- **CONVERT**: 64 tests (44%)
-- **ELIMINATE**: 52 tests (36%)
+### Current State (2025-09-01)
+- **Total E2E Tests**: 140 tests across 13 files (unchanged)
+- **Unit Tests**: 13 test files exist (created separately, not converted from E2E)
+- **Integration Tests**: 0 (to be created)
+- **Longest Running**: test-xcode, build-xcode, run-xcode (Tier 1 priority)
+
+### Target State
+- **KEEP as E2E**: ~29 tests (20%)
+- **CONVERT to Unit**: ~64 tests (46%)
+- **ELIMINATE**: ~47 tests (34%)
 
 ### Expected Outcome
-- E2E tests: 29 (down from 145)
-- New unit tests: ~64
-- Eliminated redundant tests: 52
+- E2E tests: 29 (down from 140)
+- Total unit tests: ~77 (13 existing + 64 new)
+- Eliminated redundant tests: 47
 - Estimated runtime: <10 minutes (down from 47 minutes)
 
+### Integration Test Layer Strategy
+
+Following the Testing Trophy approach from testing-philosophy.md, we need to add an integration test layer:
+
+#### Integration Tests (New Layer)
+- **Purpose**: Test component interactions with mocked external boundaries
+- **Mock only**: execAsync, file system, network calls
+- **Keep real**: All internal components, services, and utilities
+- **Target**: 60% of converted tests should become integration tests
+
+#### Test Distribution Target
+```
+       /\
+      /e2e\      <- 29 tests: Critical user paths (20%)
+     /------\
+    /  integ \   <- ~84 tests: Component interactions (60%)
+   /----------\
+  /    unit    \ <- ~27 tests: Pure logic, validation (20%)
+ /--------------\
+```
+
 ### Conversion Priority
-1. **High Priority** (Quick wins):
-   - Validation tests (all "require parameter" tests)
-   - Error message formatting tests
-   - Path validation tests
+1. **Tier 1 - Longest Running Tests** (Highest Impact):
+   - Convert build-xcode tests → integration tests
+   - Convert test-xcode tests → integration tests  
+   - Convert run-xcode tests → integration tests
+   - Keep 1-2 critical path tests as E2E per tool
 
-2. **Medium Priority** (Some refactoring needed):
-   - Mock simctl responses
-   - Mock xcodebuild errors
-   - Configuration variants
+2. **Tier 2 - Error Handling** (Medium Priority):
+   - Convert compile-errors → integration tests
+   - Convert complex-errors → integration tests
+   - Test real error parsing with mocked subprocess
 
-3. **Low Priority** (Can wait):
-   - Platform variants
-   - Complex error scenarios
-   - Performance tests
+3. **Tier 3 - Quick Wins** (Low Hanging Fruit):
+   - Validation tests → unit tests
+   - Path handling → unit tests
+   - Configuration parsing → unit tests
 
 ### Implementation Progress
-
-#### Completed Conversions
-1. **bootSimulator.unit.test.ts** ✅
-   - Converted from e2e to unit test
-   - Uses dependency injection for mocking
-   - Runtime: ~2s (down from 30-60s)
-   - Demonstrates proper Jest TypeScript patterns
 
 #### Infrastructure Created
 1. **mockHelpers.ts** ✅
@@ -298,14 +337,25 @@ This document tracks the categorization and conversion of e2e tests to improve t
 
 ### Next Steps
 1. ~~Create mock utilities for subprocess and filesystem~~ ✅
-2. Start converting high-priority validation tests (in progress)
-3. Remove eliminated tests
-4. Add integration test layer for command building
-5. Run full suite and measure improvement
+2. ~~Document Jest TypeScript best practices~~ ✅
+3. **Create integration test directory structure** (src/__tests__/integration/)
+4. **Convert Tier 1 tests** (build-xcode, test-xcode, run-xcode) to integration tests
+5. **Measure performance improvement** after first batch of conversions
+6. **Remove redundant tests** identified in analysis
 
-### Files to Convert Next (High Priority)
-1. All validation tests ("require parameter" tests) - 15 tests
-2. Error message formatting tests - 8 tests
-3. Path validation tests - 10 tests
-4. Mock simctl response tests - 12 tests
-5. Mock xcodebuild error tests - 19 tests
+### Conversion Roadmap
+
+#### Phase 1: Tier 1 Tests (Highest Impact)
+Focus on the longest-running tests first for maximum performance gain:
+1. **build-xcode.e2e.test.ts** (13 tests) → Keep 2 E2E, 9 Integration, 2 eliminated
+2. **test-xcode.e2e.test.ts** (14 tests) → Keep 4 E2E, 8 Integration, 2 eliminated  
+3. **run-xcode.e2e.test.ts** (12 tests) → Keep 2 E2E, 7 Integration, 3 eliminated
+
+#### Phase 2: Swift Package Tests
+4. **build-swift-package.e2e.test.ts** (9 tests) → Keep 2 E2E, 5 Integration, 2 eliminated
+5. **test-swift-package.e2e.test.ts** (12 tests) → Keep 2 E2E, 6 Integration, 4 eliminated
+6. **run-swift-package.e2e.test.ts** (10 tests) → Keep 2 E2E, 5 Integration, 3 eliminated
+
+#### Phase 3: Error Handling Tests
+7. **compile-errors.e2e.test.ts** (14 tests) → Keep 2 E2E, 10 Integration, 2 eliminated
+8. **complex-errors.e2e.test.ts** (6 tests) → Keep 1 E2E, 4 Integration, 1 eliminated
