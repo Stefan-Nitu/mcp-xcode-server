@@ -3,6 +3,7 @@ import { join, resolve } from 'path';
 import { createModuleLogger } from '../../logger';
 import { config } from '../../config';
 import { TestEnvironmentCleaner } from './TestEnvironmentCleaner';
+import { gitResetTestArtifacts } from './gitResetTestArtifacts';
 
 const logger = createModuleLogger('TestProjectManager');
 
@@ -152,31 +153,7 @@ export class TestProjectManager {
 
   cleanup() {
     // Use git to restore test_artifacts to pristine state
-    try {
-      // Remove all untracked files and directories in test_artifacts
-      const { execSync } = require('child_process');
-            
-      // Remove untracked files and directories (build artifacts)
-      execSync('git clean -fdx test_artifacts/', { 
-        cwd: resolve(process.cwd()),
-        stdio: 'pipe'
-      });
-      
-      // First unstage any staged changes
-      execSync('git reset HEAD test_artifacts/', { 
-        cwd: resolve(process.cwd()),
-        stdio: 'pipe'
-      });
-      
-      // Then reset any modified tracked files
-      execSync('git checkout -- test_artifacts/', { 
-        cwd: resolve(process.cwd()),
-        stdio: 'pipe'
-      });
-      
-    } catch (error) {
-      logger.warn({ error }, 'Failed to use git clean');
-    }
+    gitResetTestArtifacts();
     
     // ALWAYS clean build artifacts including MCP-Xcode DerivedData
     this.cleanBuildArtifacts();

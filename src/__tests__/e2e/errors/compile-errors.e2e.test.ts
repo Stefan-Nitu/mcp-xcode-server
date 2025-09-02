@@ -36,11 +36,10 @@ describe('Build and Compile Error Display E2E Tests', () => {
   afterEach(async () => {
     TestEnvironmentCleaner.cleanupTestEnvironment();
     
-    // Restore any modified files
-    errorInjector.restoreAll();
+    // Reset test projects to pristine state using git
+    testProjectManager.cleanup();
     
     await cleanupClientAndTransport(client, transport);
-    testProjectManager.cleanup();
   });
 
   afterAll(() => {
@@ -100,7 +99,7 @@ describe('Build and Compile Error Display E2E Tests', () => {
       expect(text).toContain('ContentView.swift'); // File with the errors
       
       // Should show multiple error messages
-      const errorCount = (text.match(/❌ Error:/g) || []).length;
+      const errorCount = (text.match(/❌/g) || []).length;
       expect(errorCount).toBeGreaterThan(1);
       
       expect(text).toContain('📁 Full logs saved to:'); // Log path
@@ -411,9 +410,6 @@ describe('Build and Compile Error Display E2E Tests', () => {
         expect(text).toContain('📁 Full logs saved to:');
         expect(text).toMatch(/\/.*\.log/); // Should contain a log file path
       }
-      
-      // Clean up Xcode error
-      errorInjector.restoreAll();
       
       // Test Swift Package tools
       const swiftTools = ['build_swift_package', 'run_swift_package', 'test_swift_package'];

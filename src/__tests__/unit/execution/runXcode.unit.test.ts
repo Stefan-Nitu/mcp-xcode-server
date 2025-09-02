@@ -6,7 +6,6 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { RunXcodeTool } from '../../../tools/execution/RunXcodeTool.js';
 import { XcodeProject } from '../../../utils/projects/XcodeProject.js';
-import { Platform } from '../../../types.js';
 import * as fs from 'fs';
 import * as utils from '../../../utils.js';
 import * as platformHandler from '../../../platformHandler.js';

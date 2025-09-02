@@ -15,13 +15,11 @@ import { Issue, parseXcbeautifyOutput as parseOutput } from './xcbeautify-parser
 // Error handlers for tools
 // These return MCP format for tools
 export function handleSwiftPackageError(error: unknown, context?: any): { content: { type: string; text: string }[] } {
-  // Convert error to string and parse with xcbeautify parser
   const message = error instanceof Error ? error.message : String(error);
-  const { errors } = parseOutput(message);
   
-  // Format for MCP response
-  const errorMessages = errors.length > 0 
-    ? errors.map(e => `❌ ${e.type === 'warning' ? 'Warning' : 'Error'}: ${e.message}`).join('\n')
+  // Add ❌ prefix if message doesn't already have xcbeautify formatting
+  const formattedMessage = message.includes('❌') || message.includes('⚠️') || message.includes('✅') 
+    ? message 
     : `❌ ${message}`;
   
   const contextInfo = context 
@@ -38,19 +36,17 @@ export function handleSwiftPackageError(error: unknown, context?: any): { conten
   return {
     content: [{
       type: 'text',
-      text: contextInfo ? `${errorMessages}\n\nContext: ${contextInfo}${logInfo}` : `${errorMessages}${logInfo}`
+      text: contextInfo ? `${formattedMessage}\n\nContext: ${contextInfo}${logInfo}` : `${formattedMessage}${logInfo}`
     }]
   };
 }
 
 export function handleXcodeError(error: unknown, context?: any): { content: { type: string; text: string }[] } {
-  // Convert error to string and parse with xcbeautify parser
   const message = error instanceof Error ? error.message : String(error);
-  const { errors } = parseOutput(message);
   
-  // Format for MCP response
-  const errorMessages = errors.length > 0 
-    ? errors.map(e => `❌ ${e.type === 'warning' ? 'Warning' : 'Error'}: ${e.message}`).join('\n')
+  // Add ❌ prefix if message doesn't already have xcbeautify formatting
+  const formattedMessage = message.includes('❌') || message.includes('⚠️') || message.includes('✅') 
+    ? message 
     : `❌ ${message}`;
   
   const contextInfo = context 
@@ -67,7 +63,7 @@ export function handleXcodeError(error: unknown, context?: any): { content: { ty
   return {
     content: [{
       type: 'text',
-      text: contextInfo ? `${errorMessages}\n\nContext: ${contextInfo}${logInfo}` : `${errorMessages}${logInfo}`
+      text: contextInfo ? `${formattedMessage}\n\nContext: ${contextInfo}${logInfo}` : `${formattedMessage}${logInfo}`
     }]
   };
 }

@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { createModuleLogger } from '../../logger';
+import { gitResetTestArtifacts, gitResetFile } from './gitResetTestArtifacts';
 
 const logger = createModuleLogger('TestErrorInjector');
 
@@ -226,10 +227,9 @@ export class TestErrorInjector {
    * Restore all modified files to their original state
    */
   restoreAll() {
-    for (const [filePath, content] of this.originalFiles) {
-      writeFileSync(filePath, content);
-      logger.debug({ filePath }, 'Restored original file');
-    }
+    // Use git to reset all test_artifacts
+    gitResetTestArtifacts();
+    // Clear our tracking
     this.originalFiles.clear();
   }
 
@@ -237,11 +237,9 @@ export class TestErrorInjector {
    * Restore a specific file
    */
   restoreFile(filePath: string) {
-    const original = this.originalFiles.get(filePath);
-    if (original) {
-      writeFileSync(filePath, original);
-      this.originalFiles.delete(filePath);
-      logger.debug({ filePath }, 'Restored original file');
-    }
+    // Use git to reset the specific file
+    gitResetFile(filePath);
+    // Remove from our tracking
+    this.originalFiles.delete(filePath);
   }
 }

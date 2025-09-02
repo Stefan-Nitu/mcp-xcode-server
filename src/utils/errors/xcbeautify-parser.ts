@@ -122,15 +122,16 @@ function parseTestLine(line: string): Test | null {
  */
 export function parseXcbeautifyOutput(output: string): XcbeautifyOutput {
   const lines = output.split('\n');
-  const result: XcbeautifyOutput = {
-    errors: [],
-    warnings: [],
-    tests: [],
-    buildSucceeded: true,
-    testsPassed: true,
-    totalTests: 0,
-    failedTests: 0
-  };
+  
+  // Use Maps to deduplicate errors/warnings (for multi-architecture builds)
+  const errorMap = new Map<string, Issue>();
+  const warningMap = new Map<string, Issue>();
+  
+  let buildSucceeded = true;
+  let testsPassed = true;
+  let totalTests = 0;
+  let failedTests = 0;
+  const tests: Test[] = [];
   
   for (const line of lines) {
     if (!line.trim()) continue;
@@ -143,43 +144,56 @@ export function parseXcbeautifyOutput(output: string): XcbeautifyOutput {
     // Parse errors (❌)
     if (line.includes('❌')) {
       const error = parseErrorLine(line, true);
-      result.errors.push(error);
-      result.buildSucceeded = false;
+      const key = `${error.file}:${error.line}:${error.column}:${error.message}`;
+      errorMap.set(key, error);
+      buildSucceeded = false;
     }
     // Parse warnings (⚠️)
     else if (line.includes('⚠️')) {
       const warning = parseErrorLine(line, false);
-      result.warnings.push(warning);
+      const key = `${warning.file}:${warning.line}:${warning.column}:${warning.message}`;
+      warningMap.set(key, warning);
     }
     // Parse test results (✔ or ✖)
     else if (line.includes('✔') || line.includes('✖')) {
       const test = parseTestLine(line);
       if (test) {
-        result.tests.push(test);
-        result.totalTests++;
+        tests.push(test);
+        totalTests++;
         if (!test.passed) {
-          result.failedTests++;
-          result.testsPassed = false;
+          failedTests++;
+          testsPassed = false;
         }
       }
     }
     // Check for build/test failure indicators
     else if (line.includes('** BUILD FAILED **') || line.includes('BUILD FAILED')) {
-      result.buildSucceeded = false;
+      buildSucceeded = false;
     }
     else if (line.includes('** TEST FAILED **') || line.includes('TEST FAILED')) {
-      result.testsPassed = false;
+      testsPassed = false;
     }
     // Parse test summary: "Executed X tests, with Y failures"
     else if (line.includes('Executed') && line.includes('test')) {
       const summaryMatch = line.match(/Executed\s+(\d+)\s+tests?,\s+with\s+(\d+)\s+failures?/);
       if (summaryMatch) {
-        result.totalTests = parseInt(summaryMatch[1], 10);
-        result.failedTests = parseInt(summaryMatch[2], 10);
-        result.testsPassed = result.failedTests === 0;
+        totalTests = parseInt(summaryMatch[1], 10);
+        failedTests = parseInt(summaryMatch[2], 10);
+        testsPassed = failedTests === 0;
       }
     }
   }
+  
+  // Convert Maps to arrays
+  const result: XcbeautifyOutput = {
+    errors: Array.from(errorMap.values()),
+    warnings: Array.from(warningMap.values()),
+    tests,
+    buildSucceeded,
+    testsPassed,
+    totalTests,
+    failedTests
+  };
   
   // Log summary
   logger.debug({
