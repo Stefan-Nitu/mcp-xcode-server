@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Platform } from '../../types.js';
 import { createModuleLogger } from '../../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from '../validators.js';
-import { PlatformHandler } from '../../platformHandler.js';
+import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
 import { Devices } from '../../utils/devices/Devices.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
@@ -96,7 +96,8 @@ export class RunXcodeTool {
       let bootedDeviceId = deviceId;
       let deviceDisplayName = deviceId || 'N/A';
       
-      if (PlatformHandler.needsSimulator(platform)) {
+      const platformInfo = PlatformInfo.fromPlatform(platform);
+      if (platformInfo.requiresSimulator()) {
         if (deviceId) {
           // Find specific device
           device = await this.devices.find(deviceId);
@@ -162,7 +163,7 @@ export class RunXcodeTool {
       }
       
       // Step 3: Install and/or run the app
-      if (PlatformHandler.needsSimulator(platform) && device) {
+      if (platformInfo.requiresSimulator() && device) {
         // For simulator platforms, install the app
         logger.info({ appPath, deviceId: device.id }, 'Installing app on simulator...');
         await device.install(appPath);

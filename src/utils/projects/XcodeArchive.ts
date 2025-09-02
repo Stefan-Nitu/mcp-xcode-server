@@ -1,7 +1,7 @@
 import { execAsync } from '../../utils.js';
 import { createModuleLogger } from '../../logger.js';
 import { Platform } from '../../types.js';
-import { PlatformHandler } from '../../platformHandler.js';
+import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
 import path from 'path';
 
 const logger = createModuleLogger('XcodeArchive');
@@ -48,7 +48,8 @@ export class XcodeArchive {
     command += ` -archivePath "${finalArchivePath}"`;
     
     // Add platform-specific destination
-    const destination = PlatformHandler.getGenericDestination(platform);
+    const platformInfo = PlatformInfo.fromPlatform(platform);
+    const destination = platformInfo.generateGenericDestination();
     command += ` -destination "${destination}"`;
     
     logger.debug({ command }, 'Archive command');

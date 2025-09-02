@@ -8,7 +8,6 @@ import { TestXcodeTool } from '../../../tools/test/TestXcodeTool.js';
 import { XcodeProject } from '../../../utils/projects/XcodeProject.js';
 import { Platform } from '../../../types.js';
 import * as fs from 'fs';
-import * as platformHandler from '../../../platformHandler.js';
 
 // Mock the modules
 jest.mock('fs', () => ({

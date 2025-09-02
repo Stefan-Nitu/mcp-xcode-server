@@ -2,7 +2,7 @@ import { execAsync } from '../../utils.js';
 import { execSync } from 'child_process';
 import { createModuleLogger } from '../../logger.js';
 import { Platform } from '../../types.js';
-import { PlatformHandler } from '../../platformHandler.js';
+import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
 import { config } from '../../config.js';
@@ -53,7 +53,8 @@ export class XcodeBuild {
     }
     
     // Use a generic destination to check platform support
-    const destination = PlatformHandler.getGenericDestination(platform);
+    const platformInfo = PlatformInfo.fromPlatform(platform);
+    const destination = platformInfo.generateGenericDestination();
     command += ` -destination '${destination}'`;
     
     try {
@@ -134,11 +135,12 @@ export class XcodeBuild {
     command += ` -configuration "${configuration}"`;
     
     // Determine destination
+    const platformInfo = PlatformInfo.fromPlatform(platform);
     let destination: string;
     if (deviceId) {
-      destination = PlatformHandler.getDestination(platform, deviceId);
+      destination = platformInfo.generateDestination(deviceId);
     } else {
-      destination = PlatformHandler.getGenericDestination(platform);
+      destination = platformInfo.generateGenericDestination();
     }
     command += ` -destination '${destination}'`;
     
@@ -294,11 +296,12 @@ export class XcodeBuild {
     command += ` -configuration "${configuration}"`;
     
     // Determine destination
+    const platformInfo = PlatformInfo.fromPlatform(platform);
     let destination: string;
     if (deviceId) {
-      destination = PlatformHandler.getDestination(platform, deviceId);
+      destination = platformInfo.generateDestination(deviceId);
     } else {
-      destination = PlatformHandler.getGenericDestination(platform);
+      destination = platformInfo.generateGenericDestination();
     }
     command += ` -destination '${destination}'`;
     

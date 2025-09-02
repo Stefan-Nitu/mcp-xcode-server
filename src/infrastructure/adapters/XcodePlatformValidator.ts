@@ -1,6 +1,6 @@
 import { createModuleLogger } from '../../logger.js';
 import { Platform } from '../../types.js';
-import { PlatformHandler } from '../utilities/PlatformHandler.js';
+import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
 import { ICommandExecutor, IPlatformValidator } from '../../application/ports/BuildPorts.js';
 import { ShellCommandExecutor } from './ShellCommandExecutor.js';
 
@@ -32,7 +32,8 @@ export class XcodePlatformValidator implements IPlatformValidator {
     }
     
     // Use a generic destination to check platform support
-    const destination = PlatformHandler.getGenericDestination(platform);
+    const platformInfo = PlatformInfo.fromPlatform(platform);
+    const destination = platformInfo.generateGenericDestination();
     command += ` -destination '${destination}'`;
     
     logger.debug({ command }, 'Validating platform support');

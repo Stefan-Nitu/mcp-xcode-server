@@ -1,5 +1,5 @@
 import { Platform } from '../../types.js';
-import { PlatformHandler } from '../utilities/PlatformHandler.js';
+import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
 import { IBuildCommandBuilder, BuildOptions } from '../../application/ports/BuildPorts.js';
 
 /**
@@ -30,11 +30,12 @@ export class XcodeBuildCommandBuilder implements IBuildCommandBuilder {
     command += ` -configuration "${configuration}"`;
     
     // Determine destination
+    const platformInfo = PlatformInfo.fromPlatform(platform);
     let destination: string;
     if (deviceId) {
-      destination = PlatformHandler.getDestination(platform, deviceId);
+      destination = platformInfo.generateDestination(deviceId);
     } else {
-      destination = PlatformHandler.getGenericDestination(platform);
+      destination = platformInfo.generateGenericDestination();
     }
     command += ` -destination '${destination}'`;
     

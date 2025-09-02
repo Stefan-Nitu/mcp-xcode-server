@@ -5,7 +5,7 @@ import { safePathSchema, platformSchema, configurationSchema } from '../validato
 import { Devices } from '../../utils/devices/Devices.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
-import { PlatformHandler } from '../../platformHandler.js';
+import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
 import { handleXcodeError } from '../../utils/errors/index.js';
 
 const logger = createModuleLogger('TestXcodeTool');
@@ -100,7 +100,8 @@ export class TestXcodeTool {
       let bootedDeviceId = deviceId;
       let device = null;
       
-      if (PlatformHandler.needsSimulator(platform)) {
+      const platformInfo = PlatformInfo.fromPlatform(platform);
+      if (platformInfo.requiresSimulator()) {
         if (deviceId) {
           // User specified a device
           device = await this.devices.find(deviceId);

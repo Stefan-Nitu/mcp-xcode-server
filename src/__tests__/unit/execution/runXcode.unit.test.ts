@@ -8,7 +8,6 @@ import { RunXcodeTool } from '../../../tools/execution/RunXcodeTool.js';
 import { XcodeProject } from '../../../utils/projects/XcodeProject.js';
 import * as fs from 'fs';
 import * as utils from '../../../utils.js';
-import * as platformHandler from '../../../platformHandler.js';
 
 // Mock the modules
 jest.mock('fs', () => ({
@@ -29,13 +28,6 @@ jest.mock('../../../utils.js', () => ({
   execAsync: jest.fn()
 }));
 
-jest.mock('../../../platformHandler.js', () => ({
-  PlatformHandler: {
-    needsSimulator: jest.fn(),
-    getDestination: jest.fn(),
-    getGenericDestination: jest.fn()
-  }
-}));
 
 // Mock the config module
 jest.mock('../../../config.js', () => ({

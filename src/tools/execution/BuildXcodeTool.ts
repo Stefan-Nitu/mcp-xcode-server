@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Platform } from '../../types.js';
 import { createModuleLogger } from '../../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from '../validators.js';
-import { PlatformHandler } from '../../infrastructure/utilities/PlatformHandler.js';
+import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
 import { Devices } from '../../utils/devices/Devices.js';
 
 // Application layer
@@ -105,7 +105,8 @@ export class BuildXcodeTool {
     try {
       // 2. Handle device booting if needed (MCP-specific logic)
       let bootedDeviceId = deviceId;
-      if (deviceId && PlatformHandler.needsSimulator(platform)) {
+      const platformInfo = PlatformInfo.fromPlatform(platform);
+      if (deviceId && platformInfo.requiresSimulator()) {
         const device = await this.devices.find(deviceId);
         if (!device) {
           throw new Error(`Device not found: ${deviceId}`);
