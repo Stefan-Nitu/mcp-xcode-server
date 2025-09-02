@@ -1,14 +1,20 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { ILogManager } from '../application/ports/LoggingPorts.js';
 
 /**
+ * Instance-based log manager for dependency injection
  * Manages persistent logs for MCP server debugging
- * Stores logs in ~/.mcp-xcode-server/logs/ with daily rotation
  */
-export class LogManager {
-  private static readonly LOG_DIR = path.join(os.homedir(), '.mcp-xcode-server', 'logs');
-  private static readonly MAX_AGE_DAYS = 7;
+export class LogManagerInstance implements ILogManager {
+  private readonly LOG_DIR: string;
+  private readonly MAX_AGE_DAYS = 7;
+  
+  constructor(logDir?: string) {
+    this.LOG_DIR = logDir || path.join(os.homedir(), '.mcp-xcode-server', 'logs');
+    this.init();
+  }
   
   /**
    * Initialize log directory structure
@@ -171,6 +177,3 @@ export class LogManager {
     return this.LOG_DIR;
   }
 }
-
-// Initialize on module load
-LogManager.init();

@@ -3,7 +3,7 @@
  * Implements Open/Closed Principle - open for extension, closed for modification
  */
 
-import { Platform, PlatformConfig } from './types.js';
+import { Platform, PlatformConfig } from '../../types.js';
 
 export class PlatformHandler {
   // Helper to determine if a string is a UUID

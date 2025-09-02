@@ -390,14 +390,126 @@ test('returns success message with device name', async () => {
 - Validation logic
 - Pure functions
 
-### 3. Test Naming Convention
+### 3. Test Naming Conventions
+
+#### File Naming Pattern
+
+**Standard**: `[ComponentName].[test-type].test.ts`
+
+```bash
+# Unit tests - test a single unit in isolation
+XcbeautifyOutputParser.unit.test.ts
+DeviceValidator.unit.test.ts
+BuildCommandBuilder.unit.test.ts
+
+# Integration tests - test components working together
+BuildWorkflow.integration.test.ts
+DeviceManagement.integration.test.ts
+
+# E2E tests - test complete user scenarios
+BuildAndRun.e2e.test.ts
+SimulatorLifecycle.e2e.test.ts
+
+# Contract tests - verify API contracts
+DeviceService.contract.test.ts
+```
+
+**Why include test type in filename?**
+- Immediately clear what type of test without opening file
+- Can run specific test types: `jest *.unit.test.ts`
+- Different test types have different performance characteristics
+- Helps maintain proper test pyramid/trophy distribution
+
+#### Directory Structure
+
+```
+src/__tests__/
+├── unit/
+│   ├── domain/           # Pure business logic
+│   ├── application/      # Use cases and orchestration
+│   ├── infrastructure/   # External adapters
+│   └── utils/           # Helper functions
+├── integration/         # Component interactions
+├── e2e/                # Full system tests
+└── contracts/          # API contract tests
+```
+
+#### Test Suite Organization
 
 ```typescript
-// Format: test('should [expected behavior] when [condition]')
+// Mirror your source code structure in describe blocks
+describe('XcbeautifyOutputParser', () => {  // Class/module name
+  describe('parseBuildOutput', () => {      // Method name
+    describe('when parsing errors', () => { // Scenario
+      it('should extract file information from error line', () => {});
+      it('should handle errors without file paths', () => {});
+    });
+    
+    describe('when parsing warnings', () => {
+      it('should extract warning details', () => {});
+    });
+  });
+});
+```
 
-test('should boot simulator when device exists', ...);
-test('should throw error when device not found', ...);
-test('should return cached result when called twice', ...);
+#### Individual Test Naming
+
+**Pattern**: `should [expected behavior] when [condition]`
+
+```typescript
+// ✅ GOOD: Clear behavior and condition
+it('should parse error with file information when line contains file path', () => {});
+it('should return empty array when input is empty', () => {});
+it('should throw ValidationError when device ID is invalid', () => {});
+it('should deduplicate identical errors when parsing multi-arch output', () => {});
+
+// ❌ BAD: Vague or implementation-focused
+it('works', () => {});
+it('parses correctly', () => {});
+it('calls parseError method', () => {});
+it('test case 1', () => {});
+```
+
+**Alternative patterns for specific scenarios**:
+
+```typescript
+// Given-When-Then (BDD style)
+it('given a shutdown device, when boot is called, then device should be in booted state', () => {});
+
+// Error scenarios - be specific about the error
+it('should throw InvalidPathError when project path does not exist', () => {});
+it('should throw TimeoutError when device does not respond within 5 seconds', () => {});
+
+// Edge cases - explain what makes it an edge case
+it('should handle empty array without throwing', () => {});
+it('should process 10,000 items without memory overflow', () => {});
+it('should correctly parse Unicode characters in file paths', () => {});
+
+// Regression tests - reference the issue
+it('should not crash when device name contains spaces (fixes #123)', () => {});
+```
+
+#### Mock and Test Data Naming
+
+```typescript
+// Use descriptive prefixes
+const mockDeviceRepository = { find: jest.fn() };
+const stubLogger = { log: () => {} };
+const spyOnExecute = jest.spyOn(executor, 'execute');
+const fakeDevice = { id: '123', name: 'Test Device' };
+
+// Test data should describe the scenario
+const validConfiguration = createConfiguration({ valid: true });
+const invalidConfiguration = createConfiguration({ valid: false });
+const minimalDevice = createDevice();  // defaults only
+const bootedDevice = createBootedDevice();
+const deviceWithError = createDeviceWithError('Boot failed');
+
+// ❌ Avoid generic names
+const data = {};      // What kind of data?
+const obj = {};       // What object?
+const mock1 = {};     // Mock of what?
+const testDevice = {}; // All devices in tests are test devices
 ```
 
 ## Testing Decision Tree
@@ -453,6 +565,134 @@ Is the logic complex?
 - [ ] Use contract tests for module boundaries
 
 ## Test Quality Principles
+
+### SUT (System Under Test) Pattern
+
+**Principle**: Clearly identify and isolate the system being tested. Use factory methods to create the SUT and test data, making tests more maintainable and resistant to implementation changes.
+
+#### ✅ Good Example - SUT with Factory Methods
+```typescript
+describe('XcbeautifyOutputParser', () => {
+  // Factory method for creating the SUT
+  function createSUT(): IOutputParser {
+    return new XcbeautifyOutputParser();
+  }
+
+  // Factory methods for test data
+  function createErrorWithFileInfo(
+    file = '/Users/project/App.swift',
+    line = 10,
+    column = 15,
+    message = 'cannot find type'
+  ) {
+    return `❌ ${file}:${line}:${column}: error: ${message}`;
+  }
+
+  describe('parseBuildOutput', () => {
+    let sut: IOutputParser;
+
+    beforeEach(() => {
+      sut = createSUT(); // Easy to modify creation logic
+    });
+
+    it('should parse errors with file information', () => {
+      // Arrange - using factory methods
+      const output = createErrorWithFileInfo(
+        '/Users/project/Main.swift', 
+        25, 
+        8, 
+        'missing return'
+      );
+
+      // Act - clear what's being tested
+      const result = sut.parseBuildOutput(output);
+
+      // Assert - focused on behavior
+      expect(result.errors[0]).toMatchObject({
+        file: '/Users/project/Main.swift',
+        line: 25,
+        column: 8
+      });
+    });
+  });
+});
+```
+
+#### ❌ Bad Example - Direct Instantiation
+```typescript
+describe('XcbeautifyOutputParser', () => {
+  let parser: XcbeautifyOutputParser;
+
+  beforeEach(() => {
+    // Hard to change if constructor changes
+    parser = new XcbeautifyOutputParser();
+  });
+
+  it('parses errors', () => {
+    // Inline test data - hard to reuse
+    const output = '❌ /Users/project/App.swift:10:15: error: cannot find type';
+    
+    // Not clear what's being tested
+    const result = parser.parseBuildOutput(output);
+    
+    // Brittle assertions
+    expect(result.errors[0].file).toBe('/Users/project/App.swift');
+    expect(result.errors[0].line).toBe(10);
+  });
+});
+```
+
+#### Benefits of SUT Pattern
+
+1. **Maintainability**: Change SUT creation in one place
+2. **Clarity**: Clear distinction between SUT and collaborators
+3. **Flexibility**: Easy to add constructor parameters
+4. **Testability**: Can return mocks/stubs from factory when needed
+5. **Documentation**: Factory method name describes what variant is created
+
+#### Factory Method Best Practices
+
+```typescript
+// 1. Default values for common cases
+function createTestDevice(overrides = {}) {
+  return {
+    id: 'default-id',
+    name: 'iPhone 15',
+    state: 'Shutdown',
+    ...overrides  // Easy to customize
+  };
+}
+
+// 2. Descriptive factory names for specific scenarios
+function createBootedDevice() {
+  return createTestDevice({ state: 'Booted' });
+}
+
+function createErrorDevice() {
+  return createTestDevice({ state: 'Error', error: 'Boot failed' });
+}
+
+// 3. Factory for complex objects with builders
+function createParsedOutputWithErrors(errorCount = 1) {
+  const errors = Array.from({ length: errorCount }, (_, i) => ({
+    type: 'error' as const,
+    message: `Error ${i + 1}`,
+    file: `/path/file${i}.swift`,
+    line: i * 10,
+    column: 5
+  }));
+
+  return {
+    errors,
+    warnings: [],
+    summary: {
+      totalErrors: errorCount,
+      totalWarnings: 0,
+      buildSucceeded: false
+    }
+  };
+}
+```
 
 ### FIRST Principles
 
@@ -594,6 +834,98 @@ test('handles device name format', () => {
 ```
 
 **Key Insight**: "DAMP not DRY" means tests should be easy to understand even if that means some code duplication. When a test fails, the reason should be immediately obvious.
+
+#### SUT Creation Pattern - DAMP Over DRY
+
+For simple SUTs (System Under Test), create them directly in each test for maximum clarity:
+
+```typescript
+// ✅ GOOD - Create SUT in each test for clarity
+describe('XcbeautifyOutputParser', () => {
+  function createSUT(): IOutputParser {
+    return new XcbeautifyOutputParser();
+  }
+
+  it('should parse error with file information', () => {
+    // Everything the test needs is visible here
+    const sut = createSUT();
+    const output = '❌ /path/file.swift:10:5: error message';
+    
+    const result = sut.parseBuildOutput(output);
+    
+    expect(result.issues[0]).toEqual(
+      BuildIssue.error('error message', '/path/file.swift', 10, 5)
+    );
+  });
+});
+
+// ❌ BAD - Hidden setup in beforeEach
+describe('XcbeautifyOutputParser', () => {
+  let sut: IOutputParser;
+  
+  beforeEach(() => {
+    sut = createSUT(); // Setup hidden from test
+  });
+  
+  it('should parse error with file information', () => {
+    // Have to look at beforeEach to understand setup
+    const output = '❌ /path/file.swift:10:5: error message';
+    const result = sut.parseBuildOutput(output);
+    // ...
+  });
+});
+```
+
+#### SUT with Dependencies Pattern
+
+When the SUT needs mocked dependencies, return both from the factory:
+
+```typescript
+// ✅ GOOD - Factory returns SUT with its mocks
+describe('XcodePlatformValidator', () => {
+  function createSUT() {
+    const mockExecute = jest.fn();
+    const mockExecutor: ICommandExecutor = { execute: mockExecute };
+    const sut = new XcodePlatformValidator(mockExecutor);
+    return { sut, mockExecute };
+  }
+
+  it('should validate platform support', async () => {
+    // Everything needed is created together
+    const { sut, mockExecute } = createSUT();
+    
+    mockExecute.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+    
+    await sut.validate('/path', false, 'MyScheme', Platform.iOS);
+    
+    expect(mockExecute).toHaveBeenCalled();
+  });
+});
+
+// ❌ BAD - Separate mock creation leads to duplication
+describe('XcodePlatformValidator', () => {
+  it('should validate platform support', async () => {
+    const mockExecute = jest.fn();
+    const mockExecutor = { execute: mockExecute };
+    const sut = new XcodePlatformValidator(mockExecutor);
+    // ... rest of test
+  });
+  
+  it('should handle errors', async () => {
+    // Duplicating mock setup
+    const mockExecute = jest.fn();
+    const mockExecutor = { execute: mockExecute };
+    const sut = new XcodePlatformValidator(mockExecutor);
+    // ... rest of test
+  });
+});
+```
+
+**Why this approach?**
+1. **Complete visibility** - All setup is visible in the test
+2. **Self-contained tests** - Each test is independent and complete
+3. **Easy debugging** - When a test fails, everything is right there
+4. **Follows AAA pattern** - Arrange is explicit in each test
 
 ## Advanced Testing Patterns
 
