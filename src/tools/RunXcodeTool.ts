@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Platform } from '../../types.js';
 import { createModuleLogger } from '../../logger.js';
-import { safePathSchema, platformSchema, configurationSchema } from '../validators.js';
+import { safePathSchema, platformSchema, configurationSchema } from '../application/validators/commonSchemas.js';
 import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
 import { Devices } from '../../utils/devices/Devices.js';
 import { Xcode } from '../../utils/projects/Xcode.js';

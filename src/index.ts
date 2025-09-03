@@ -22,7 +22,6 @@ import {
   ViewSimulatorScreenTool,
   BuildSwiftPackageTool,
   RunSwiftPackageTool,
-  BuildXcodeTool,
   RunXcodeTool,
   TestXcodeTool,
   TestSwiftPackageTool,
@@ -38,6 +37,9 @@ import {
   GetDeviceLogsTool,
   ManageDependenciesTool
 } from './tools/index.js';
+
+// Import factory for BuildXcodeTool
+import { createBuildXcodeTool } from './factories/buildXcodeToolFactory.js';
 
 type Tool = {
   execute(args: any): Promise<any>;
@@ -78,7 +80,7 @@ class XcodeServer {
       // Build and test
       new BuildSwiftPackageTool(),
       new RunSwiftPackageTool(),
-      new BuildXcodeTool(),
+      createBuildXcodeTool(),
       new RunXcodeTool(),
       new TestXcodeTool(),
       new TestSwiftPackageTool(),

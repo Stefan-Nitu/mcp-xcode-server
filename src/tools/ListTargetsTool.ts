@@ -1,25 +1,25 @@
 import { z } from 'zod';
 import { createModuleLogger } from '../../logger.js';
-import { safePathSchema } from '../validators.js';
+import { safePathSchema } from '../application/validators/commonSchemas.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 
-const logger = createModuleLogger('GetProjectInfoTool');
+const logger = createModuleLogger('ListTargetsTool');
 
 // Validation schema
-export const getProjectInfoSchema = z.object({
+export const listTargetsSchema = z.object({
   projectPath: safePathSchema
 });
 
-export type GetProjectInfoArgs = z.infer<typeof getProjectInfoSchema>;
+export type ListTargetsArgs = z.infer<typeof listTargetsSchema>;
 
 // Interface for testing
-export interface IGetProjectInfoTool {
+export interface IListTargetsTool {
   execute(args: any): Promise<any>;
   getToolDefinition(): any;
 }
 
-export class GetProjectInfoTool implements IGetProjectInfoTool {
+export class ListTargetsTool implements IListTargetsTool {
   private xcode: Xcode;
   
   constructor(xcode?: Xcode) {
@@ -28,8 +28,8 @@ export class GetProjectInfoTool implements IGetProjectInfoTool {
 
   getToolDefinition() {
     return {
-      name: 'get_project_info',
-      description: 'Get comprehensive information about an Xcode project (name, schemes, targets, configurations)',
+      name: 'list_targets',
+      description: 'List all targets in an Xcode project',
       inputSchema: {
         type: 'object',
         properties: {
@@ -44,10 +44,10 @@ export class GetProjectInfoTool implements IGetProjectInfoTool {
   }
 
   async execute(args: any) {
-    const validated = getProjectInfoSchema.parse(args);
+    const validated = listTargetsSchema.parse(args);
     const { projectPath } = validated;
     
-    logger.info({ projectPath }, 'Getting project info');
+    logger.info({ projectPath }, 'Listing targets');
     
     try {
       // Open the project
@@ -58,8 +58,19 @@ export class GetProjectInfoTool implements IGetProjectInfoTool {
         throw new Error('Not an Xcode project or workspace');
       }
       
-      // Get project info
-      const info = await project.getProjectInfo();
+      // Get targets
+      const targets = await project.getTargets();
+      
+      if (!targets || targets.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'No targets found in the project'
+            }
+          ]
+        };
+      }
       
       return {
         content: [
@@ -67,20 +78,20 @@ export class GetProjectInfoTool implements IGetProjectInfoTool {
             type: 'text',
             text: JSON.stringify({
               projectPath,
-              projectType: projectPath.endsWith('.xcworkspace') ? 'Workspace' : 'Project',
-              ...info
+              targets,
+              count: targets.length
             }, null, 2)
           }
         ]
       };
     } catch (error: any) {
-      logger.error({ error, projectPath }, 'Failed to get project info');
+      logger.error({ error, projectPath }, 'Failed to list targets');
       
       return {
         content: [
           {
             type: 'text',
-            text: `Failed to get project info: ${error.message}`
+            text: `Failed to list targets: ${error.message}`
           }
         ]
       };

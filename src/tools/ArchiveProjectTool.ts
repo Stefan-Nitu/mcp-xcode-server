@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Platform } from '../../types.js';
 import { createModuleLogger } from '../../logger.js';
-import { safePathSchema, platformSchema } from '../validators.js';
+import { safePathSchema, platformSchema } from '../application/validators/commonSchemas.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 import { existsSync } from 'fs';
 

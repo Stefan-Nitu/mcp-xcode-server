@@ -2,40 +2,25 @@
  * Central export for all tool classes
  */
 
-// Simulator management tools
-export { ListSimulatorsTool } from './simulator/ListSimulatorsTool.js';
-export { BootSimulatorTool } from './simulator/BootSimulatorTool.js';
-export { ShutdownSimulatorTool } from './simulator/ShutdownSimulatorTool.js';
-export { ViewSimulatorScreenTool } from './simulator/ViewSimulatorScreenTool.js';
-
-// Build and test tools
-export { BuildSwiftPackageTool } from './execution/BuildSwiftPackageTool.js';
-export { RunSwiftPackageTool } from './execution/RunSwiftPackageTool.js';
-export { BuildXcodeTool } from './execution/BuildXcodeTool.js';
-export { RunXcodeTool } from './execution/RunXcodeTool.js';
-export { TestXcodeTool } from './test/TestXcodeTool.js';
-export { TestSwiftPackageTool } from './test/TestSwiftPackageTool.js';
-export { CleanBuildTool } from './execution/CleanBuildTool.js';
-
-// Archive and export tools
-export { ArchiveProjectTool } from './distribution/ArchiveProjectTool.js';
-export { ExportIPATool } from './distribution/ExportIPATool.js';
-
-// Project info and scheme tools
-export { ListSchemesTool } from './project/ListSchemesTool.js';
-export { GetBuildSettingsTool } from './project/GetBuildSettingsTool.js';
-export { GetProjectInfoTool } from './project/GetProjectInfoTool.js';
-export { ListTargetsTool } from './project/ListTargetsTool.js';
-
-// App management tools
-export { InstallAppTool } from './app/InstallAppTool.js';
-export { UninstallAppTool } from './app/UninstallAppTool.js';
-
-// Device logs
-export { GetDeviceLogsTool } from './diagnostics/GetDeviceLogsTool.js';
-
-// Advanced project management tools
-export { ManageDependenciesTool } from './dependencies/ManageDependenciesTool.js';
-
-// Export validators for use in other tools
-export * from './validators.js';
+// All tools in alphabetical order
+export { ArchiveProjectTool } from './ArchiveProjectTool.js';
+export { BootSimulatorTool } from './BootSimulatorTool.js';
+export { BuildSwiftPackageTool } from './BuildSwiftPackageTool.js';
+export { BuildXcodeTool } from './BuildXcodeTool.js';
+export { CleanBuildTool } from './CleanBuildTool.js';
+export { ExportIPATool } from './ExportIPATool.js';
+export { GetBuildSettingsTool } from './GetBuildSettingsTool.js';
+export { GetDeviceLogsTool } from './GetDeviceLogsTool.js';
+export { GetProjectInfoTool } from './GetProjectInfoTool.js';
+export { InstallAppTool } from './InstallAppTool.js';
+export { ListSchemesTool } from './ListSchemesTool.js';
+export { ListSimulatorsTool } from './ListSimulatorsTool.js';
+export { ListTargetsTool } from './ListTargetsTool.js';
+export { ManageDependenciesTool } from './ManageDependenciesTool.js';
+export { RunSwiftPackageTool } from './RunSwiftPackageTool.js';
+export { RunXcodeTool } from './RunXcodeTool.js';
+export { ShutdownSimulatorTool } from './ShutdownSimulatorTool.js';
+export { TestSwiftPackageTool } from './TestSwiftPackageTool.js';
+export { TestXcodeTool } from './TestXcodeTool.js';
+export { UninstallAppTool } from './UninstallAppTool.js';
+export { ViewSimulatorScreenTool } from './ViewSimulatorScreenTool.js';

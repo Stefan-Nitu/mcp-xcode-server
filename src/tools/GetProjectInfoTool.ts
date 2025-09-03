@@ -1,25 +1,25 @@
 import { z } from 'zod';
 import { createModuleLogger } from '../../logger.js';
-import { safePathSchema } from '../validators.js';
+import { safePathSchema } from '../application/validators/commonSchemas.js';
 import { Xcode } from '../../utils/projects/Xcode.js';
 import { XcodeProject } from '../../utils/projects/XcodeProject.js';
 
-const logger = createModuleLogger('ListTargetsTool');
+const logger = createModuleLogger('GetProjectInfoTool');
 
 // Validation schema
-export const listTargetsSchema = z.object({
+export const getProjectInfoSchema = z.object({
   projectPath: safePathSchema
 });
 
-export type ListTargetsArgs = z.infer<typeof listTargetsSchema>;
+export type GetProjectInfoArgs = z.infer<typeof getProjectInfoSchema>;
 
 // Interface for testing
-export interface IListTargetsTool {
+export interface IGetProjectInfoTool {
   execute(args: any): Promise<any>;
   getToolDefinition(): any;
 }
 
-export class ListTargetsTool implements IListTargetsTool {
+export class GetProjectInfoTool implements IGetProjectInfoTool {
   private xcode: Xcode;
   
   constructor(xcode?: Xcode) {
@@ -28,8 +28,8 @@ export class ListTargetsTool implements IListTargetsTool {
 
   getToolDefinition() {
     return {
-      name: 'list_targets',
-      description: 'List all targets in an Xcode project',
+      name: 'get_project_info',
+      description: 'Get comprehensive information about an Xcode project (name, schemes, targets, configurations)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -44,10 +44,10 @@ export class ListTargetsTool implements IListTargetsTool {
   }
 
   async execute(args: any) {
-    const validated = listTargetsSchema.parse(args);
+    const validated = getProjectInfoSchema.parse(args);
     const { projectPath } = validated;
     
-    logger.info({ projectPath }, 'Listing targets');
+    logger.info({ projectPath }, 'Getting project info');
     
     try {
       // Open the project
@@ -58,19 +58,8 @@ export class ListTargetsTool implements IListTargetsTool {
         throw new Error('Not an Xcode project or workspace');
       }
       
-      // Get targets
-      const targets = await project.getTargets();
-      
-      if (!targets || targets.length === 0) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'No targets found in the project'
-            }
-          ]
-        };
-      }
+      // Get project info
+      const info = await project.getProjectInfo();
       
       return {
         content: [
@@ -78,20 +67,20 @@ export class ListTargetsTool implements IListTargetsTool {
             type: 'text',
             text: JSON.stringify({
               projectPath,
-              targets,
-              count: targets.length
+              projectType: projectPath.endsWith('.xcworkspace') ? 'Workspace' : 'Project',
+              ...info
             }, null, 2)
           }
         ]
       };
     } catch (error: any) {
-      logger.error({ error, projectPath }, 'Failed to list targets');
+      logger.error({ error, projectPath }, 'Failed to get project info');
       
       return {
         content: [
           {
             type: 'text',
-            text: `Failed to list targets: ${error.message}`
+            text: `Failed to get project info: ${error.message}`
           }
         ]
       };
