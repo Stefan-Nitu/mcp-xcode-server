@@ -1,4 +1,4 @@
-import { BuildResult } from '../domain/entities/BuildResult.js';
+import { BuildResult } from '../../domain/entities/BuildResult.js';
 
 /**
  * Presenter for build results
@@ -17,11 +17,14 @@ export interface MCPResponse {
 }
 
 export class BuildXcodePresenter {
+  private readonly maxErrorsToShow = 50;
+  private readonly maxWarningsToShow = 20;
   
   present(result: BuildResult, metadata: {
     scheme: string;
     platform: string;
     configuration: string;
+    showWarningDetails?: boolean;
   }): MCPResponse {
     if (result.success) {
       return this.presentSuccess(result, metadata);
@@ -31,7 +34,7 @@ export class BuildXcodePresenter {
   
   private presentSuccess(
     result: BuildResult,
-    metadata: { scheme: string; platform: string; configuration: string }
+    metadata: { scheme: string; platform: string; configuration: string; showWarningDetails?: boolean }
   ): MCPResponse {
     const text = `✅ Build succeeded: ${metadata.scheme}
 
@@ -48,7 +51,7 @@ App path: ${result.appPath || 'N/A'}${result.logPath ? `
   
   private presentFailure(
     result: BuildResult,
-    metadata: { scheme: string; platform: string; configuration: string }
+    metadata: { scheme: string; platform: string; configuration: string; showWarningDetails?: boolean }
   ): MCPResponse {
     const errors = result.getErrors();
     const warnings = result.getWarnings();
@@ -59,23 +62,31 @@ App path: ${result.appPath || 'N/A'}${result.logPath ? `
     
     if (errors.length > 0) {
       text += `\n❌ Errors (${errors.length}):\n`;
-      // Show first 5 errors
-      errors.slice(0, 5).forEach(error => {
+      // Show up to maxErrorsToShow errors
+      const errorsToShow = Math.min(errors.length, this.maxErrorsToShow);
+      errors.slice(0, errorsToShow).forEach(error => {
         text += `  • ${this.formatIssue(error)}\n`;
       });
-      if (errors.length > 5) {
-        text += `  ... and ${errors.length - 5} more errors\n`;
+      if (errors.length > this.maxErrorsToShow) {
+        text += `  ... and ${errors.length - this.maxErrorsToShow} more errors\n`;
       }
     }
     
+    // Always show warning count if there are warnings
     if (warnings.length > 0) {
-      text += `\n⚠️ Warnings (${warnings.length}):\n`;
-      // Show first 3 warnings
-      warnings.slice(0, 3).forEach(warning => {
-        text += `  • ${this.formatIssue(warning)}\n`;
-      });
-      if (warnings.length > 3) {
-        text += `  ... and ${warnings.length - 3} more warnings\n`;
+      if (metadata.showWarningDetails) {
+        // Show detailed warnings
+        text += `\n⚠️ Warnings (${warnings.length}):\n`;
+        const warningsToShow = Math.min(warnings.length, this.maxWarningsToShow);
+        warnings.slice(0, warningsToShow).forEach(warning => {
+          text += `  • ${this.formatIssue(warning)}\n`;
+        });
+        if (warnings.length > this.maxWarningsToShow) {
+          text += `  ... and ${warnings.length - this.maxWarningsToShow} more warnings\n`;
+        }
+      } else {
+        // Just show count
+        text += `\n⚠️ Warnings: ${warnings.length}\n`;
       }
     }
     
