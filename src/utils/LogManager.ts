@@ -14,8 +14,8 @@ export class LogManager {
    * Initialize log directory structure
    */
   private init(): void {
-    if (!fs.existsSync(this.LOG_DIR)) {
-      fs.mkdirSync(this.LOG_DIR, { recursive: true });
+    if (!fs.existsSync(LogManager.LOG_DIR)) {
+      fs.mkdirSync(LogManager.LOG_DIR, { recursive: true });
     }
     
     // Clean up old logs on startup
@@ -27,7 +27,7 @@ export class LogManager {
    */
   private getTodayLogDir(): string {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const dir = path.join(this.LOG_DIR, today);
+    const dir = path.join(LogManager.LOG_DIR, today);
     
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -76,7 +76,7 @@ export class LogManager {
     fs.writeFileSync(filepath, fullContent, 'utf8');
     
     // Also create/update a symlink to latest log
-    const latestLink = path.join(this.LOG_DIR, `latest-${operation}.log`);
+    const latestLink = path.join(LogManager.LOG_DIR, `latest-${operation}.log`);
     if (fs.existsSync(latestLink)) {
       fs.unlinkSync(latestLink);
     }
@@ -86,7 +86,7 @@ export class LogManager {
     try {
       // Use execSync to create symlink as fs.symlinkSync has issues on some systems
       const { execSync } = require('child_process');
-      execSync(`ln -s "${relativePath}" "${latestLink}"`, { cwd: this.LOG_DIR });
+      execSync(`ln -s "${relativePath}" "${latestLink}"`, { cwd: LogManager.LOG_DIR });
     } catch {
       // Symlink creation failed, not critical
     }
@@ -122,18 +122,18 @@ export class LogManager {
    * Clean up logs older than MAX_AGE_DAYS
    */
   cleanupOldLogs(): void {
-    if (!fs.existsSync(this.LOG_DIR)) {
+    if (!fs.existsSync(LogManager.LOG_DIR)) {
       return;
     }
     
     const now = Date.now();
-    const maxAge = this.MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+    const maxAge = LogManager.MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
     
     try {
-      const entries = fs.readdirSync(this.LOG_DIR);
+      const entries = fs.readdirSync(LogManager.LOG_DIR);
       
       for (const entry of entries) {
-        const fullPath = path.join(this.LOG_DIR, entry);
+        const fullPath = path.join(LogManager.LOG_DIR, entry);
         
         // Skip symlinks
         const stat = fs.statSync(fullPath);
@@ -168,9 +168,6 @@ export class LogManager {
    * Get the log directory path
    */
   getLogDirectory(): string {
-    return this.LOG_DIR;
+    return LogManager.LOG_DIR;
   }
 }
-
-// Initialize on module load
-LogManager.init();

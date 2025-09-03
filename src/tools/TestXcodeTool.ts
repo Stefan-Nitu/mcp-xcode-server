@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { Platform } from '../../types.js';
-import { createModuleLogger } from '../../logger.js';
+import { Platform } from '../types.js';
+import { createModuleLogger } from '../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from '../application/validators/commonSchemas.js';
-import { Devices } from '../../utils/devices/Devices.js';
-import { Xcode } from '../../utils/projects/Xcode.js';
-import { XcodeProject } from '../../utils/projects/XcodeProject.js';
-import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
-import { handleXcodeError } from '../../utils/errors/index.js';
+import { Devices } from '../utils/devices/Devices.js';
+import { Xcode } from '../utils/projects/Xcode.js';
+import { XcodeProject } from '../utils/projects/XcodeProject.js';
+import { PlatformInfo } from '../domain/value-objects/PlatformInfo.js';
+import { handleXcodeError } from '../utils/errors/index.js';
 
 const logger = createModuleLogger('TestXcodeTool');
 

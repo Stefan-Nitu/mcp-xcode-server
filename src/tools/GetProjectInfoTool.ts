@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { createModuleLogger } from '../../logger.js';
+import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from '../application/validators/commonSchemas.js';
-import { Xcode } from '../../utils/projects/Xcode.js';
-import { XcodeProject } from '../../utils/projects/XcodeProject.js';
+import { Xcode } from '../utils/projects/Xcode.js';
+import { XcodeProject } from '../utils/projects/XcodeProject.js';
 
 const logger = createModuleLogger('GetProjectInfoTool');
 

@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { existsSync, rmSync } from 'fs';
 import { join, dirname, basename } from 'path';
-import { Platform } from '../../types.js';
-import { createModuleLogger } from '../../logger.js';
+import { Platform } from '../types.js';
+import { createModuleLogger } from '../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from '../application/validators/commonSchemas.js';
-import { execAsync } from '../../utils.js';
+import { execAsync } from '../utils.js';
 
 const logger = createModuleLogger('CleanBuildTool');
 

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { Devices } from '../../utils/devices/Devices.js';
-import { createModuleLogger } from '../../logger.js';
+import { Devices } from '../utils/devices/Devices.js';
+import { createModuleLogger } from '../logger.js';
 
 const logger = createModuleLogger('UninstallAppTool');
 

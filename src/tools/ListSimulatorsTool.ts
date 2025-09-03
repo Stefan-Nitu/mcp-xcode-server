@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Platform } from '../../types.js';
-import { SimulatorInfo } from '../../utils/devices/SimulatorInfo.js';
-import { createModuleLogger } from '../../logger.js';
+import { Platform } from '../types.js';
+import { SimulatorInfo } from '../utils/devices/SimulatorInfo.js';
+import { createModuleLogger } from '../logger.js';
 
 const logger = createModuleLogger('ListSimulatorsTool');
 

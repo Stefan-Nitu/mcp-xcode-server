@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Platform } from '../types.js';
+import { Platform } from '../../domain/value-objects/Platform';
 
 /**
  * Safe path schema that prevents path traversal and command injection

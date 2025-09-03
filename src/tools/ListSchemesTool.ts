@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { createModuleLogger } from '../../logger.js';
+import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from '../application/validators/commonSchemas.js';
 
 const logger = createModuleLogger('ListSchemesTool');

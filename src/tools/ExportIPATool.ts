@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { createModuleLogger } from '../../logger.js';
+import { createModuleLogger } from '../logger.js';
 import { safePathSchema } from '../application/validators/commonSchemas.js';
-import { XcodeArchive } from '../../utils/projects/XcodeArchive.js';
+import { XcodeArchive } from '../utils/projects/XcodeArchive.js';
 import { existsSync } from 'fs';
 
 const logger = createModuleLogger('ExportIPATool');

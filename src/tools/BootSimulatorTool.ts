@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { createModuleLogger } from '../../logger.js';
-import { Devices } from '../../utils/devices/Devices.js';
+import { createModuleLogger } from '../logger.js';
+import { Devices } from '../utils/devices/Devices.js';
 
 const logger = createModuleLogger('BootSimulatorTool');
 

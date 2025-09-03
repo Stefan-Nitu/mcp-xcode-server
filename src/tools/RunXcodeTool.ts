@@ -1,16 +1,16 @@
 import { z } from 'zod';
-import { Platform } from '../../types.js';
-import { createModuleLogger } from '../../logger.js';
+import { Platform } from '../types.js';
+import { createModuleLogger } from '../logger.js';
 import { safePathSchema, platformSchema, configurationSchema } from '../application/validators/commonSchemas.js';
-import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
-import { Devices } from '../../utils/devices/Devices.js';
-import { Xcode } from '../../utils/projects/Xcode.js';
-import { XcodeProject } from '../../utils/projects/XcodeProject.js';
-import { config } from '../../config.js';
-import { execAsync } from '../../utils.js';
+import { PlatformInfo } from '../domain/value-objects/PlatformInfo.js';
+import { Devices } from '../utils/devices/Devices.js';
+import { Xcode } from '../utils/projects/Xcode.js';
+import { XcodeProject } from '../utils/projects/XcodeProject.js';
+import { config } from '../config.js';
+import { execAsync } from '../utils.js';
 import { existsSync } from 'fs';
 import path from 'path';
-import { handleXcodeError } from '../../utils/errors/index.js';
+import { handleXcodeError } from '../utils/errors/index.js';
 
 const logger = createModuleLogger('RunXcodeTool');
 
