@@ -26,7 +26,6 @@ export class BuildProjectUseCase {
     private executor: ICommandExecutor,
     private appLocator: IAppLocator,
     private logManager: ILogManager,
-    private configProvider: IConfigProvider,
     private outputParser: IOutputParser
   ) {}
   
@@ -102,20 +101,17 @@ export class BuildProjectUseCase {
         platform: request.platform,
         exitCode: result.exitCode,
         command,
-        errors: parsed.errors,
-        warnings: parsed.warnings
+        issues: parsed.issues
       });
       
-      if (parsed.errors.length > 0) {
-        this.logManager.saveDebugData('build-errors', parsed.errors, request.projectPath.name);
+      // Extract errors from issues for logging
+      const errors = parsed.issues.filter(issue => issue.isError());
+      if (errors.length > 0) {
+        this.logManager.saveDebugData('build-errors', errors, request.projectPath.name);
       }
       
-      // Create detailed error for throwing
-      const error = new Error(this.outputParser.formatOutput(parsed)) as any;
-      error.buildResult = BuildResult.failure(output, parsed.errors, result.exitCode, logPath);
-      error.parsed = parsed;
-      
-      throw error;
+      // Return failure result
+      return BuildResult.failure(output, parsed.issues, result.exitCode, logPath);
     }
   }
 }
