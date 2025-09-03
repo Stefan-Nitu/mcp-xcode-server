@@ -5,9 +5,10 @@ import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { XMLParser } from 'fast-xml-parser';
 import { LogManager } from '../LogManager.js';
-import { parseXcbeautifyOutput, formatParsedOutput, Issue, XcbeautifyOutput } from '../errors/xcbeautify-parser.js';
+import { parseXcbeautifyOutput, Issue } from '../errors/xcbeautify-parser.js';
 
 const logger = createModuleLogger('SwiftBuild');
+const logManager = new LogManager();
 
 export interface SwiftBuildOptions {
   configuration?: 'Debug' | 'Release';
@@ -32,6 +33,7 @@ export interface SwiftTestOptions {
 export class SwiftBuild {
   /**
    * Parse compile errors from Swift compiler output
+   * @unused - Kept for potential future use
    */
   private parseCompileErrors(output: string): Issue[] {
     const errors: Issue[] = [];
@@ -101,7 +103,7 @@ export class SwiftBuild {
       
       // Save log
       const packageName = path.basename(packagePath);
-      const logPath = LogManager.saveLog('build', output, packageName, {
+      const logPath = logManager.saveLog('build', output, packageName, {
         configuration,
         product,
         target
@@ -122,7 +124,7 @@ export class SwiftBuild {
       
       // Save log
       const packageName = path.basename(packagePath);
-      const logPath = LogManager.saveLog('build', output, packageName, {
+      const logPath = logManager.saveLog('build', output, packageName, {
         configuration,
         product,
         target,
@@ -176,7 +178,7 @@ export class SwiftBuild {
       
       // Save log
       const packageName = path.basename(packagePath);
-      const logPath = LogManager.saveLog('run', output, packageName, {
+      const logPath = logManager.saveLog('run', output, packageName, {
         configuration,
         executable,
         arguments: args
@@ -198,7 +200,7 @@ export class SwiftBuild {
       
       // Save log
       const packageName = path.basename(packagePath);
-      const logPath = LogManager.saveLog('run', output, packageName, {
+      const logPath = logManager.saveLog('run', output, packageName, {
         configuration,
         executable,
         arguments: args,
@@ -297,7 +299,7 @@ export class SwiftBuild {
       }, 'Tests completed');
       
       // Save the test output to logs
-      const logPath = LogManager.saveLog('test', output, packageName, {
+      const logPath = logManager.saveLog('test', output, packageName, {
         configuration,
         filter,
         exitCode,
@@ -336,7 +338,7 @@ export class SwiftBuild {
       const parsed = parseXcbeautifyOutput(output);
       
       // Save the test output to logs
-      const logPath = LogManager.saveLog('test', output, packageName, {
+      const logPath = logManager.saveLog('test', output, packageName, {
         configuration,
         filter,
         exitCode,

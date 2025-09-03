@@ -10,6 +10,7 @@ import { LogManager } from '../LogManager.js';
 import { parseXcbeautifyOutput, formatParsedOutput } from '../errors/xcbeautify-parser.js';
 
 const logger = createModuleLogger('XcodeBuild');
+const logManager = new LogManager();
 
 export interface BuildOptions {
   scheme?: string;
@@ -189,7 +190,7 @@ export class XcodeBuild {
       logger.info({ projectPath, scheme, configuration, platform }, 'Build succeeded');
       
       // Save the build output to logs
-      const logPath = LogManager.saveLog('build', output, projectName, {
+      const logPath = logManager.saveLog('build', output, projectName, {
         scheme,
         configuration,
         platform,
@@ -218,7 +219,7 @@ export class XcodeBuild {
       }
       
       // Save the build output to logs
-      const logPath = LogManager.saveLog('build', output, projectName, {
+      const logPath = logManager.saveLog('build', output, projectName, {
         scheme,
         configuration,
         platform,
@@ -230,7 +231,7 @@ export class XcodeBuild {
       
       // Save debug data with parsed errors
       if (parsed.errors.length > 0) {
-        LogManager.saveDebugData('build-errors', parsed.errors, projectName);
+        logManager.saveDebugData('build-errors', parsed.errors, projectName);
         logger.info({ errorCount: parsed.errors.length, warningCount: parsed.warnings.length }, 'Parsed errors');
       }
       
@@ -351,7 +352,7 @@ export class XcodeBuild {
     
     // Save the full test output to logs
     const projectName = path.basename(projectPath, path.extname(projectPath));
-    const logPath = LogManager.saveLog('test', output, projectName, {
+    const logPath = logManager.saveLog('test', output, projectName, {
       scheme,
       configuration,
       platform,
@@ -563,7 +564,7 @@ export class XcodeBuild {
           };
           
           // Save debug data for successful parsing
-          LogManager.saveDebugData('test-xcresult-parsed', {
+          logManager.saveDebugData('test-xcresult-parsed', {
             passed: totalPassed,
             failed: totalFailed,
             failingTests,
@@ -585,7 +586,7 @@ export class XcodeBuild {
           }, 'Failed to parse xcresult bundle');
           
           // Save debug info about the failure
-          LogManager.saveDebugData('test-xcresult-parse-error', {
+          logManager.saveDebugData('test-xcresult-parse-error', {
             error: parseError.message,
             resultBundlePath,
             exists: existsSync(resultBundlePath)
