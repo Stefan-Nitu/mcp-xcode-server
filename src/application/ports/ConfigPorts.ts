@@ -6,8 +6,9 @@
 export interface IConfigProvider {
   /**
    * Get the path for DerivedData
+   * @param projectPath Optional project path to generate project-specific derived data path
    */
-  getDerivedDataPath(): string;
+  getDerivedDataPath(projectPath?: string): string;
   
   /**
    * Get timeout for build operations in milliseconds

@@ -15,17 +15,17 @@ import path from 'path';
 export class ConfigProvider implements IConfigProvider {
   private readonly derivedDataBasePath: string;
   
-  constructor(private projectPath?: string) {
+  constructor() {
     // Read from environment or use default
     // This is an infrastructure concern - reading from the environment
     this.derivedDataBasePath = process.env.MCP_XCODE_DERIVED_DATA_PATH ||
       path.join(homedir(), 'Library', 'Developer', 'Xcode', 'DerivedData', 'MCP-Xcode');
   }
   
-  getDerivedDataPath(): string {
+  getDerivedDataPath(projectPath?: string): string {
     // If we have a project path, use it for the derived data path
-    if (this.projectPath) {
-      const projectName = path.basename(this.projectPath, path.extname(this.projectPath));
+    if (projectPath) {
+      const projectName = path.basename(projectPath, path.extname(projectPath));
       return path.join(this.derivedDataBasePath, projectName);
     }
     // Otherwise return the base path

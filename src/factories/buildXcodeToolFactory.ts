@@ -1,16 +1,17 @@
 import { BuildXcodeTool } from '../tools/BuildXcodeTool.js';
 import { BuildXcodeController } from '../presentation/controllers/BuildXcodeController.js';
 import { BuildXcodePresenter } from '../presentation/presenters/BuildXcodePresenter.js';
-import { BuildProjectUseCase } from '../../application/use-cases/BuildProjectUseCase.js';
-import { DeviceManager } from '../../application/services/DeviceManager.js';
+import { BuildProjectUseCase } from '../application/use-cases/BuildProjectUseCase.js';
+import { DeviceManager } from '../application/services/DeviceManager.js';
 
 // Infrastructure adapters
-import { XcodePlatformValidator } from '../../infrastructure/adapters/XcodePlatformValidator.js';
-import { XcodeBuildCommandBuilder } from '../../infrastructure/adapters/XcodeBuildCommandBuilder.js';
-import { ShellCommandExecutor } from '../../infrastructure/adapters/ShellCommandExecutor.js';
-import { BuildArtifactLocator } from '../../infrastructure/adapters/BuildArtifactLocator.js';
-import { LogManagerInstance } from '../../utils/LogManagerInstance.js';
-import { XcbeautifyOutputParser } from '../../infrastructure/adapters/XcbeautifyOutputParser.js';
+import { XcodePlatformValidator } from '../infrastructure/adapters/XcodePlatformValidator.js';
+import { XcodeBuildCommandBuilder } from '../infrastructure/adapters/XcodeBuildCommandBuilder.js';
+import { ShellCommandExecutor } from '../infrastructure/adapters/ShellCommandExecutor.js';
+import { BuildArtifactLocator } from '../infrastructure/adapters/BuildArtifactLocator.js';
+import { LogManagerInstance } from '../utils/LogManagerInstance.js';
+import { XcbeautifyOutputParser } from '../infrastructure/adapters/XcbeautifyOutputParser.js';
+import { ConfigProvider } from '../infrastructure/adapters/ConfigProvider.js';
 
 /**
  * Factory function to create BuildXcodeTool with all dependencies
@@ -37,8 +38,12 @@ export function createBuildXcodeTool(): BuildXcodeTool {
   // Create application services
   const deviceManager = new DeviceManager();
   
+  // Create infrastructure services
+  // ConfigProvider is now stateless and project path is passed at runtime
+  const configProvider = new ConfigProvider();
+  
   // Create controller with use case and services
-  const controller = new BuildXcodeController(buildUseCase, deviceManager);
+  const controller = new BuildXcodeController(buildUseCase, deviceManager, configProvider);
   
   // Create presenter
   const presenter = new BuildXcodePresenter();

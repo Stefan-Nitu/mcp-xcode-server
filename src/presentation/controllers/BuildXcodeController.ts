@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { BuildProjectUseCase } from '../application/use-cases/BuildProjectUseCase.js';
-import { BuildRequest } from '../domain/value-objects/BuildRequest.js';
-import { BuildResult } from '../domain/entities/BuildResult.js';
-import { Platform } from '../domain/value-objects/Platform.js';
-import { DeviceManager } from '../application/services/DeviceManager.js';
-import { ConfigProvider } from '../infrastructure/adapters/ConfigProvider.js';
+import { BuildProjectUseCase } from '../../application/use-cases/BuildProjectUseCase.js';
+import { BuildRequest } from '../../domain/value-objects/BuildRequest.js';
+import { BuildResult } from '../../domain/entities/BuildResult.js';
+import { Platform } from '../../domain/value-objects/Platform.js';
+import { DeviceManager } from '../../application/services/DeviceManager.js';
+import { ConfigProvider } from '../../infrastructure/adapters/ConfigProvider.js';
 import pino from 'pino';
 
 const logger = pino({ name: 'BuildXcodeController' });
@@ -35,7 +35,8 @@ export type BuildXcodeArgs = z.infer<typeof buildXcodeSchema>;
 export class BuildXcodeController {
   constructor(
     private buildUseCase: BuildProjectUseCase,
-    private deviceManager: DeviceManager
+    private deviceManager: DeviceManager,
+    private configProvider: ConfigProvider
   ) {}
   
   async handle(args: unknown): Promise<BuildResult> {
@@ -90,8 +91,7 @@ export class BuildXcodeController {
       
       // If no derivedDataPath provided, get from config
       if (!validated.derivedDataPath) {
-        const configProvider = new ConfigProvider(validated.projectPath);
-        const derivedDataPath = configProvider.getDerivedDataPath();
+        const derivedDataPath = this.configProvider.getDerivedDataPath(validated.projectPath);
         return request.withDerivedDataPath(derivedDataPath);
       }
       

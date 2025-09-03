@@ -18,8 +18,8 @@ describe('ConfigProvider', () => {
   });
   
   // Factory method for creating the SUT
-  function createSUT(projectPath?: string): IConfigProvider {
-    return new ConfigProvider(projectPath);
+  function createSUT(): IConfigProvider {
+    return new ConfigProvider();
   }
   
   describe('getDerivedDataPath', () => {
@@ -51,10 +51,10 @@ describe('ConfigProvider', () => {
     it('should return project-specific path when project path is provided', () => {
       // Arrange
       process.env.MCP_XCODE_DERIVED_DATA_PATH = '/base/path';
-      const sut = createSUT('/Users/dev/MyApp.xcodeproj');
+      const sut = createSUT();
       
       // Act
-      const result = sut.getDerivedDataPath();
+      const result = sut.getDerivedDataPath('/Users/dev/MyApp.xcodeproj');
       
       // Assert
       expect(result).toBe('/base/path/MyApp');
@@ -63,10 +63,10 @@ describe('ConfigProvider', () => {
     it('should handle workspace paths correctly', () => {
       // Arrange
       process.env.MCP_XCODE_DERIVED_DATA_PATH = '/base/path';
-      const sut = createSUT('/Users/dev/MyWorkspace.xcworkspace');
+      const sut = createSUT();
       
       // Act
-      const result = sut.getDerivedDataPath();
+      const result = sut.getDerivedDataPath('/Users/dev/MyWorkspace.xcworkspace');
       
       // Assert
       expect(result).toBe('/base/path/MyWorkspace');
@@ -75,10 +75,10 @@ describe('ConfigProvider', () => {
     it('should handle paths with spaces', () => {
       // Arrange
       process.env.MCP_XCODE_DERIVED_DATA_PATH = '/base/path';
-      const sut = createSUT('/Users/dev/My App.xcodeproj');
+      const sut = createSUT();
       
       // Act
-      const result = sut.getDerivedDataPath();
+      const result = sut.getDerivedDataPath('/Users/dev/My App.xcodeproj');
       
       // Assert
       expect(result).toBe('/base/path/My App');
