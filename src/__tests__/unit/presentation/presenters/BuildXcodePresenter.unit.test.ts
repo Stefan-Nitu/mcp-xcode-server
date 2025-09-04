@@ -297,17 +297,19 @@ describe('BuildXcodePresenter', () => {
   describe('when presenting errors', () => {
     it('should format validation errors in user-friendly way', () => {
       const presenter = createSUT();
+      // Create a real ZodError-like object
       const zodError = {
-        message: JSON.stringify([{
+        name: 'ZodError',
+        issues: [{
           code: 'too_small',
           minimum: 1,
           type: 'string',
           message: 'Scheme is required',
           path: ['scheme']
-        }])
+        }]
       };
       
-      const response = presenter.presentError(new Error(zodError.message));
+      const response = presenter.presentError(zodError);
       
       // We WANT user-friendly messages, not JSON
       expect(response.content[0].text).toBe('❌ Scheme is required');
@@ -317,12 +319,16 @@ describe('BuildXcodePresenter', () => {
     
     it('should format multiple validation errors clearly', () => {
       const presenter = createSUT();
-      const zodErrors = JSON.stringify([
-        { message: 'Scheme is required', path: ['scheme'] },
-        { message: 'Invalid destination', path: ['destination'] }
-      ]);
+      // Create a real ZodError-like object with multiple issues
+      const zodError = {
+        name: 'ZodError',
+        issues: [
+          { message: 'Scheme is required', path: ['scheme'] },
+          { message: 'Invalid destination', path: ['destination'] }
+        ]
+      };
       
-      const response = presenter.presentError(new Error(`Invalid arguments: ${zodErrors}`));
+      const response = presenter.presentError(zodError);
       
       // We WANT clear, readable error messages
       expect(response.content[0].text).toContain('❌ Validation errors:');

@@ -1,6 +1,7 @@
 import { BuildResult } from '../../domain/entities/BuildResult.js';
 import { Platform } from '../../domain/value-objects/Platform.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
+import { MCPResponse } from '../interfaces/MCPResponse.js';
 
 /**
  * Presenter for build results
@@ -10,13 +11,6 @@ import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
  * - Failure formatting with errors/warnings
  * - Log path information
  */
-
-export interface MCPResponse {
-  content: Array<{
-    type: string;
-    text: string;
-  }>;
-}
 
 export class BuildXcodePresenter {
   private readonly maxErrorsToShow = 50;

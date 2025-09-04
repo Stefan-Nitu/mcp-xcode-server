@@ -17,7 +17,7 @@ const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 /**
  * Unit tests for BuildXcodeController
  * 
- * Following TDD principles from testing-philosophy.md:
+ * Following TDD principles from TESTING-PHILOSOPHY.md:
  * - Test behavior, not implementation
  * - Use SUT (System Under Test) pattern with factory methods
  * - Follow DAMP over DRY for clarity
