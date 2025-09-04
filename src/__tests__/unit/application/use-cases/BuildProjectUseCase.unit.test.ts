@@ -1,38 +1,32 @@
 import { BuildProjectUseCase } from '../../../../application/use-cases/BuildProjectUseCase.js';
 import { BuildRequest } from '../../../../domain/value-objects/BuildRequest.js';
 import { BuildDestination } from '../../../../domain/value-objects/BuildDestination.js';
-import { BuildIssue } from '../../../../domain/value-objects/BuildIssue.js';
-import { IBuildCommandBuilder, BuildCommandOptions } from '../../../../application/ports/BuildPorts.js';
 import { ICommandExecutor } from '../../../../application/ports/CommandPorts.js';
 import { IAppLocator } from '../../../../application/ports/ArtifactPorts.js';
 import { ILogManager } from '../../../../application/ports/LoggingPorts.js';
-import { IOutputParser } from '../../../../application/ports/OutputParserPorts.js';
-import { IBuildDestinationMapper } from '../../../../application/ports/MappingPorts.js';
 
-// Mock filesystem for ProjectPath validation
+import { XcbeautifyOutputParser } from '../../../../infrastructure/adapters/XcbeautifyOutputParser.js';
+import { BuildDestinationMapper } from '../../../../infrastructure/adapters/BuildDestinationMapper.js';
+import { XcodeBuildCommandBuilder } from '../../../../infrastructure/adapters/XcodeBuildCommandBuilder.js';
+import { SystemArchitectureDetector } from '../../../../infrastructure/adapters/SystemArchitectureDetector.js';
+
 jest.mock('fs', () => ({
   existsSync: jest.fn().mockReturnValue(true)
 }));
 
 /**
- * Unit tests for BuildProjectUseCase
- * Tests the orchestration logic with all dependencies mocked
- * Verifies the use case correctly coordinates its collaborators
+ * Sociable Unit tests for BuildProjectUseCase
+ * 
+ * Uses real collaborators except for external boundaries (subprocess, filesystem, I/O)
  */
 describe('BuildProjectUseCase', () => {
-  // Factory for creating SUT with mocked boundaries
   function createSUT() {
-    // Mock only external boundaries (subprocess, filesystem)
-    const mockDestinationMapper: jest.Mocked<IBuildDestinationMapper> = {
-      toXcodeBuildOptions: jest.fn()
-    };
-    
-    const mockCommandBuilder: jest.Mocked<IBuildCommandBuilder> = {
-      build: jest.fn()
-    };
-    
     const mockExecutor: jest.Mocked<ICommandExecutor> = {
       execute: jest.fn()
+    };
+    
+    const mockArchExecutor: jest.Mocked<ICommandExecutor> = {
+      execute: jest.fn().mockResolvedValue({ stdout: 'arm64\n', stderr: '', exitCode: 0 })
     };
     
     const mockAppLocator: jest.Mocked<IAppLocator> = {
@@ -44,33 +38,28 @@ describe('BuildProjectUseCase', () => {
       saveDebugData: jest.fn().mockReturnValue('/path/to/debug')
     };
     
-    const mockOutputParser: jest.Mocked<IOutputParser> = {
-      parseBuildOutput: jest.fn()
-    };
+    const architectureDetector = new SystemArchitectureDetector(mockArchExecutor);
+    const destinationMapper = new BuildDestinationMapper(architectureDetector);
+    const commandBuilder = new XcodeBuildCommandBuilder();
+    const outputParser = new XcbeautifyOutputParser();
     
     const sut = new BuildProjectUseCase(
-      mockDestinationMapper,
-      mockCommandBuilder,
+      destinationMapper,
+      commandBuilder,
       mockExecutor,
       mockAppLocator,
       mockLogger,
-      mockOutputParser
+      outputParser
     );
     
     return {
       sut,
-      mocks: {
-        destinationMapper: mockDestinationMapper,
-        commandBuilder: mockCommandBuilder,
-        executor: mockExecutor,
-        appLocator: mockAppLocator,
-        logger: mockLogger,
-        outputParser: mockOutputParser
-      }
+      mockExecutor,
+      mockAppLocator,
+      mockLogger
     };
   }
   
-  // Factory for creating domain objects (using real implementations)
   function createBuildRequest(overrides: Partial<{
     projectPath: string;
     scheme: string;
@@ -90,49 +79,29 @@ describe('BuildProjectUseCase', () => {
   describe('successful build workflow', () => {
     it('should orchestrate a successful build with app artifact', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor, mockAppLocator, mockLogger } = createSUT();
       const request = createBuildRequest();
       
-      // Setup mock behavior for successful build
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator',
-        additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild -project /path/to/project.xcodeproj -scheme MyApp');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 0,
         stdout: 'Build succeeded\nBuilding target MyApp',
         stderr: ''
       });
-      mocks.appLocator.findApp.mockResolvedValue('/path/to/DerivedData/MyApp.app');
+      mockAppLocator.findApp.mockResolvedValue('/path/to/DerivedData/MyApp.app');
       
       // Act
       const result = await sut.execute(request);
       
-      // Assert - verify the outcome
+      // Assert
       expect(result.success).toBe(true);
       expect(result.appPath).toBe('/path/to/DerivedData/MyApp.app');
       expect(result.logPath).toBe('/path/to/log');
       expect(result.hasErrors()).toBe(false);
       expect(result.output).toContain('Build succeeded');
       
-      // Verify the orchestration flow
-      expect(mocks.destinationMapper.toXcodeBuildOptions).toHaveBeenCalledWith(
-        BuildDestination.iOSSimulator
-      );
-      expect(mocks.commandBuilder.build).toHaveBeenCalledWith(
-        '/path/to/project.xcodeproj',
-        false,
-        expect.objectContaining({
-          scheme: 'MyApp',
-          configuration: 'Debug',
-          destination: 'generic/platform=iOS Simulator',
-          additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
-        })
-      );
-      expect(mocks.executor.execute).toHaveBeenCalled();
-      expect(mocks.appLocator.findApp).toHaveBeenCalled();
-      expect(mocks.logger.saveLog).toHaveBeenCalledWith(
+      expect(mockExecutor.execute).toHaveBeenCalled();
+      expect(mockAppLocator.findApp).toHaveBeenCalled();
+      expect(mockLogger.saveLog).toHaveBeenCalledWith(
         'build',
         expect.stringContaining('Build succeeded'),
         'project',
@@ -147,50 +116,39 @@ describe('BuildProjectUseCase', () => {
     
     it('should handle workspace projects correctly', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor } = createSUT();
       const request = createBuildRequest({
         projectPath: '/path/to/project.xcworkspace'
       });
       
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator',
-        additionalSettings: []
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild -workspace ...');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 0,
         stdout: 'Build succeeded',
         stderr: ''
       });
       
       // Act
-      await sut.execute(request);
+      const result = await sut.execute(request);
       
       // Assert
-      expect(mocks.commandBuilder.build).toHaveBeenCalledWith(
-        '/path/to/project.xcworkspace',
-        true, // Should detect workspace
-        expect.objectContaining({
-          scheme: 'MyApp'
-        })
-      );
+      expect(result.success).toBe(true);
+      
+      const executedCommand = mockExecutor.execute.mock.calls[0][0];
+      expect(executedCommand).toContain('-workspace');
+      expect(executedCommand).toContain('/path/to/project.xcworkspace');
     });
     
     it('should succeed even when app artifact cannot be located', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor, mockAppLocator } = createSUT();
       const request = createBuildRequest();
       
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator'
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild ...');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 0,
         stdout: 'Build succeeded',
         stderr: ''
       });
-      mocks.appLocator.findApp.mockResolvedValue(undefined); // App not found
+      mockAppLocator.findApp.mockResolvedValue(undefined);
       
       // Act
       const result = await sut.execute(request);
@@ -203,59 +161,40 @@ describe('BuildProjectUseCase', () => {
     
     it('should use custom derived data path when provided', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor, mockAppLocator } = createSUT();
       const customPath = '/custom/derived/data';
       const request = createBuildRequest({ 
         derivedDataPath: customPath 
       });
       
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator'
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild ...');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 0,
         stdout: 'Build succeeded',
         stderr: ''
       });
       
       // Act
-      await sut.execute(request);
+      const result = await sut.execute(request);
       
       // Assert
-      expect(mocks.commandBuilder.build).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Boolean),
-        expect.objectContaining({ 
-          derivedDataPath: customPath 
-        })
-      );
-      expect(mocks.appLocator.findApp).toHaveBeenCalledWith(customPath);
+      expect(result.success).toBe(true);
+      expect(mockAppLocator.findApp).toHaveBeenCalledWith(customPath);
+      
+      const executedCommand = mockExecutor.execute.mock.calls[0][0];
+      expect(executedCommand).toContain(`-derivedDataPath "${customPath}"`);
     });
   });
   
   describe('build failure scenarios', () => {
     it('should handle build execution failure with parsed issues', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor } = createSUT();
       const request = createBuildRequest();
       
-      const issues = [
-        BuildIssue.error('no such module', '/path/file.swift', 10, 5),
-        BuildIssue.warning('deprecated API', '/path/other.swift', 20, 8)
-      ];
-      
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator'
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild ...');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 1,
-        stdout: 'error: no such module',
+        stdout: '❌ /path/file.swift:10:5: no such module\n⚠️ /path/other.swift:20:8: deprecated API',
         stderr: 'Build failed'
-      });
-      mocks.outputParser.parseBuildOutput.mockReturnValue({ 
-        issues 
       });
       
       // Act
@@ -265,7 +204,6 @@ describe('BuildProjectUseCase', () => {
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
       
-      // Check that issues were properly extracted
       const errors = result.getErrors();
       const warnings = result.getWarnings();
       expect(errors).toHaveLength(1);
@@ -276,14 +214,10 @@ describe('BuildProjectUseCase', () => {
     
     it('should handle command timeout', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor } = createSUT();
       const request = createBuildRequest();
       
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator'
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild ...');
-      mocks.executor.execute.mockRejectedValue(
+      mockExecutor.execute.mockRejectedValue(
         new Error('Command timed out after 600000ms')
       );
       
@@ -297,20 +231,15 @@ describe('BuildProjectUseCase', () => {
   describe('build with warnings', () => {
     it('should succeed with warnings when exit code is 0', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor, mockAppLocator } = createSUT();
       const request = createBuildRequest();
       
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator'
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild ...');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 0,
         stdout: 'Build succeeded with warnings',
         stderr: ''
       });
-      // Note: When exit code is 0, we don't parse output
-      mocks.appLocator.findApp.mockResolvedValue('/path/to/MyApp.app');
+      mockAppLocator.findApp.mockResolvedValue('/path/to/MyApp.app');
       
       // Act
       const result = await sut.execute(request);
@@ -318,24 +247,18 @@ describe('BuildProjectUseCase', () => {
       // Assert
       expect(result.success).toBe(true);
       expect(result.appPath).toBe('/path/to/MyApp.app');
-      // Since exit code is 0, parser isn't called and no warnings are extracted
-      expect(mocks.outputParser.parseBuildOutput).not.toHaveBeenCalled();
+      expect(result.getWarnings()).toHaveLength(0);
     });
   });
   
   describe('logging behavior', () => {
     it('should save build output and debug data', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor, mockLogger } = createSUT();
       const request = createBuildRequest();
       const buildOutput = 'Detailed build output...';
-      const buildCommand = 'xcodebuild -project ...';
       
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator'
-      });
-      mocks.commandBuilder.build.mockReturnValue(buildCommand);
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 0,
         stdout: buildOutput,
         stderr: ''
@@ -345,12 +268,13 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(mocks.logger.saveDebugData).toHaveBeenCalledWith(
+      const executedCommand = mockExecutor.execute.mock.calls[0][0];
+      expect(mockLogger.saveDebugData).toHaveBeenCalledWith(
         'build-command',
-        { command: buildCommand },
+        { command: executedCommand },
         'project'
       );
-      expect(mocks.logger.saveDebugData).toHaveBeenCalledWith(
+      expect(mockLogger.saveDebugData).toHaveBeenCalledWith(
         'build-success',
         expect.objectContaining({
           project: 'project',
@@ -358,7 +282,7 @@ describe('BuildProjectUseCase', () => {
         }),
         'project'
       );
-      expect(mocks.logger.saveLog).toHaveBeenCalledWith(
+      expect(mockLogger.saveLog).toHaveBeenCalledWith(
         'build',
         buildOutput,
         'project',
@@ -367,7 +291,7 @@ describe('BuildProjectUseCase', () => {
           configuration: 'Debug',
           destination: BuildDestination.iOSSimulator,
           exitCode: 0,
-          command: buildCommand
+          command: executedCommand
         })
       );
       expect(result.logPath).toBe('/path/to/log');
@@ -375,104 +299,77 @@ describe('BuildProjectUseCase', () => {
     
     it('should log failure details', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor, mockLogger } = createSUT();
       const request = createBuildRequest();
       
-      const issues = [BuildIssue.error('Compilation failed')];
-      
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS Simulator'
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild ...');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 1,
-        stdout: 'Build failed',
+        stdout: '❌ Compilation failed',
         stderr: 'error output'
       });
-      mocks.outputParser.parseBuildOutput.mockReturnValue({ issues });
       
       // Act
       const result = await sut.execute(request);
       
       // Assert
       expect(result.success).toBe(false);
-      expect(mocks.logger.saveDebugData).toHaveBeenCalledWith(
+      expect(mockLogger.saveDebugData).toHaveBeenCalledWith(
         'build-failure',
         { exitCode: 1 },
         'project'
       );
+      
+      const errors = result.getErrors();
+      expect(errors.length).toBeGreaterThan(0);
     });
   });
   
   describe('destination-specific behavior', () => {
     it('should handle macOS destination', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor } = createSUT();
       const request = createBuildRequest({
         destination: BuildDestination.macOS
       });
       
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'platform=macOS',
-        additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild ...');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 0,
         stdout: 'Build succeeded',
         stderr: ''
       });
       
       // Act
-      await sut.execute(request);
+      const result = await sut.execute(request);
       
       // Assert
-      expect(mocks.destinationMapper.toXcodeBuildOptions).toHaveBeenCalledWith(
-        BuildDestination.macOS
-      );
-      expect(mocks.commandBuilder.build).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Boolean),
-        expect.objectContaining({
-          destination: 'platform=macOS',
-          additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
-        })
-      );
+      expect(result.success).toBe(true);
+      
+      const executedCommand = mockExecutor.execute.mock.calls[0][0];
+      expect(executedCommand).toContain('platform=macOS');
     });
     
     it('should handle iOS device destination differently', async () => {
       // Arrange
-      const { sut, mocks } = createSUT();
+      const { sut, mockExecutor } = createSUT();
       const request = createBuildRequest({
         destination: BuildDestination.iOSDevice
       });
       
-      mocks.destinationMapper.toXcodeBuildOptions.mockResolvedValue({
-        destination: 'generic/platform=iOS',
-        additionalSettings: ['ARCHS=arm64'] // No ONLY_ACTIVE_ARCH for device builds
-      });
-      mocks.commandBuilder.build.mockReturnValue('xcodebuild ...');
-      mocks.executor.execute.mockResolvedValue({
+      mockExecutor.execute.mockResolvedValue({
         exitCode: 0,
         stdout: 'Build succeeded',
         stderr: ''
       });
       
       // Act
-      await sut.execute(request);
+      const result = await sut.execute(request);
       
       // Assert
-      expect(mocks.destinationMapper.toXcodeBuildOptions).toHaveBeenCalledWith(
-        BuildDestination.iOSDevice
-      );
-      expect(mocks.commandBuilder.build).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Boolean),
-        expect.objectContaining({
-          destination: 'generic/platform=iOS',
-          additionalSettings: ['ARCHS=arm64']
-        })
-      );
+      expect(result.success).toBe(true);
+      
+      const executedCommand = mockExecutor.execute.mock.calls[0][0];
+      expect(executedCommand).toContain('generic/platform=iOS');
+      expect(executedCommand).not.toContain('ONLY_ACTIVE_ARCH');
     });
   });
 });
