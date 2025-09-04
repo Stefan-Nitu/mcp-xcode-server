@@ -5,15 +5,12 @@ import { BuildRequest } from '../../domain/value-objects/BuildRequest.js';
 import { BuildResult } from '../../domain/entities/BuildResult.js';
 
 // Application ports
-import { 
-  IPlatformValidator,
-  IBuildCommandBuilder,
-  ICommandExecutor,
-  IAppLocator
-} from '../ports/BuildPorts.js';
+import { IBuildCommandBuilder } from '../ports/BuildPorts.js';
+import { ICommandExecutor } from '../ports/CommandPorts.js';
+import { IAppLocator } from '../ports/ArtifactPorts.js';
 import { ILogManager } from '../ports/LoggingPorts.js';
-import { IConfigProvider } from '../ports/ConfigPorts.js';
 import { IOutputParser } from '../ports/OutputParserPorts.js';
+import { IBuildDestinationMapper } from '../ports/MappingPorts.js';
 
 /**
  * Use Case: Build an Xcode project
@@ -21,7 +18,7 @@ import { IOutputParser } from '../ports/OutputParserPorts.js';
  */
 export class BuildProjectUseCase {
   constructor(
-    private validator: IPlatformValidator,
+    private destinationMapper: IBuildDestinationMapper,
     private commandBuilder: IBuildCommandBuilder,
     private executor: ICommandExecutor,
     private appLocator: IAppLocator,
@@ -33,23 +30,20 @@ export class BuildProjectUseCase {
     // Request is already validated and created at the border (BuildXcodeTool)
     // Use case just orchestrates business logic
     
-    // 3. Validate platform support (business rule)
-    await this.validator.validate(
-      request.projectPath.toString(),
-      request.projectPath.isWorkspace,
-      request.scheme,
-      request.platform
+    // 3. Map domain destination to infrastructure format
+    const mappedDestination = await this.destinationMapper.toXcodeBuildOptions(
+      request.destination
     );
     
-    // 4. Build command
+    // 4. Build command with already-mapped values
     const command = this.commandBuilder.build(
       request.projectPath.toString(),
       request.projectPath.isWorkspace,
       {
         scheme: request.scheme,
-        configuration: request.configuration.configuration,
-        platform: request.platform,
-        deviceId: request.deviceId,
+        configuration: request.configuration,
+        destination: mappedDestination.destination,
+        additionalSettings: mappedDestination.additionalSettings,
         derivedDataPath: request.derivedDataPath
       }
     );
@@ -74,14 +68,14 @@ export class BuildProjectUseCase {
       this.logManager.saveDebugData('build-success', {
         project: request.projectPath.name,
         scheme: request.scheme,
-        configuration: request.configuration.configuration,
-        platform: request.platform 
+        configuration: request.configuration,
+        destination: request.destination 
       }, request.projectPath.name);
       
       const logPath = this.logManager.saveLog('build', output, request.projectPath.name, {
         scheme: request.scheme,
-        configuration: request.configuration.configuration,
-        platform: request.platform,
+        configuration: request.configuration,
+        destination: request.destination,
         exitCode: result.exitCode,
         command
       });
@@ -97,8 +91,8 @@ export class BuildProjectUseCase {
       
       const logPath = this.logManager.saveLog('build', output, request.projectPath.name, {
         scheme: request.scheme,
-        configuration: request.configuration.configuration,
-        platform: request.platform,
+        configuration: request.configuration,
+        destination: request.destination,
         exitCode: result.exitCode,
         command,
         issues: parsed.issues

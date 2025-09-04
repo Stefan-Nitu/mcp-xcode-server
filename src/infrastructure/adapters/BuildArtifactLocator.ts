@@ -1,6 +1,7 @@
 import { existsSync } from 'fs';
 import { createModuleLogger } from '../../logger.js';
-import { IAppLocator, ICommandExecutor } from '../../application/ports/BuildPorts.js';
+import { IAppLocator } from '../../application/ports/ArtifactPorts.js';
+import { ICommandExecutor } from '../../application/ports/CommandPorts.js';
 import { ShellCommandExecutor } from './ShellCommandExecutor.js';
 
 const logger = createModuleLogger('BuildArtifactLocator');

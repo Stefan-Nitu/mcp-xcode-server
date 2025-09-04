@@ -92,7 +92,7 @@ export class LogManagerInstance implements ILogManager {
     try {
       // Use execSync to create symlink as fs.symlinkSync has issues on some systems
       const { execSync } = require('child_process');
-      execSync(`ln -s "${relativePath}" "${latestLink}"`, { cwd: this.LOG_DIR });
+      execSync(`ln -sf "${relativePath}" "${latestLink}"`, { cwd: this.LOG_DIR });
     } catch {
       // Symlink creation failed, not critical
     }

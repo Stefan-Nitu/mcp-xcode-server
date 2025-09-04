@@ -1,7 +1,8 @@
 import { createModuleLogger } from '../../logger.js';
-import { Platform } from '../../types.js';
+import { Platform } from '../../domain/value-objects/Platform.js';
 import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
-import { ICommandExecutor, IPlatformValidator } from '../../application/ports/BuildPorts.js';
+import { IPlatformValidator } from '../../application/ports/BuildPorts.js';
+import { ICommandExecutor } from '../../application/ports/CommandPorts.js';
 import { ShellCommandExecutor } from './ShellCommandExecutor.js';
 
 const logger = createModuleLogger('XcodePlatformValidator');

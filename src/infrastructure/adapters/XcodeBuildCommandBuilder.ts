@@ -1,48 +1,68 @@
-import { Platform } from '../../types.js';
-import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
-import { IBuildCommandBuilder, BuildOptions } from '../../application/ports/BuildPorts.js';
+import { IBuildCommandBuilder } from '../../application/ports/BuildPorts.js';
 
 /**
- * Builds xcodebuild CLI commands for build operations
- * Single Responsibility: Construct xcodebuild-specific build commands
+ * Infrastructure adapter that builds xcodebuild CLI commands
+ * 
+ * Single Responsibility: Construct xcodebuild command strings from simple inputs
+ * - Takes already-mapped values (no domain concepts)
+ * - No dependency on BuildDestinationMapper
+ * - Pure string concatenation
  */
+
+// Build command options - simple strings, no domain types
+export interface BuildCommandOptions {
+  scheme: string;
+  configuration?: string;
+  destination: string;  // Already mapped destination string
+  additionalSettings?: string[];
+  derivedDataPath?: string;
+}
+
 export class XcodeBuildCommandBuilder implements IBuildCommandBuilder {
+  /**
+   * Build an xcodebuild command string
+   * @param projectPath Path to .xcodeproj or .xcworkspace file
+   * @param isWorkspace True if projectPath is a workspace
+   * @param options Build options with already-mapped values
+   * @returns Complete xcodebuild command string
+   */
   build(
     projectPath: string,
     isWorkspace: boolean,
-    options: BuildOptions = {}
+    options: BuildCommandOptions
   ): string {
     const {
       scheme,
       configuration = 'Debug',
-      platform = Platform.iOS,
-      deviceId,
+      destination,
+      additionalSettings = [],
       derivedDataPath
     } = options;
     
+    // Start building the command
     const projectFlag = isWorkspace ? '-workspace' : '-project';
     let command = `xcodebuild ${projectFlag} "${projectPath}"`;
     
-    if (scheme) {
-      command += ` -scheme "${scheme}"`;
-    }
+    // Add scheme
+    command += ` -scheme "${scheme}"`;
     
+    // Add configuration
     command += ` -configuration "${configuration}"`;
     
-    // Determine destination
-    const platformInfo = PlatformInfo.fromPlatform(platform);
-    let destination: string;
-    if (deviceId) {
-      destination = platformInfo.generateDestination(deviceId);
-    } else {
-      destination = platformInfo.generateGenericDestination();
-    }
+    // Add destination (already formatted)
     command += ` -destination '${destination}'`;
     
+    // Add additional settings if provided
+    if (additionalSettings.length > 0) {
+      command += ` ${additionalSettings.join(' ')}`;
+    }
+    
+    // Add derived data path if provided
     if (derivedDataPath) {
       command += ` -derivedDataPath "${derivedDataPath}"`;
     }
     
+    // Add build action
     command += ` build`;
     
     // Pipe through xcbeautify for clean output

@@ -78,7 +78,13 @@ export class BuildIssue {
    */
   toString(): string {
     if (this.hasLocation()) {
-      return `${this.file}:${this.line}:${this.column}: ${this.message}`;
+      if (this.line !== undefined && this.column !== undefined) {
+        return `${this.file}:${this.line}:${this.column}: ${this.message}`;
+      } else if (this.line !== undefined) {
+        return `${this.file}:${this.line}: ${this.message}`;
+      } else {
+        return `${this.file}: ${this.message}`;
+      }
     }
     return this.message;
   }

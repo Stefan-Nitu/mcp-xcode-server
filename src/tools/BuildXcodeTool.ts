@@ -1,5 +1,6 @@
 import { BuildXcodeController } from '../presentation/controllers/BuildXcodeController.js';
 import { BuildXcodePresenter } from '../presentation/presenters/BuildXcodePresenter.js';
+import { Platform } from '../domain/value-objects/Platform.js';
 
 /**
  * MCP Tool for building Xcode projects
@@ -39,19 +40,19 @@ export class BuildXcodeTool {
           type: 'string',
           description: 'Xcode scheme to build'
         },
-        platform: {
+        destination: {
           type: 'string',
-          enum: ['iOS', 'macOS', 'tvOS', 'watchOS', 'visionOS'],
-          description: 'Target platform',
-          default: 'iOS'
-        },
-        deviceId: {
-          type: 'string',
-          description: 'Device UDID or name (optional, uses generic device if not specified)'
+          enum: ['iOSSimulator', 'iOSDevice', 'iOSSimulatorUniversal', 
+                 'macOS', 'macOSUniversal', 
+                 'tvOSSimulator', 'tvOSDevice', 'tvOSSimulatorUniversal',
+                 'watchOSSimulator', 'watchOSDevice', 'watchOSSimulatorUniversal',
+                 'visionOSSimulator', 'visionOSDevice', 'visionOSSimulatorUniversal'],
+          description: 'Build destination - Simulator: current architecture only (fast). Device: physical device. SimulatorUniversal: all architectures (slower but compatible)',
+          default: 'iOSSimulator'
         },
         configuration: {
           type: 'string',
-          description: 'Build configuration (e.g., Debug, Release)',
+          description: 'Build configuration (e.g., Debug, Release, Beta, or any custom configuration)',
           default: 'Debug'
         },
         derivedDataPath: {
@@ -59,7 +60,7 @@ export class BuildXcodeTool {
           description: 'Custom derived data path (optional)'
         }
       },
-      required: ['projectPath', 'scheme']
+      required: ['projectPath', 'scheme', 'destination']
     };
   }
   
@@ -70,9 +71,26 @@ export class BuildXcodeTool {
       
       // Extract metadata from args for presentation
       // Safe to access these as controller would have validated them
+      // Extract platform from destination (e.g., 'iOSSimulator' -> 'iOS')
+      const destinationStr = args.destination || 'iOSSimulator';
+      let platform: Platform;
+      if (destinationStr.startsWith('iOS')) {
+        platform = Platform.iOS;
+      } else if (destinationStr.startsWith('macOS')) {
+        platform = Platform.macOS;
+      } else if (destinationStr.startsWith('tvOS')) {
+        platform = Platform.tvOS;
+      } else if (destinationStr.startsWith('watchOS')) {
+        platform = Platform.watchOS;
+      } else if (destinationStr.startsWith('visionOS')) {
+        platform = Platform.visionOS;
+      } else {
+        platform = Platform.iOS; // Default fallback
+      }
+      
       const metadata = {
         scheme: args.scheme,
-        platform: args.platform || 'iOS',
+        platform: platform,
         configuration: args.configuration || 'Debug'
       };
       

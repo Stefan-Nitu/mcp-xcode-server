@@ -15,31 +15,31 @@ import { ZodError } from 'zod';
 import { logger, logToolExecution, logError } from './logger.js';
 
 // Import all tool classes
-import {
-  ListSimulatorsTool,
-  BootSimulatorTool,
-  ShutdownSimulatorTool,
-  ViewSimulatorScreenTool,
-  BuildSwiftPackageTool,
-  RunSwiftPackageTool,
-  RunXcodeTool,
-  TestXcodeTool,
-  TestSwiftPackageTool,
-  CleanBuildTool,
-  ArchiveProjectTool,
-  ExportIPATool,
-  ListSchemesTool,
-  GetBuildSettingsTool,
-  GetProjectInfoTool,
-  ListTargetsTool,
-  InstallAppTool,
-  UninstallAppTool,
-  GetDeviceLogsTool,
-  ManageDependenciesTool
-} from './tools/index.js';
+// import {
+//   ListSimulatorsTool,
+//   BootSimulatorTool,
+//   ShutdownSimulatorTool,
+//   ViewSimulatorScreenTool,
+//   BuildSwiftPackageTool,
+//   RunSwiftPackageTool,
+//   RunXcodeTool,
+//   TestXcodeTool,
+//   TestSwiftPackageTool,
+//   CleanBuildTool,
+//   ArchiveProjectTool,
+//   ExportIPATool,
+//   ListSchemesTool,
+//   GetBuildSettingsTool,
+//   GetProjectInfoTool,
+//   ListTargetsTool,
+//   InstallAppTool,
+//   UninstallAppTool,
+//   GetDeviceLogsTool,
+//   ManageDependenciesTool
+// } from './tools/index.js';
 
 // Import factory for BuildXcodeTool
-import { createBuildXcodeTool } from './factories/buildXcodeToolFactory.js';
+import { createBuildXcodeTool } from './factories/BuildXcodeToolFactory.js';
 
 type Tool = {
   execute(args: any): Promise<any>;
@@ -73,33 +73,33 @@ class XcodeServer {
     // Create instances of all tools
     const toolInstances = [
       // Simulator management
-      new ListSimulatorsTool(),
-      new BootSimulatorTool(),
-      new ShutdownSimulatorTool(),
-      new ViewSimulatorScreenTool(),
+      // new ListSimulatorsTool(),
+      // new BootSimulatorTool(),
+      // new ShutdownSimulatorTool(),
+      // new ViewSimulatorScreenTool(),
       // Build and test
-      new BuildSwiftPackageTool(),
-      new RunSwiftPackageTool(),
+      // new BuildSwiftPackageTool(),
+      // new RunSwiftPackageTool(),
       createBuildXcodeTool(),
-      new RunXcodeTool(),
-      new TestXcodeTool(),
-      new TestSwiftPackageTool(),
-      new CleanBuildTool(),
+      // new RunXcodeTool(),
+      // new TestXcodeTool(),
+      // new TestSwiftPackageTool(),
+      // new CleanBuildTool(),
       // Archive and export
-      new ArchiveProjectTool(),
-      new ExportIPATool(),
+      // new ArchiveProjectTool(),
+      // new ExportIPATool(),
       // Project info and schemes
-      new ListSchemesTool(),
-      new GetBuildSettingsTool(),
-      new GetProjectInfoTool(),
-      new ListTargetsTool(),
+      // new ListSchemesTool(),
+      // new GetBuildSettingsTool(),
+      // new GetProjectInfoTool(),
+      // new ListTargetsTool(),
       // App management
-      new InstallAppTool(),
-      new UninstallAppTool(),
+      // new InstallAppTool(),
+      // new UninstallAppTool(),
       // Device logs
-      new GetDeviceLogsTool(),
+      // new GetDeviceLogsTool(),
       // Advanced project management
-      new ManageDependenciesTool()
+      // new ManageDependenciesTool()
     ];
 
     // Register each tool by its name

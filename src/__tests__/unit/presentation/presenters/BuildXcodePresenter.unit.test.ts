@@ -2,6 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 import { BuildXcodePresenter } from '../../../../presentation/presenters/BuildXcodePresenter.js';
 import { BuildResult } from '../../../../domain/entities/BuildResult.js';
 import { BuildIssue } from '../../../../domain/value-objects/BuildIssue.js';
+import { Platform } from '../../../../domain/value-objects/Platform.js';
 
 describe('BuildXcodePresenter', () => {
   // Factory method for creating SUT - DAMP approach
@@ -13,7 +14,7 @@ describe('BuildXcodePresenter', () => {
   function createTestMetadata(overrides = {}) {
     return {
       scheme: 'MyApp',
-      platform: 'iOS',
+      platform: Platform.iOS,
       configuration: 'Debug',
       showWarningDetails: false,
       ...overrides
@@ -43,7 +44,7 @@ describe('BuildXcodePresenter', () => {
     it('should include platform and configuration', () => {
       const presenter = createSUT();
       const result = createSuccessResult();
-      const metadata = { scheme: 'MyApp', platform: 'iOS', configuration: 'Release' };
+      const metadata = { scheme: 'MyApp', platform: Platform.iOS, configuration: 'Release' };
       
       const response = presenter.present(result, metadata);
       
@@ -188,7 +189,7 @@ describe('BuildXcodePresenter', () => {
       const presenter = createSUT();
       const warnings = [BuildIssue.warning('Deprecated API')];
       const result = createFailureResult(warnings);
-      const metadata = { scheme: 'MyApp', platform: 'iOS', configuration: 'Debug', showWarningDetails: false };
+      const metadata = { scheme: 'MyApp', platform: Platform.iOS, configuration: 'Debug', showWarningDetails: false };
       
       const response = presenter.present(result, metadata);
       const text = response.content[0].text;
@@ -272,7 +273,7 @@ describe('BuildXcodePresenter', () => {
       const response = presenter.presentError(error);
       
       expect(response.content[0].type).toBe('text');
-      expect(response.content[0].text).toBe('❌ Build error: Something went wrong');
+      expect(response.content[0].text).toBe('❌ Something went wrong');
     });
   });
   
@@ -290,6 +291,72 @@ describe('BuildXcodePresenter', () => {
       expect(response.content[0]).toHaveProperty('type');
       expect(response.content[0]).toHaveProperty('text');
       expect(response.content[0].type).toBe('text');
+    });
+  });
+  
+  describe('when presenting errors', () => {
+    it('should format validation errors in user-friendly way', () => {
+      const presenter = createSUT();
+      const zodError = {
+        message: JSON.stringify([{
+          code: 'too_small',
+          minimum: 1,
+          type: 'string',
+          message: 'Scheme is required',
+          path: ['scheme']
+        }])
+      };
+      
+      const response = presenter.presentError(new Error(zodError.message));
+      
+      // We WANT user-friendly messages, not JSON
+      expect(response.content[0].text).toBe('❌ Scheme is required');
+      expect(response.content[0].text).not.toContain('JSON');
+      expect(response.content[0].text).not.toContain('[{');
+    });
+    
+    it('should format multiple validation errors clearly', () => {
+      const presenter = createSUT();
+      const zodErrors = JSON.stringify([
+        { message: 'Scheme is required', path: ['scheme'] },
+        { message: 'Invalid destination', path: ['destination'] }
+      ]);
+      
+      const response = presenter.presentError(new Error(`Invalid arguments: ${zodErrors}`));
+      
+      // We WANT clear, readable error messages
+      expect(response.content[0].text).toContain('❌ Validation errors:');
+      expect(response.content[0].text).toContain('Scheme is required');
+      expect(response.content[0].text).toContain('Invalid destination');
+    });
+    
+    it('should handle non-validation errors normally', () => {
+      const presenter = createSUT();
+      const error = new Error('Project path does not exist');
+      
+      const response = presenter.presentError(error);
+      
+      expect(response.content[0].text).toBe('❌ Project path does not exist');
+    });
+    
+    it('should handle ZodError objects directly', () => {
+      const presenter = createSUT();
+      // Simulate a ZodError-like object
+      const zodError = {
+        name: 'ZodError',
+        issues: [
+          { message: 'Scheme is required', path: ['scheme'] },
+          { message: 'Invalid destination', path: ['destination'] }
+        ],
+        message: 'Validation failed'
+      };
+      
+      const response = presenter.presentError(zodError as any);
+      
+      // We WANT the issues formatted nicely
+      expect(response.content[0].text).toContain('❌ Validation errors:');
+      expect(response.content[0].text).toContain('Scheme is required');
+      expect(response.content[0].text).toContain('Invalid destination');
     });
   });
 });

@@ -10,7 +10,9 @@
 5. [Testing Anti-Patterns](#testing-anti-patterns)
 6. [Architecture-Specific Testing](#architecture-specific-testing)
 7. [Practical Guidelines](#practical-guidelines)
-8. [Implementation Checklist](#implementation-checklist)
+8. [Jest TypeScript Mocking Best Practices](#jest-typescript-mocking-best-practices)
+9. [Troubleshooting Jest TypeScript Issues](#troubleshooting-jest-typescript-issues)
+10. [Implementation Checklist](#implementation-checklist)
 
 ---
 
@@ -1447,6 +1449,123 @@ class DeviceMother {
 const device = DeviceMother.bootedIPhone();
 ```
 
+## Jest TypeScript Mocking Best Practices
+
+### 1. Always Provide Explicit Type Signatures to jest.fn()
+
+**Principle**: TypeScript requires explicit function signatures for proper type inference with mocks.
+
+#### ❌ Bad - Causes "type never" errors
+```typescript
+const mockFunction = jest.fn();
+mockFunction.mockResolvedValue({ success: true }); // Error: type 'never'
+```
+
+#### ✅ Good - Modern Jest syntax (Jest 27+)
+```typescript
+// Single type parameter with full function signature
+const mockFunction = jest.fn<() => Promise<{ success: boolean }>>();
+mockFunction.mockResolvedValue({ success: true }); // Works!
+
+// With parameters
+const mockBuildProject = jest.fn<(options: BuildOptions) => Promise<BuildResult>>();
+
+// Multiple parameters
+const mockCallback = jest.fn<(error: Error | null, data?: string) => void>();
+```
+
+**Note**: Jest 27+ uses a single type parameter for the entire function signature, not separate return and argument types.
+
+### 2. Handle instanceof Checks with Object.create()
+
+**Principle**: When code uses `instanceof` checks, create mocks that pass these checks.
+
+#### ❌ Bad - Plain object fails instanceof
+```typescript
+const mockXcodeProject = {
+  buildProject: jest.fn()
+};
+// Fails: if (!(project instanceof XcodeProject))
+```
+
+#### ✅ Good - Use Object.create with prototype
+```typescript
+const mockBuildProject = jest.fn<(options: any) => Promise<any>>();
+const mockXcodeProject = Object.create(XcodeProject.prototype);
+mockXcodeProject.buildProject = mockBuildProject;
+// Passes: if (project instanceof XcodeProject) ✓
+```
+
+### 3. Match Async vs Sync Return Types
+
+**Principle**: Use the correct mock method based on function return type.
+
+#### ❌ Bad - Mixing async/sync
+```typescript
+const mockSync = jest.fn<() => string>();
+mockSync.mockResolvedValue('result'); // Wrong! Use mockReturnValue
+
+const mockAsync = jest.fn<() => Promise<string>>();
+mockAsync.mockReturnValue('result'); // Wrong! Use mockResolvedValue
+```
+
+#### ✅ Good - Match the return type
+```typescript
+// Synchronous
+const mockSync = jest.fn<() => string>();
+mockSync.mockReturnValue('result');
+
+// Asynchronous
+const mockAsync = jest.fn<() => Promise<string>>();
+mockAsync.mockResolvedValue('result');
+```
+
+### 4. Mock Module Imports Correctly
+
+**Principle**: Mock at module level and type the mocks properly.
+
+```typescript
+// Mock the module
+jest.mock('fs', () => ({
+  existsSync: jest.fn()
+}));
+
+// Import and type the mock
+import { existsSync } from 'fs';
+const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
+
+// Use in tests
+beforeEach(() => {
+  mockExistsSync.mockReturnValue(true);
+});
+```
+
+### 5. Never Use Type Casting - Fix the Root Cause
+
+**Principle**: Type casting hides problems. Fix the types properly instead.
+
+#### ❌ Bad - Type casting
+```typescript
+const mockFunction = jest.fn() as any;
+const mockFunction = jest.fn() as jest.Mock;
+```
+
+#### ✅ Good - Proper typing
+```typescript
+type BuildFunction = (path: string) => Promise<BuildResult>;
+const mockBuild = jest.fn<BuildFunction>();
+```
+
+### 6. Sequential Mock Returns
+
+```typescript
+const mockExecAsync = jest.fn<(cmd: string) => Promise<{ stdout: string }>>();
+mockExecAsync
+  .mockResolvedValueOnce({ stdout: 'First call' })
+  .mockResolvedValueOnce({ stdout: 'Second call' })
+  .mockRejectedValueOnce(new Error('Third call fails'));
+```
+
 ### Handling Flaky Tests
 
 #### Identifying Flaky Tests
@@ -1486,6 +1605,37 @@ test('fetches weather', async () => {
   expect(weather.temp).toBe(20);
 });
 ```
+
+## Troubleshooting Jest TypeScript Issues
+
+### Common Problems and Solutions
+
+#### Problem: "Argument of type X is not assignable to parameter of type 'never'"
+**Solution**: Add explicit type signature to jest.fn()
+```typescript
+// Wrong
+const mock = jest.fn();
+// Right
+const mock = jest.fn<() => Promise<string>>();
+```
+
+#### Problem: "Expected 0-1 type arguments, but got 2" (TS2558)
+**Solution**: You're using old Jest syntax. Use modern syntax:
+```typescript
+// Wrong (old syntax)
+jest.fn<any, any[]>()
+// Right (modern syntax)
+jest.fn<(...args: any[]) => any>()
+```
+
+#### Problem: instanceof checks failing in tests
+**Solution**: Use Object.create(ClassName.prototype) for the mock object
+
+#### Problem: Mock structure doesn't match actual implementation
+**Solution**: Always verify the actual interface by reading the source code
+
+#### Problem: Validation errors not caught in tests
+**Solution**: Use `await expect(...).rejects.toThrow()` for code that throws
 
 ## References
 

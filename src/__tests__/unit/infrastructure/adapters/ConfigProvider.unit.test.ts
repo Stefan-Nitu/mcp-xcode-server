@@ -1,5 +1,5 @@
-import { ConfigProvider } from '../../../infrastructure/adapters/ConfigProvider.js';
-import { IConfigProvider } from '../../../application/ports/ConfigPorts.js';
+import { ConfigProvider } from '../../../../infrastructure/adapters/ConfigProvider.js';
+import { IConfigProvider } from '../../../../application/ports/ConfigPorts.js';
 import { homedir } from 'os';
 import path from 'path';
 

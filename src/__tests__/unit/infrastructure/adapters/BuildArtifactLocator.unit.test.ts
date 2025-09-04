@@ -1,5 +1,5 @@
-import { BuildArtifactLocator } from '../../../infrastructure/adapters/BuildArtifactLocator.js';
-import { IAppLocator, ICommandExecutor, ExecutionResult } from '../../../application/ports/BuildPorts.js';
+import { BuildArtifactLocator } from '../../../../infrastructure/adapters/BuildArtifactLocator.js';
+import { ICommandExecutor } from '../../../../application/ports/CommandPorts.js';
 import { existsSync } from 'fs';
 
 // Mock fs module

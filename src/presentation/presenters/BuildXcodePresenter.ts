@@ -1,4 +1,6 @@
 import { BuildResult } from '../../domain/entities/BuildResult.js';
+import { Platform } from '../../domain/value-objects/Platform.js';
+import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 
 /**
  * Presenter for build results
@@ -22,7 +24,7 @@ export class BuildXcodePresenter {
   
   present(result: BuildResult, metadata: {
     scheme: string;
-    platform: string;
+    platform: Platform;
     configuration: string;
     showWarningDetails?: boolean;
   }): MCPResponse {
@@ -34,7 +36,7 @@ export class BuildXcodePresenter {
   
   private presentSuccess(
     result: BuildResult,
-    metadata: { scheme: string; platform: string; configuration: string; showWarningDetails?: boolean }
+    metadata: { scheme: string; platform: Platform; configuration: string; showWarningDetails?: boolean }
   ): MCPResponse {
     const text = `✅ Build succeeded: ${metadata.scheme}
 
@@ -51,7 +53,7 @@ App path: ${result.appPath || 'N/A'}${result.logPath ? `
   
   private presentFailure(
     result: BuildResult,
-    metadata: { scheme: string; platform: string; configuration: string; showWarningDetails?: boolean }
+    metadata: { scheme: string; platform: Platform; configuration: string; showWarningDetails?: boolean }
   ): MCPResponse {
     const errors = result.getErrors();
     const warnings = result.getWarnings();
@@ -112,11 +114,13 @@ App path: ${result.appPath || 'N/A'}${result.logPath ? `
     return issue.message || 'Unknown issue';
   }
   
-  presentError(error: Error): MCPResponse {
+  presentError(error: Error | any): MCPResponse {
+    const errorMessage = ErrorFormatter.format(error);
+    
     return {
       content: [{
         type: 'text',
-        text: `❌ Build error: ${error.message}`
+        text: `❌ ${errorMessage}`
       }]
     };
   }

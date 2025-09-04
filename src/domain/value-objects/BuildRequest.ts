@@ -1,67 +1,52 @@
-import { Platform } from './Platform.js';
+import { BuildDestination } from './BuildDestination.js';
 import { ProjectPath } from './ProjectPath.js';
-import { BuildConfiguration } from './BuildConfiguration.js';
 
 /**
  * Domain Value Object: Represents a build request
- * This encapsulates all the data needed to perform a build
+ * 
+ * Contains all the data needed to perform a build:
+ * - Where: projectPath
+ * - What: scheme
+ * - How: configuration (Debug, Release, Beta, etc.)
+ * - Target: destination (iOS, macOS, device, simulator, etc.)
+ * - Output: derivedDataPath
  */
 export class BuildRequest {
-  public readonly projectPath: ProjectPath;
-  public readonly configuration: BuildConfiguration;
-  
-  constructor(args: {
-    projectPath: string;
-    scheme?: string;
-    configuration?: string;
-    platform?: Platform;
-    deviceId?: string;
-    derivedDataPath?: string;
-  }) {
-    // Create domain objects with validation
-    this.projectPath = ProjectPath.create(args.projectPath);
-    
-    // BuildConfiguration handles its own defaults and validation
-    this.configuration = new BuildConfiguration(
-      args.scheme,
-      args.configuration || 'Debug',
-      args.platform || Platform.iOS,
-      args.deviceId,
-      args.derivedDataPath || ''  // Will be replaced by config provider
-    );
-  }
-  
-  get scheme(): string | undefined {
-    return this.configuration.scheme;
-  }
-  
-  get platform(): Platform {
-    return this.configuration.platform;
-  }
-  
-  get deviceId(): string | undefined {
-    return this.configuration.deviceId;
-  }
-  
-  get derivedDataPath(): string {
-    return this.configuration.derivedDataPath;
+  constructor(
+    public readonly projectPath: ProjectPath,
+    public readonly scheme: string,
+    public readonly configuration: string,
+    public readonly destination: BuildDestination,
+    public readonly derivedDataPath: string
+  ) {
+    // Validate at construction - fail fast
+    if (!scheme || scheme.trim() === '') {
+      throw new Error('Scheme cannot be empty');
+    }
+    if (!configuration || configuration.trim() === '') {
+      throw new Error('Configuration cannot be empty');
+    }
+    if (!derivedDataPath || derivedDataPath.trim() === '') {
+      throw new Error('Derived data path cannot be empty');
+    }
   }
   
   /**
-   * Update the derived data path (used by use case after getting from config)
+   * Create a BuildRequest from raw inputs
    */
-  withDerivedDataPath(path: string): BuildRequest {
-    const updated = { ...this };
-    Object.setPrototypeOf(updated, BuildRequest.prototype);
-    (updated as any).configuration = this.configuration.withScheme(this.configuration.scheme || '')
-      .withPlatform(this.configuration.platform);
-    (updated as any).configuration = new BuildConfiguration(
-      this.configuration.scheme,
-      this.configuration.configuration,
-      this.configuration.platform,
-      this.configuration.deviceId,
-      path
+  static create(
+    projectPath: string,
+    scheme: string,
+    destination: BuildDestination,
+    configuration: string = 'Debug',
+    derivedDataPath: string = ''
+  ): BuildRequest {
+    return new BuildRequest(
+      ProjectPath.create(projectPath),
+      scheme,
+      configuration,
+      destination,
+      derivedDataPath
     );
-    return updated;
   }
 }

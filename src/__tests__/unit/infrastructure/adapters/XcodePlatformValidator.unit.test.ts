@@ -1,6 +1,6 @@
-import { XcodePlatformValidator } from '../../../infrastructure/adapters/XcodePlatformValidator.js';
-import { IPlatformValidator, ICommandExecutor, ExecutionResult } from '../../../application/ports/BuildPorts.js';
-import { Platform } from '../../../types.js';
+import { XcodePlatformValidator } from '../../../../infrastructure/adapters/XcodePlatformValidator.js';
+import { ICommandExecutor, ExecutionResult } from '../../../../application/ports/CommandPorts.js';
+import { Platform } from '../../../../domain/value-objects/Platform.js';
 
 describe('XcodePlatformValidator', () => {
   // Factory method for creating the SUT with its dependencies
