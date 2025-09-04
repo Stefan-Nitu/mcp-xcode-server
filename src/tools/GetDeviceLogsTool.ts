@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Devices } from '../utils/devices/Devices.js';
 import { createModuleLogger } from '../logger.js';
-import { timeIntervalSchema } from '../application/validators/commonSchemas.js';
+import { timeIntervalSchema } from '../commonSchemas.js';
 
 const logger = createModuleLogger('GetDeviceLogsTool');
 

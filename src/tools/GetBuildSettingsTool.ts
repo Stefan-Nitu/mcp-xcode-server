@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
-import { safePathSchema, platformSchema, configurationSchema } from '../application/validators/commonSchemas.js';
+import { safePathSchema, platformSchema, configurationSchema } from '../commonSchemas.js';
 import { XcodeInfo } from '../utils/projects/XcodeInfo.js';
 import { existsSync } from 'fs';
 

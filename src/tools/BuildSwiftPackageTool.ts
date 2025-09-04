@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createModuleLogger } from '../logger.js';
-import { safePathSchema } from '../application/validators/commonSchemas.js';
+import { safePathSchema } from '../commonSchemas.js';
 import { Xcode } from '../utils/projects/Xcode.js';
 import { SwiftPackage } from '../utils/projects/SwiftPackage.js';
 import { handleSwiftPackageError } from '../utils/errors/index.js';

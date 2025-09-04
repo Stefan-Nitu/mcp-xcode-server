@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Devices } from '../utils/devices/Devices.js';
 import { createModuleLogger } from '../logger.js';
-import { safePathSchema } from '../application/validators/commonSchemas.js';
+import { safePathSchema } from '../commonSchemas.js';
 
 const logger = createModuleLogger('InstallAppTool');
 

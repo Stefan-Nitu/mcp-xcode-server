@@ -3,7 +3,7 @@ import { Tool } from '../types.js';
 import { execAsync } from '../utils.js';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
-import { safePathSchema } from '../application/validators/commonSchemas.js';
+import { safePathSchema } from '../commonSchemas.js';
 
 const manageDependenciesSchema = z.object({
   projectPath: safePathSchema
