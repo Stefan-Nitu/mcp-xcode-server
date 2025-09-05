@@ -9,7 +9,7 @@ import { existsSync } from 'fs';
 
 // Mock filesystem
 jest.mock('fs', () => ({
-  existsSync: jest.fn()
+  existsSync: jest.fn<(path: string) => boolean>()
 }));
 
 const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;

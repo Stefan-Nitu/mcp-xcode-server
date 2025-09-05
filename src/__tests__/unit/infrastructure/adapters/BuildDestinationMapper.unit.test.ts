@@ -20,7 +20,7 @@ describe('BuildDestinationMapper', () => {
     mockGetCurrentArchitecture.mockResolvedValue(architecture);
     
     const mockDetector = {
-      isAppleSilicon: jest.fn(),
+      isAppleSilicon: jest.fn<() => Promise<boolean>>(),
       getCurrentArchitecture: mockGetCurrentArchitecture
     } as unknown as SystemArchitectureDetector;
     

@@ -1,7 +1,8 @@
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BuildProjectUseCase } from '../../../../application/use-cases/BuildProjectUseCase.js';
 import { BuildRequest } from '../../../../domain/value-objects/BuildRequest.js';
 import { BuildDestination } from '../../../../domain/value-objects/BuildDestination.js';
-import { ICommandExecutor } from '../../../../application/ports/CommandPorts.js';
+import { ICommandExecutor, ExecutionResult, ExecutionOptions } from '../../../../application/ports/CommandPorts.js';
 import { IAppLocator } from '../../../../application/ports/ArtifactPorts.js';
 import { ILogManager } from '../../../../application/ports/LoggingPorts.js';
 
@@ -9,10 +10,13 @@ import { XcbeautifyOutputParser } from '../../../../infrastructure/adapters/Xcbe
 import { BuildDestinationMapper } from '../../../../infrastructure/adapters/BuildDestinationMapper.js';
 import { XcodeBuildCommandBuilder } from '../../../../infrastructure/adapters/XcodeBuildCommandBuilder.js';
 import { SystemArchitectureDetector } from '../../../../infrastructure/adapters/SystemArchitectureDetector.js';
+import { existsSync } from 'fs';
 
 jest.mock('fs', () => ({
-  existsSync: jest.fn().mockReturnValue(true)
+  existsSync: jest.fn<(path: string) => boolean>()
 }));
+
+const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 
 /**
  * Sociable Unit tests for BuildProjectUseCase
@@ -20,22 +24,37 @@ jest.mock('fs', () => ({
  * Uses real collaborators except for external boundaries (subprocess, filesystem, I/O)
  */
 describe('BuildProjectUseCase', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Default behavior for tests
+    mockExistsSync.mockReturnValue(true);
+  });
+  
   function createSUT() {
+    // Using single parameter function signature with @jest/globals
+    const mockExecute = jest.fn<(command: string, options?: ExecutionOptions) => Promise<ExecutionResult>>();
     const mockExecutor: jest.Mocked<ICommandExecutor> = {
-      execute: jest.fn()
+      execute: mockExecute
     };
     
+    const mockArchExecute = jest.fn<(command: string, options?: ExecutionOptions) => Promise<ExecutionResult>>();
+    mockArchExecute.mockResolvedValue({ stdout: 'arm64\n', stderr: '', exitCode: 0 });
     const mockArchExecutor: jest.Mocked<ICommandExecutor> = {
-      execute: jest.fn().mockResolvedValue({ stdout: 'arm64\n', stderr: '', exitCode: 0 })
+      execute: mockArchExecute
     };
     
+    const mockFindApp = jest.fn<IAppLocator['findApp']>();
     const mockAppLocator: jest.Mocked<IAppLocator> = {
-      findApp: jest.fn()
+      findApp: mockFindApp
     };
     
+    const mockSaveLog = jest.fn<ILogManager['saveLog']>();
+    mockSaveLog.mockReturnValue('/path/to/log');
+    const mockSaveDebugData = jest.fn<ILogManager['saveDebugData']>();
+    mockSaveDebugData.mockReturnValue('/path/to/debug');
     const mockLogger: jest.Mocked<ILogManager> = {
-      saveLog: jest.fn().mockReturnValue('/path/to/log'),
-      saveDebugData: jest.fn().mockReturnValue('/path/to/debug')
+      saveLog: mockSaveLog,
+      saveDebugData: mockSaveDebugData
     };
     
     const architectureDetector = new SystemArchitectureDetector(mockArchExecutor);

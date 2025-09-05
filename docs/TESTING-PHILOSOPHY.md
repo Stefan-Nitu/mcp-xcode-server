@@ -1506,9 +1506,12 @@ const mockFunction = jest.fn();
 mockFunction.mockResolvedValue({ success: true }); // Error: type 'never'
 ```
 
-#### ✅ Good - Modern Jest syntax (Jest 27+)
+#### ✅ Good - Consistent Approach with @jest/globals
 ```typescript
-// Single type parameter with full function signature
+// Always import from @jest/globals for consistency
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+
+// Use single type parameter with function signature
 const mockFunction = jest.fn<() => Promise<{ success: boolean }>>();
 mockFunction.mockResolvedValue({ success: true }); // Works!
 
@@ -1517,9 +1520,34 @@ const mockBuildProject = jest.fn<(options: BuildOptions) => Promise<BuildResult>
 
 // Multiple parameters
 const mockCallback = jest.fn<(error: Error | null, data?: string) => void>();
+
+// Optional parameters
+const mockExecute = jest.fn<(command: string, options?: ExecutionOptions) => Promise<ExecutionResult>>();
 ```
 
-**Note**: Jest 27+ uses a single type parameter for the entire function signature, not separate return and argument types.
+#### Using Interface Properties
+```typescript
+// When mocking interface methods, use the property directly
+const mockFindApp = jest.fn<IAppLocator['findApp']>();
+const mockSaveLog = jest.fn<ILogManager['saveLog']>();
+```
+
+#### Factory Pattern for Mocks
+```typescript
+function createSUT() {
+  const mockExecute = jest.fn<(command: string, options?: ExecutionOptions) => Promise<ExecutionResult>>();
+  const mockExecutor: ICommandExecutor = {
+    execute: mockExecute
+  };
+  const sut = new MyService(mockExecutor);
+  return { sut, mockExecute }; // Return both for easy access in tests
+}
+```
+
+**Important**: 
+- Always import `jest` from `@jest/globals` for consistent type behavior
+- Use single type parameter with complete function signature
+- This approach avoids TypeScript errors and provides proper type inference
 
 ### 2. Handle instanceof Checks with Object.create()
 

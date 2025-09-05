@@ -3,7 +3,9 @@ import { ProjectPath } from '../../../../domain/value-objects/ProjectPath.js';
 import { existsSync } from 'fs';
 
 // Mock fs module
-jest.mock('fs');
+jest.mock('fs', () => ({
+  existsSync: jest.fn<(path: string) => boolean>()
+}));
 const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 
 describe('ProjectPath', () => {

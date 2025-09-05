@@ -1,20 +1,24 @@
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BuildArtifactLocator } from '../../../../infrastructure/adapters/BuildArtifactLocator.js';
-import { ICommandExecutor } from '../../../../application/ports/CommandPorts.js';
+import { ICommandExecutor, ExecutionResult, ExecutionOptions } from '../../../../application/ports/CommandPorts.js';
 import { existsSync } from 'fs';
 
 // Mock fs module
 jest.mock('fs', () => ({
-  existsSync: jest.fn()
+  existsSync: jest.fn<(path: string) => boolean>()
 }));
+
+const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 
 describe('BuildArtifactLocator', () => {
   // Factory method for creating the SUT with its dependencies
   function createSUT() {
+    const mockExecute = jest.fn<(command: string, options?: ExecutionOptions) => Promise<ExecutionResult>>();
     const mockExecutor: ICommandExecutor = {
-      execute: jest.fn()
+      execute: mockExecute
     };
     const sut = new BuildArtifactLocator(mockExecutor);
-    return { sut, mockExecutor };
+    return { sut, mockExecutor, mockExecute };
   }
   
   beforeEach(() => {
@@ -25,17 +29,17 @@ describe('BuildArtifactLocator', () => {
     describe('when app is found', () => {
       it('should return app path when app exists', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         const derivedDataPath = '/path/to/DerivedData';
         const appPath = '/path/to/DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app';
         
-        (mockExecutor.execute as jest.Mock).mockResolvedValue({
+        mockExecute.mockResolvedValue({
           stdout: appPath + '\n',
           stderr: '',
           exitCode: 0
         });
         
-        (existsSync as jest.Mock).mockReturnValue(true);
+        mockExistsSync.mockReturnValue(true);
         
         // Act
         const result = await sut.findApp(derivedDataPath);
@@ -46,22 +50,22 @@ describe('BuildArtifactLocator', () => {
           'find "/path/to/DerivedData" -name "*.app" -type d | head -1',
           { timeout: 5000 }
         );
-        expect(existsSync).toHaveBeenCalledWith(appPath);
+        expect(mockExistsSync).toHaveBeenCalledWith(appPath);
       });
       
       it('should handle paths with spaces correctly', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         const derivedDataPath = '/path/with spaces/DerivedData';
         const appPath = '/path/with spaces/DerivedData/MyApp.app';
         
-        (mockExecutor.execute as jest.Mock).mockResolvedValue({
+        mockExecute.mockResolvedValue({
           stdout: appPath,
           stderr: '',
           exitCode: 0
         });
         
-        (existsSync as jest.Mock).mockReturnValue(true);
+        mockExistsSync.mockReturnValue(true);
         
         // Act
         const result = await sut.findApp(derivedDataPath);
@@ -76,32 +80,32 @@ describe('BuildArtifactLocator', () => {
       
       it('should trim whitespace from command output', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         const appPath = '/path/to/MyApp.app';
         
-        (mockExecutor.execute as jest.Mock).mockResolvedValue({
+        mockExecute.mockResolvedValue({
           stdout: '  ' + appPath + '  \n\n',
           stderr: '',
           exitCode: 0
         });
         
-        (existsSync as jest.Mock).mockReturnValue(true);
+        mockExistsSync.mockReturnValue(true);
         
         // Act
         const result = await sut.findApp('/path');
         
         // Assert
         expect(result).toBe(appPath);
-        expect(existsSync).toHaveBeenCalledWith(appPath);
+        expect(mockExistsSync).toHaveBeenCalledWith(appPath);
       });
     });
     
     describe('when app is not found', () => {
       it('should return undefined when find returns empty', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         
-        (mockExecutor.execute as jest.Mock).mockResolvedValue({
+        mockExecute.mockResolvedValue({
           stdout: '',
           stderr: '',
           exitCode: 0
@@ -117,30 +121,30 @@ describe('BuildArtifactLocator', () => {
       
       it('should return undefined when app path does not exist', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         const appPath = '/path/to/NonExistent.app';
         
-        (mockExecutor.execute as jest.Mock).mockResolvedValue({
+        mockExecute.mockResolvedValue({
           stdout: appPath,
           stderr: '',
           exitCode: 0
         });
         
-        (existsSync as jest.Mock).mockReturnValue(false);
+        mockExistsSync.mockReturnValue(false);
         
         // Act
         const result = await sut.findApp('/path/to/DerivedData');
         
         // Assert
         expect(result).toBeUndefined();
-        expect(existsSync).toHaveBeenCalledWith(appPath);
+        expect(mockExistsSync).toHaveBeenCalledWith(appPath);
       });
       
       it('should return undefined when find command fails', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         
-        (mockExecutor.execute as jest.Mock).mockResolvedValue({
+        mockExecute.mockResolvedValue({
           stdout: '',
           stderr: 'find: /path/to/DerivedData: No such file or directory',
           exitCode: 1
@@ -158,9 +162,9 @@ describe('BuildArtifactLocator', () => {
     describe('error handling', () => {
       it('should return undefined when executor throws', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         
-        (mockExecutor.execute as jest.Mock).mockRejectedValue(
+        mockExecute.mockRejectedValue(
           new Error('Command execution failed')
         );
         
@@ -174,9 +178,9 @@ describe('BuildArtifactLocator', () => {
       
       it('should handle timeout gracefully', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         
-        (mockExecutor.execute as jest.Mock).mockRejectedValue(
+        mockExecute.mockRejectedValue(
           new Error('Command timed out')
         );
         
@@ -191,16 +195,16 @@ describe('BuildArtifactLocator', () => {
     describe('command construction', () => {
       it('should use correct find command', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         const derivedDataPath = '/Users/dev/DerivedData';
         
-        (mockExecutor.execute as jest.Mock).mockResolvedValue({
+        mockExecute.mockResolvedValue({
           stdout: '/some/app.app',
           stderr: '',
           exitCode: 0
         });
         
-        (existsSync as jest.Mock).mockReturnValue(true);
+        mockExistsSync.mockReturnValue(true);
         
         // Act
         await sut.findApp(derivedDataPath);
@@ -214,10 +218,10 @@ describe('BuildArtifactLocator', () => {
       
       it('should escape quotes in path', async () => {
         // Arrange
-        const { sut, mockExecutor } = createSUT();
+        const { sut, mockExecutor, mockExecute } = createSUT();
         const derivedDataPath = '/path/with"quote';
         
-        (mockExecutor.execute as jest.Mock).mockResolvedValue({
+        mockExecute.mockResolvedValue({
           stdout: '',
           stderr: '',
           exitCode: 0

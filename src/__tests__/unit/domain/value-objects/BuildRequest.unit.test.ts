@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BuildRequest } from '../../../../domain/value-objects/BuildRequest.js';
 import { BuildDestination } from '../../../../domain/value-objects/BuildDestination.js';
 import { ProjectPath } from '../../../../domain/value-objects/ProjectPath.js';
@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 
 // Mock filesystem for ProjectPath validation
 jest.mock('fs', () => ({
-  existsSync: jest.fn()
+  existsSync: jest.fn<(path: string) => boolean>()
 }));
 
 const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
