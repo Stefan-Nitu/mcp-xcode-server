@@ -837,6 +837,51 @@ test('handles device name format', () => {
 
 **Key Insight**: "DAMP not DRY" means tests should be easy to understand even if that means some code duplication. When a test fails, the reason should be immediately obvious.
 
+#### When to Use beforeEach vs DAMP
+
+**Use beforeEach for:**
+- Technical housekeeping that doesn't affect test understanding (e.g., `jest.clearAllMocks()`)
+- Mock resets and cleanup operations
+- Setting up test infrastructure that's identical across all tests
+
+```typescript
+// ✅ GOOD - beforeEach for technical housekeeping
+describe('ProjectPath', () => {
+  beforeEach(() => {
+    jest.clearAllMocks(); // Technical cleanup, not test logic
+  });
+  
+  it('should validate path exists', () => {
+    // Test-specific setup visible here
+    mockExistsSync.mockReturnValue(true);
+    const result = ProjectPath.create('/path/to/project.xcodeproj');
+    expect(result).toBeDefined();
+  });
+});
+
+// ❌ BAD - Adding mockClear in every test
+describe('ProjectPath', () => {
+  it('should validate path exists', () => {
+    mockExistsSync.mockClear(); // Repetitive technical detail
+    mockExistsSync.mockReturnValue(true);
+    const result = ProjectPath.create('/path/to/project.xcodeproj');
+    expect(result).toBeDefined();
+  });
+  
+  it('should reject invalid path', () => {
+    mockExistsSync.mockClear(); // Same line in every test!
+    mockExistsSync.mockReturnValue(false);
+    // ...
+  });
+});
+```
+
+**Apply DAMP (avoid beforeEach) for:**
+- Test data setup that varies between tests
+- SUT (System Under Test) creation
+- Mock configurations specific to test scenarios
+- Anything that helps understand what the test is doing
+
 #### SUT Creation Pattern - DAMP Over DRY
 
 For simple SUTs (System Under Test), create them directly in each test for maximum clarity:
