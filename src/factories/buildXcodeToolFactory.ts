@@ -1,3 +1,5 @@
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { BuildXcodeTool } from '../tools/BuildXcodeTool.js';
 import { BuildXcodeController } from '../presentation/controllers/BuildXcodeController.js';
 import { BuildXcodePresenter } from '../presentation/presenters/BuildXcodePresenter.js';
@@ -18,11 +20,12 @@ import { SystemArchitectureDetector } from '../infrastructure/services/SystemArc
  */
 export function createBuildXcodeTool(): BuildXcodeTool {
   // Create infrastructure adapters
-  const executor = new ShellCommandExecutorAdapter();
+  const execAsync = promisify(exec);
+  const executor = new ShellCommandExecutorAdapter(execAsync);
   const systemArchitectureDetector = new SystemArchitectureDetector(executor);
   const destinationMapper = new BuildDestinationMapperAdapter(systemArchitectureDetector);
   const commandBuilder = new XcodeBuildCommandAdapter();
-  const appLocator = new BuildArtifactLocatorAdapter();
+  const appLocator = new BuildArtifactLocatorAdapter(executor);
   const logManager = new LogManagerInstance();
   const outputParser = new XcbeautifyOutputParserAdapter();
   

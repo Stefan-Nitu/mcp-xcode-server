@@ -1,27 +1,20 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { ExecOptions } from 'child_process';
 import { createModuleLogger } from '../../logger.js';
 import { ICommandExecutor, ExecutionResult, ExecutionOptions } from '../../application/ports/CommandPorts.js';
 
 const logger = createModuleLogger('ShellCommandExecutor');
-
-// Type for the executor function
-export type ExecFunction = (
-  command: string, 
-  options: any
-) => Promise<{ stdout: string; stderr: string }>;
 
 /**
  * Executes shell commands via child process
  * Single Responsibility: Execute shell commands and return results
  */
 export class ShellCommandExecutorAdapter implements ICommandExecutor {
-  private readonly execAsync: ExecFunction;
-  
-  constructor(execFunction?: ExecFunction) {
-    // Use provided function or default to promisified exec
-    this.execAsync = execFunction || promisify(exec);
-  }
+  constructor(
+    private readonly execAsync: (
+      command: string, 
+      options: ExecOptions
+    ) => Promise<{ stdout: string; stderr: string }>
+  ) {}
   
   /**
    * Execute a command and return the result
