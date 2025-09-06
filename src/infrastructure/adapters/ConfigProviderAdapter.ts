@@ -12,7 +12,7 @@ import path from 'path';
  * 2. System defaults (e.g., user home directory)
  * 3. Hardcoded defaults as fallback
  */
-export class ConfigProvider implements IConfigProvider {
+export class ConfigProviderAdapter implements IConfigProvider {
   private readonly derivedDataBasePath: string;
   
   constructor() {

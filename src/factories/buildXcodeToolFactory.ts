@@ -4,27 +4,27 @@ import { BuildXcodePresenter } from '../presentation/presenters/BuildXcodePresen
 import { BuildProjectUseCase } from '../application/use-cases/BuildProjectUseCase.js';
 
 // Infrastructure adapters
-import { BuildDestinationMapper } from '../infrastructure/adapters/BuildDestinationMapper.js';
-import { XcodeBuildCommandBuilder } from '../infrastructure/adapters/XcodeBuildCommandBuilder.js';
-import { ShellCommandExecutor } from '../infrastructure/adapters/ShellCommandExecutor.js';
-import { BuildArtifactLocator } from '../infrastructure/adapters/BuildArtifactLocator.js';
+import { BuildDestinationMapperAdapter } from '../infrastructure/adapters/BuildDestinationMapperAdapter.js';
+import { XcodeBuildCommandAdapter } from '../infrastructure/adapters/XcodeBuildCommandAdapter.js';
+import { ShellCommandExecutorAdapter } from '../infrastructure/adapters/ShellCommandExecutorAdapter.js';
+import { BuildArtifactLocatorAdapter } from '../infrastructure/adapters/BuildArtifactLocatorAdapter.js';
 import { LogManagerInstance } from '../utils/LogManagerInstance.js';
-import { XcbeautifyOutputParser } from '../infrastructure/adapters/XcbeautifyOutputParser.js';
-import { ConfigProvider } from '../infrastructure/adapters/ConfigProvider.js';
-import { SystemArchitectureDetector } from '../infrastructure/adapters/SystemArchitectureDetector.js';
+import { XcbeautifyOutputParserAdapter } from '../infrastructure/adapters/XcbeautifyOutputParserAdapter.js';
+import { ConfigProviderAdapter } from '../infrastructure/adapters/ConfigProviderAdapter.js';
+import { SystemArchitectureDetector } from '../infrastructure/services/SystemArchitectureDetector.js';
 
 /**
  * Factory function to create BuildXcodeTool with all dependencies
  */
 export function createBuildXcodeTool(): BuildXcodeTool {
   // Create infrastructure adapters
-  const executor = new ShellCommandExecutor();
+  const executor = new ShellCommandExecutorAdapter();
   const systemArchitectureDetector = new SystemArchitectureDetector(executor);
-  const destinationMapper = new BuildDestinationMapper(systemArchitectureDetector);
-  const commandBuilder = new XcodeBuildCommandBuilder();
-  const appLocator = new BuildArtifactLocator();
+  const destinationMapper = new BuildDestinationMapperAdapter(systemArchitectureDetector);
+  const commandBuilder = new XcodeBuildCommandAdapter();
+  const appLocator = new BuildArtifactLocatorAdapter();
   const logManager = new LogManagerInstance();
-  const outputParser = new XcbeautifyOutputParser();
+  const outputParser = new XcbeautifyOutputParserAdapter();
   
   // Create use case with infrastructure
   const buildUseCase = new BuildProjectUseCase(
@@ -38,7 +38,7 @@ export function createBuildXcodeTool(): BuildXcodeTool {
   
   // Create infrastructure services
   // ConfigProvider is now stateless and project path is passed at runtime
-  const configProvider = new ConfigProvider();
+  const configProvider = new ConfigProviderAdapter();
   
   // Create controller with use case and services
   const controller = new BuildXcodeController(buildUseCase, configProvider);

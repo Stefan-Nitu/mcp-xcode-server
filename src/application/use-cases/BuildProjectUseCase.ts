@@ -5,7 +5,7 @@ import { BuildRequest } from '../../domain/value-objects/BuildRequest.js';
 import { BuildResult } from '../../domain/entities/BuildResult.js';
 
 // Application ports
-import { IBuildCommandBuilder } from '../ports/BuildPorts.js';
+import { IBuildCommand } from '../ports/BuildPorts.js';
 import { ICommandExecutor } from '../ports/CommandPorts.js';
 import { IAppLocator } from '../ports/ArtifactPorts.js';
 import { ILogManager } from '../ports/LoggingPorts.js';
@@ -19,7 +19,7 @@ import { IBuildDestinationMapper } from '../ports/MappingPorts.js';
 export class BuildProjectUseCase {
   constructor(
     private destinationMapper: IBuildDestinationMapper,
-    private commandBuilder: IBuildCommandBuilder,
+    private commandBuilder: IBuildCommand,
     private executor: ICommandExecutor,
     private appLocator: IAppLocator,
     private logManager: ILogManager,

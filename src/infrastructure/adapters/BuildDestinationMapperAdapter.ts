@@ -1,5 +1,6 @@
 import { BuildDestination } from '../../domain/value-objects/BuildDestination.js';
-import { SystemArchitectureDetector } from './SystemArchitectureDetector.js';
+import { IBuildDestinationMapper } from '../../application/ports/MappingPorts.js';
+import { SystemArchitectureDetector } from '../services/SystemArchitectureDetector.js';
 
 /**
  * Infrastructure adapter that maps domain BuildDestination values
@@ -7,7 +8,7 @@ import { SystemArchitectureDetector } from './SystemArchitectureDetector.js';
  * 
  * This is in infrastructure because it needs system detection.
  */
-export class BuildDestinationMapper {
+export class BuildDestinationMapperAdapter implements IBuildDestinationMapper {
   constructor(
     private architectureDetector: SystemArchitectureDetector
   ) {}

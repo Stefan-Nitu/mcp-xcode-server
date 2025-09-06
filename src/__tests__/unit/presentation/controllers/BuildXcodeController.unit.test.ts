@@ -1,7 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BuildXcodeController } from '../../../../presentation/controllers/BuildXcodeController.js';
 import { BuildProjectUseCase } from '../../../../application/use-cases/BuildProjectUseCase.js';
-import { ConfigProvider } from '../../../../infrastructure/adapters/ConfigProvider.js';
+import { ConfigProviderAdapter } from '../../../../infrastructure/adapters/ConfigProviderAdapter.js';
 import { BuildRequest } from '../../../../domain/value-objects/BuildRequest.js';
 import { BuildResult } from '../../../../domain/entities/BuildResult.js';
 import { BuildDestination } from '../../../../domain/value-objects/BuildDestination.js';
@@ -43,14 +43,14 @@ describe('BuildXcodeController', () => {
     };
     
     const mockGetDerivedDataPath = jest.fn<(projectPath: string) => string>();
-    const mockConfigProvider: Pick<ConfigProvider, 'getDerivedDataPath'> = {
+    const mockConfigProvider: Pick<ConfigProviderAdapter, 'getDerivedDataPath'> = {
       getDerivedDataPath: mockGetDerivedDataPath
     };
     
     // Controller only takes 2 parameters now
     const sut = new BuildXcodeController(
       mockBuildUseCase as BuildProjectUseCase,
-      mockConfigProvider as ConfigProvider
+      mockConfigProvider as ConfigProviderAdapter
     );
     
     return {

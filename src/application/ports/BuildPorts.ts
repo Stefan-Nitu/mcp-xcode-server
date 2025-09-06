@@ -14,7 +14,7 @@ export interface BuildCommandOptions {
   derivedDataPath?: string;
 }
 
-export interface IBuildCommandBuilder {
+export interface IBuildCommand {
   build(
     projectPath: string,
     isWorkspace: boolean,

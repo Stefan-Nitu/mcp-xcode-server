@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { ShellCommandExecutor, ExecFunction } from '../../../../infrastructure/adapters/ShellCommandExecutor.js';
+import { ShellCommandExecutorAdapter, ExecFunction } from '../../../../infrastructure/adapters/ShellCommandExecutorAdapter.js';
 
 /**
  * Unit tests for ShellCommandExecutor
@@ -16,7 +16,7 @@ describe('ShellCommandExecutor', () => {
   // Factory method for creating the SUT with mocked exec function
   function createSUT() {
     const mockExecAsync = jest.fn<ExecFunction>();
-    const sut = new ShellCommandExecutor(mockExecAsync);
+    const sut = new ShellCommandExecutorAdapter(mockExecAsync);
     return { sut, mockExecAsync };
   }
   

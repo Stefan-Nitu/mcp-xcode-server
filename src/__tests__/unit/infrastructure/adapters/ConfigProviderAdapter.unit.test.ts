@@ -1,4 +1,4 @@
-import { ConfigProvider } from '../../../../infrastructure/adapters/ConfigProvider.js';
+import { ConfigProviderAdapter } from '../../../../infrastructure/adapters/ConfigProviderAdapter.js';
 import { IConfigProvider } from '../../../../application/ports/ConfigPorts.js';
 import { homedir } from 'os';
 import path from 'path';
@@ -19,7 +19,7 @@ describe('ConfigProvider', () => {
   
   // Factory method for creating the SUT
   function createSUT(): IConfigProvider {
-    return new ConfigProvider();
+    return new ConfigProviderAdapter();
   }
   
   describe('getDerivedDataPath', () => {

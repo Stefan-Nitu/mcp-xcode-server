@@ -1,11 +1,11 @@
-import { XcbeautifyOutputParser } from '../../../../infrastructure/adapters/XcbeautifyOutputParser.js';
+import { XcbeautifyOutputParserAdapter } from '../../../../infrastructure/adapters/XcbeautifyOutputParserAdapter.js';
 import { IOutputParser } from '../../../../application/ports/OutputParserPorts.js';
 import { BuildIssue } from '../../../../domain/value-objects/BuildIssue.js';
 
 describe('XcbeautifyOutputParser', () => {
   // Factory method for creating the SUT (System Under Test)
   function createSUT(): IOutputParser {
-    return new XcbeautifyOutputParser();
+    return new XcbeautifyOutputParserAdapter();
   }
 
   describe('parseBuildOutput', () => {

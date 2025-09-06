@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { SystemArchitectureDetector } from '../../../../infrastructure/adapters/SystemArchitectureDetector.js';
+import { SystemArchitectureDetector } from '../../../../infrastructure/services/SystemArchitectureDetector.js';
 import { ICommandExecutor, ExecutionResult } from '../../../../application/ports/CommandPorts.js';
 
 /**

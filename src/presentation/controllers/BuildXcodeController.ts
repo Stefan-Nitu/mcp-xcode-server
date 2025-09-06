@@ -3,7 +3,7 @@ import { BuildProjectUseCase } from '../../application/use-cases/BuildProjectUse
 import { BuildRequest } from '../../domain/value-objects/BuildRequest.js';
 import { BuildResult } from '../../domain/entities/BuildResult.js';
 import { BuildDestination } from '../../domain/value-objects/BuildDestination.js';
-import { ConfigProvider } from '../../infrastructure/adapters/ConfigProvider.js';
+import { ConfigProviderAdapter } from '../../infrastructure/adapters/ConfigProviderAdapter.js';
 import { createModuleLogger } from '../../logger.js';
 import {
   projectPathSchema,
@@ -40,7 +40,7 @@ export type BuildXcodeArgs = z.infer<typeof buildXcodeSchema>;
 export class BuildXcodeController {
   constructor(
     private buildUseCase: BuildProjectUseCase,
-    private configProvider: ConfigProvider
+    private configProvider: ConfigProviderAdapter
   ) {}
   
   async handle(args: unknown): Promise<BuildResult> {

@@ -2,7 +2,7 @@ import { existsSync } from 'fs';
 import { createModuleLogger } from '../../logger.js';
 import { IAppLocator } from '../../application/ports/ArtifactPorts.js';
 import { ICommandExecutor } from '../../application/ports/CommandPorts.js';
-import { ShellCommandExecutor } from './ShellCommandExecutor.js';
+import { ShellCommandExecutorAdapter } from './ShellCommandExecutorAdapter.js';
 
 const logger = createModuleLogger('BuildArtifactLocator');
 
@@ -10,8 +10,8 @@ const logger = createModuleLogger('BuildArtifactLocator');
  * Locates build artifacts (application bundles) in DerivedData
  * Single Responsibility: Find .app bundles in build directories
  */
-export class BuildArtifactLocator implements IAppLocator {
-  constructor(private executor: ICommandExecutor = new ShellCommandExecutor()) {}
+export class BuildArtifactLocatorAdapter implements IAppLocator {
+  constructor(private executor: ICommandExecutor = new ShellCommandExecutorAdapter()) {}
 
   /**
    * Find the built app in DerivedData

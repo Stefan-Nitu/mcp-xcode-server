@@ -1,4 +1,6 @@
-import { XcodeBuildCommandBuilder, BuildCommandOptions } from '../../../../infrastructure/adapters/XcodeBuildCommandBuilder.js';
+import { describe, it, expect } from '@jest/globals';
+import { XcodeBuildCommandAdapter } from '../../../../infrastructure/adapters/XcodeBuildCommandAdapter.js';
+import { BuildCommandOptions } from '../../../../application/ports/BuildPorts.js';
 
 /**
  * Unit tests for XcodeBuildCommandBuilder
@@ -12,8 +14,8 @@ import { XcodeBuildCommandBuilder, BuildCommandOptions } from '../../../../infra
 
 describe('XcodeBuildCommandBuilder', () => {
   // Factory method for creating the SUT (no dependencies needed!)
-  function createSUT(): XcodeBuildCommandBuilder {
-    return new XcodeBuildCommandBuilder();
+  function createSUT(): XcodeBuildCommandAdapter {
+    return new XcodeBuildCommandAdapter();
   }
 
   describe('build', () => {

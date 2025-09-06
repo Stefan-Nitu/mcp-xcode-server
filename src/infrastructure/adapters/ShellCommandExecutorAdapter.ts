@@ -15,7 +15,7 @@ export type ExecFunction = (
  * Executes shell commands via child process
  * Single Responsibility: Execute shell commands and return results
  */
-export class ShellCommandExecutor implements ICommandExecutor {
+export class ShellCommandExecutorAdapter implements ICommandExecutor {
   private readonly execAsync: ExecFunction;
   
   constructor(execFunction?: ExecFunction) {

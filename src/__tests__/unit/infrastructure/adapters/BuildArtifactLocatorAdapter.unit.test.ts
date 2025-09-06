@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { BuildArtifactLocator } from '../../../../infrastructure/adapters/BuildArtifactLocator.js';
+import { BuildArtifactLocatorAdapter } from '../../../../infrastructure/adapters/BuildArtifactLocatorAdapter.js';
 import { ICommandExecutor, ExecutionResult, ExecutionOptions } from '../../../../application/ports/CommandPorts.js';
 import { existsSync } from 'fs';
 
@@ -17,7 +17,7 @@ describe('BuildArtifactLocator', () => {
     const mockExecutor: ICommandExecutor = {
       execute: mockExecute
     };
-    const sut = new BuildArtifactLocator(mockExecutor);
+    const sut = new BuildArtifactLocatorAdapter(mockExecutor);
     return { sut, mockExecutor, mockExecute };
   }
   

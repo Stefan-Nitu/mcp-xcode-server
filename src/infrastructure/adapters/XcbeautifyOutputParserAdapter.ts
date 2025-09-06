@@ -11,7 +11,7 @@ import { BuildIssue } from '../../domain/value-objects/BuildIssue.js';
  * - Deduplicate identical issues
  * - NO formatting, NO adding messages
  */
-export class XcbeautifyOutputParser implements IOutputParser {
+export class XcbeautifyOutputParserAdapter implements IOutputParser {
   
   parseBuildOutput(output: string): ParsedOutput {
     const lines = output.split('\n');

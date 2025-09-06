@@ -1,4 +1,4 @@
-import { IBuildCommandBuilder } from '../../application/ports/BuildPorts.js';
+import { IBuildCommand, BuildCommandOptions } from '../../application/ports/BuildPorts.js';
 
 /**
  * Infrastructure adapter that builds xcodebuild CLI commands
@@ -9,16 +9,7 @@ import { IBuildCommandBuilder } from '../../application/ports/BuildPorts.js';
  * - Pure string concatenation
  */
 
-// Build command options - simple strings, no domain types
-export interface BuildCommandOptions {
-  scheme: string;
-  configuration?: string;
-  destination: string;  // Already mapped destination string
-  additionalSettings?: string[];
-  derivedDataPath?: string;
-}
-
-export class XcodeBuildCommandBuilder implements IBuildCommandBuilder {
+export class XcodeBuildCommandAdapter implements IBuildCommand {
   /**
    * Build an xcodebuild command string
    * @param projectPath Path to .xcodeproj or .xcworkspace file

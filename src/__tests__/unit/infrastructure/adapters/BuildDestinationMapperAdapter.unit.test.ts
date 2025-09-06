@@ -1,6 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { BuildDestinationMapper } from '../../../../infrastructure/adapters/BuildDestinationMapper.js';
-import { SystemArchitectureDetector } from '../../../../infrastructure/adapters/SystemArchitectureDetector.js';
+import { BuildDestinationMapperAdapter } from '../../../../infrastructure/adapters/BuildDestinationMapperAdapter.js';
+import { SystemArchitectureDetector } from '../../../../infrastructure/services/SystemArchitectureDetector.js';
 import { BuildDestination } from '../../../../domain/value-objects/BuildDestination.js';
 
 /**
@@ -19,12 +19,12 @@ describe('BuildDestinationMapper', () => {
     const mockGetCurrentArchitecture = jest.fn<() => Promise<string>>();
     mockGetCurrentArchitecture.mockResolvedValue(architecture);
     
-    const mockDetector = {
-      isAppleSilicon: jest.fn<() => Promise<boolean>>(),
-      getCurrentArchitecture: mockGetCurrentArchitecture
-    } as unknown as SystemArchitectureDetector;
+    // Create a proper mock that extends the class
+    const mockDetector = Object.create(SystemArchitectureDetector.prototype);
+    mockDetector.isAppleSilicon = jest.fn<() => Promise<boolean>>();
+    mockDetector.getCurrentArchitecture = mockGetCurrentArchitecture;
     
-    const sut = new BuildDestinationMapper(mockDetector);
+    const sut = new BuildDestinationMapperAdapter(mockDetector);
     
     return { sut, mockGetCurrentArchitecture };
   }

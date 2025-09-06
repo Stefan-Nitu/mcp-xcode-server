@@ -6,10 +6,10 @@ import { ICommandExecutor, ExecutionResult, ExecutionOptions } from '../../../..
 import { IAppLocator } from '../../../../application/ports/ArtifactPorts.js';
 import { ILogManager } from '../../../../application/ports/LoggingPorts.js';
 
-import { XcbeautifyOutputParser } from '../../../../infrastructure/adapters/XcbeautifyOutputParser.js';
-import { BuildDestinationMapper } from '../../../../infrastructure/adapters/BuildDestinationMapper.js';
-import { XcodeBuildCommandBuilder } from '../../../../infrastructure/adapters/XcodeBuildCommandBuilder.js';
-import { SystemArchitectureDetector } from '../../../../infrastructure/adapters/SystemArchitectureDetector.js';
+import { XcbeautifyOutputParserAdapter } from '../../../../infrastructure/adapters/XcbeautifyOutputParserAdapter.js';
+import { BuildDestinationMapperAdapter } from '../../../../infrastructure/adapters/BuildDestinationMapperAdapter.js';
+import { XcodeBuildCommandAdapter } from '../../../../infrastructure/adapters/XcodeBuildCommandAdapter.js';
+import { SystemArchitectureDetector } from '../../../../infrastructure/services/SystemArchitectureDetector.js';
 import { existsSync } from 'fs';
 
 jest.mock('fs', () => ({
@@ -58,9 +58,9 @@ describe('BuildProjectUseCase', () => {
     };
     
     const architectureDetector = new SystemArchitectureDetector(mockArchExecutor);
-    const destinationMapper = new BuildDestinationMapper(architectureDetector);
-    const commandBuilder = new XcodeBuildCommandBuilder();
-    const outputParser = new XcbeautifyOutputParser();
+    const destinationMapper = new BuildDestinationMapperAdapter(architectureDetector);
+    const commandBuilder = new XcodeBuildCommandAdapter();
+    const outputParser = new XcbeautifyOutputParserAdapter();
     
     const sut = new BuildProjectUseCase(
       destinationMapper,
