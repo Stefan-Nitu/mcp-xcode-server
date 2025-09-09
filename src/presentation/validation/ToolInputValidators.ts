@@ -111,6 +111,30 @@ export const portSchema = z.number()
   .max(65535, 'Port must be 65535 or lower');
 
 /**
+ * App path validation (.app bundles)
+ */
+export const appPathSchema = z.string()
+  .min(1, 'App path is required')
+  .refine(
+    (path) => path.endsWith('.app'),
+    'App path must be a .app bundle'
+  )
+  .refine(
+    (path) => !path.includes('../..'),
+    'Invalid app path: path traversal detected'
+  );
+
+/**
+ * Simulator ID validation (optional)
+ */
+export const simulatorIdSchema = z.string()
+  .optional()
+  .refine(
+    (id) => !id || id.trim().length > 0,
+    'Simulator ID cannot be empty if provided'
+  );
+
+/**
  * Platform validation (for tools that accept platform directly)
  */
 export const platformSchema = z.enum(

@@ -38,8 +38,9 @@ import { logger, logToolExecution, logError } from './logger.js';
 //   ManageDependenciesTool
 // } from './tools/index.js';
 
-// Import factory for BuildXcodeTool
-import { createBuildXcodeTool } from './factories/BuildXcodeControllerFactory.js';
+// Import factories for Clean Architecture controllers
+import { BuildXcodeControllerFactory } from './factories/BuildXcodeControllerFactory.js';
+import { InstallAppControllerFactory } from './factories/InstallAppControllerFactory.js';
 
 type Tool = {
   execute(args: any): Promise<any>;
@@ -80,7 +81,8 @@ class XcodeServer {
       // Build and test
       // new BuildSwiftPackageTool(),
       // new RunSwiftPackageTool(),
-      createBuildXcodeTool(),
+      BuildXcodeControllerFactory.create(),
+      InstallAppControllerFactory.create(),
       // new RunXcodeTool(),
       // new TestXcodeTool(),
       // new TestSwiftPackageTool(),

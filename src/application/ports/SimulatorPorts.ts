@@ -49,12 +49,13 @@ export interface IAppInstaller {
 }
 
 /**
- * Immutable simulator information
- * State is NOT included as it can change dynamically
+ * Simulator information snapshot
+ * Includes current state at time of query (not cached)
  */
 export interface SimulatorInfo {
   readonly id: string;
   readonly name: string;
+  readonly state: SimulatorState;
   readonly platform: string;
   readonly runtime: string;
 }

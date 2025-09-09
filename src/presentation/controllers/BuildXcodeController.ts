@@ -15,6 +15,7 @@ import {
   derivedDataPathSchema
 } from '../validation/ToolInputValidators.js';
 import { MCPResponse } from '../interfaces/MCPResponse.js';
+import { BuildXcodeTool } from '../../tools/BuildXcodeTool.js';
 
 const logger = createModuleLogger('BuildXcodeController');
 

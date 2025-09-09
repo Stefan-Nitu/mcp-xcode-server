@@ -1,24 +1,13 @@
 import { AppPath } from '../../domain/value-objects/AppPath.js';
 import { SimulatorState } from '../../domain/value-objects/SimulatorState.js';
+import { InstallRequest } from '../../domain/value-objects/InstallRequest.js';
+import { InstallResult } from '../../domain/entities/InstallResult.js';
 import { 
-  ISimulatorLocator, 
-  ISimulatorStateQuery,
+  ISimulatorLocator,
   ISimulatorControl,
   IAppInstaller 
 } from '../ports/SimulatorPorts.js';
 import { ILogManager } from '../ports/LoggingPorts.js';
-
-export interface InstallAppRequest {
-  appPath: AppPath;
-  simulatorId?: string;
-}
-
-export interface InstallAppResult {
-  success: boolean;
-  message: string;
-  simulatorName: string;
-  appName: string;
-}
 
 /**
  * Use Case: Install an app on a simulator
@@ -27,14 +16,15 @@ export interface InstallAppResult {
 export class InstallAppUseCase {
   constructor(
     private simulatorLocator: ISimulatorLocator,
-    private stateQuery: ISimulatorStateQuery,
     private simulatorControl: ISimulatorControl,
     private appInstaller: IAppInstaller,
     private logManager: ILogManager
   ) {}
 
-  async execute(request: InstallAppRequest): Promise<InstallAppResult> {
-    const appName = request.appPath.name;
+  async execute(request: InstallRequest): Promise<InstallResult> {
+    // Create AppPath from the string path in request
+    const appPath = AppPath.create(request.appPath);
+    const appName = appPath.name;
     
     // Find target simulator
     const simulator = request.simulatorId
@@ -51,13 +41,12 @@ export class InstallAppUseCase {
         requestedId: request.simulatorId
       }, appName);
       
-      throw new Error(message);
+      return InstallResult.failure(message, request.appPath, request.simulatorId);
     }
     
     // Boot simulator if needed (only when specific ID provided)
     if (request.simulatorId) {
-      const state = await this.stateQuery.getState(simulator.id);
-      if (state === SimulatorState.Shutdown) {
+      if (simulator.state === SimulatorState.Shutdown) {
         try {
           await this.simulatorControl.boot(simulator.id);
           this.logManager.saveDebugData('simulator-auto-booted', {
@@ -69,7 +58,12 @@ export class InstallAppUseCase {
             simulatorId: simulator.id,
             error: error.message
           }, appName);
-          throw new Error(`Failed to boot simulator: ${error.message}`);
+          return InstallResult.failure(
+            `Failed to boot simulator: ${error.message}`,
+            request.appPath,
+            simulator.id,
+            simulator.name
+          );
         }
       }
     }
@@ -77,7 +71,7 @@ export class InstallAppUseCase {
     // Install the app
     try {
       await this.appInstaller.installApp(
-        request.appPath.toString(),
+        appPath.toString(),
         simulator.id
       );
       
@@ -87,12 +81,15 @@ export class InstallAppUseCase {
         app: appName
       }, appName);
       
-      return {
-        success: true,
-        message: `Successfully installed ${appName} on ${simulator.name}`,
-        simulatorName: simulator.name,
-        appName: appName
-      };
+      // Try to get bundle ID from app (could be enhanced later)
+      const bundleId = appName; // For now, use app name as bundle ID
+      
+      return InstallResult.success(
+        bundleId,
+        simulator.id,
+        simulator.name,
+        request.appPath
+      );
     } catch (error: any) {
       this.logManager.saveDebugData('install-app-error', {
         simulator: simulator.name,
@@ -101,7 +98,12 @@ export class InstallAppUseCase {
         error: error.message
       }, appName);
       
-      throw new Error(`Failed to install app: ${error.message}`);
+      return InstallResult.failure(
+        `Failed to install app: ${error.message}`,
+        request.appPath,
+        simulator.id,
+        simulator.name
+      );
     }
   }
 }

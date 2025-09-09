@@ -11,7 +11,7 @@
  */
 
 import { BuildXcodeController } from '../../presentation/controllers/BuildXcodeController.js';
-import { createBuildXcodeTool } from '../../factories/BuildXcodeControllerFactory.js';
+import { BuildXcodeControllerFactory } from '../../factories/BuildXcodeControllerFactory.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
 import * as fs from 'fs';
 
@@ -30,7 +30,7 @@ describe('BuildXcodeController E2E', () => {
   
   beforeEach(() => {
     // Create controller with all real dependencies
-    controller = createBuildXcodeTool();
+    controller = BuildXcodeControllerFactory.create();
   });
 
   describe('build real Xcode projects', () => {

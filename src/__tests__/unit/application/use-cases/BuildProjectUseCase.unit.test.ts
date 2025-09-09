@@ -5,6 +5,7 @@ import { BuildDestination } from '../../../../domain/value-objects/BuildDestinat
 import { ICommandExecutor, ExecutionResult, ExecutionOptions } from '../../../../application/ports/CommandPorts.js';
 import { IAppLocator } from '../../../../application/ports/ArtifactPorts.js';
 import { ILogManager } from '../../../../application/ports/LoggingPorts.js';
+import { IOutputFormatter } from '../../../../application/ports/OutputFormatterPorts.js';
 
 import { XcbeautifyOutputParserAdapter } from '../../../../infrastructure/adapters/XcbeautifyOutputParserAdapter.js';
 import { BuildDestinationMapperAdapter } from '../../../../infrastructure/adapters/BuildDestinationMapperAdapter.js';
@@ -57,6 +58,13 @@ describe('BuildProjectUseCase', () => {
       saveDebugData: mockSaveDebugData
     };
     
+    const mockFormat = jest.fn<IOutputFormatter['format']>();
+    // By default, formatter just passes through the output
+    mockFormat.mockImplementation(async (output) => output);
+    const mockFormatter: IOutputFormatter = {
+      format: mockFormat
+    };
+    
     const architectureDetector = new SystemArchitectureDetector(mockArchExecutor);
     const destinationMapper = new BuildDestinationMapperAdapter(architectureDetector);
     const commandBuilder = new XcodeBuildCommandAdapter();
@@ -68,14 +76,16 @@ describe('BuildProjectUseCase', () => {
       mockExecutor,
       mockAppLocator,
       mockLogger,
-      outputParser
+      outputParser,
+      mockFormatter
     );
     
     return {
       sut,
       mockExecutor,
       mockAppLocator,
-      mockLogger
+      mockLogger,
+      mockFormat
     };
   }
   

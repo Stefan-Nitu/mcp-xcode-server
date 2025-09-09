@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { SimulatorLocatorAdapter } from '../../../../infrastructure/adapters/SimulatorLocatorAdapter.js';
 import { ICommandExecutor } from '../../../../application/ports/CommandPorts.js';
+import { SimulatorState } from '../../../../domain/value-objects/SimulatorState.js';
 
 describe('SimulatorLocatorAdapter', () => {
   beforeEach(() => {
@@ -46,6 +47,7 @@ describe('SimulatorLocatorAdapter', () => {
         expect(result).toEqual({
           id: 'ABC-123-EXACT',
           name: 'iPhone 15',
+          state: SimulatorState.Shutdown,
           platform: 'iOS',
           runtime: 'com.apple.CoreSimulator.SimRuntime.iOS-17-0'
         });
@@ -256,6 +258,7 @@ describe('SimulatorLocatorAdapter', () => {
         expect(result).toEqual({
           id: 'BOOT-456',
           name: 'iPhone 14',
+          state: SimulatorState.Booted,
           platform: 'iOS',
           runtime: 'com.apple.CoreSimulator.SimRuntime.iOS-17-0'
         });

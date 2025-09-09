@@ -38,12 +38,12 @@ describe('XcodeBuildCommandBuilder', () => {
 
         // Assert
         expect(command).toBe(
-          'set -o pipefail && xcodebuild -workspace "/path/to/MyApp.xcworkspace" ' +
+          'xcodebuild -workspace "/path/to/MyApp.xcworkspace" ' +
           '-scheme "MyScheme" -configuration "Release" ' +
           '-destination \'generic/platform=iOS Simulator\' ' +
           'ARCHS=arm64 ONLY_ACTIVE_ARCH=YES ' +
           '-derivedDataPath "/tmp/DerivedData" ' +
-          'build 2>&1 | xcbeautify'
+          'build 2>&1'
         );
       });
 
@@ -62,10 +62,10 @@ describe('XcodeBuildCommandBuilder', () => {
 
         // Assert
         expect(command).toBe(
-          'set -o pipefail && xcodebuild -workspace "/path/to/MyApp.xcworkspace" ' +
+          'xcodebuild -workspace "/path/to/MyApp.xcworkspace" ' +
           '-scheme "MyScheme" -configuration "Debug" ' +
           '-destination \'platform=iOS Simulator,name=iPhone 15\' ' +
-          'build 2>&1 | xcbeautify'
+          'build 2>&1'
         );
       });
     });
@@ -86,10 +86,10 @@ describe('XcodeBuildCommandBuilder', () => {
 
         // Assert
         expect(command).toBe(
-          'set -o pipefail && xcodebuild -project "/path/to/MyApp.xcodeproj" ' +
+          'xcodebuild -project "/path/to/MyApp.xcodeproj" ' +
           '-scheme "MyScheme" -configuration "Debug" ' +
           '-destination \'generic/platform=iOS\' ' +
-          'build 2>&1 | xcbeautify'
+          'build 2>&1'
         );
       });
     });
@@ -239,7 +239,7 @@ describe('XcodeBuildCommandBuilder', () => {
         expect(command).toContain('-destination \'platform=iOS Simulator,name=iPhone 15\'');
       });
 
-      it('should include pipefail and xcbeautify', () => {
+      it('should redirect stderr to stdout', () => {
         // Arrange
         const sut = createSUT();
         const options: BuildCommandOptions = {
@@ -251,11 +251,10 @@ describe('XcodeBuildCommandBuilder', () => {
         const command = sut.build('/path/project.xcodeproj', false, options);
 
         // Assert
-        expect(command).toMatch(/^set -o pipefail && xcodebuild/);
-        expect(command).toMatch(/2>&1 \| xcbeautify$/);
+        expect(command).toMatch(/2>&1$/);
       });
 
-      it('should end with build action before piping', () => {
+      it('should end with build action before redirecting', () => {
         // Arrange
         const sut = createSUT();
         const options: BuildCommandOptions = {
@@ -267,8 +266,8 @@ describe('XcodeBuildCommandBuilder', () => {
         const command = sut.build('/path/project.xcodeproj', false, options);
 
         // Assert
-        // The build action should come before the pipe
-        expect(command).toMatch(/build 2>&1 \| xcbeautify$/);
+        // The build action should come before the redirection
+        expect(command).toMatch(/build 2>&1$/);
       });
     });
 
@@ -286,10 +285,10 @@ describe('XcodeBuildCommandBuilder', () => {
 
         // Assert
         const expected = 
-          'set -o pipefail && xcodebuild -project "/Users/dev/MyApp.xcodeproj" ' +
+          'xcodebuild -project "/Users/dev/MyApp.xcodeproj" ' +
           '-scheme "MyApp" -configuration "Debug" ' +
           '-destination \'generic/platform=iOS Simulator\' ' +
-          'build 2>&1 | xcbeautify';
+          'build 2>&1';
         expect(command).toBe(expected);
       });
 
@@ -309,12 +308,12 @@ describe('XcodeBuildCommandBuilder', () => {
 
         // Assert
         const expected = 
-          'set -o pipefail && xcodebuild -workspace "/Users/dev/MyApp.xcworkspace" ' +
+          'xcodebuild -workspace "/Users/dev/MyApp.xcworkspace" ' +
           '-scheme "Production" -configuration "Release" ' +
           '-destination \'platform=iOS Simulator,name=iPhone 15\' ' +
           'ARCHS=arm64 ONLY_ACTIVE_ARCH=YES ' +
           '-derivedDataPath "/tmp/DD" ' +
-          'build 2>&1 | xcbeautify';
+          'build 2>&1';
         expect(command).toBe(expected);
       });
 
@@ -333,11 +332,11 @@ describe('XcodeBuildCommandBuilder', () => {
 
         // Assert
         const expected = 
-          'set -o pipefail && xcodebuild -project "/Users/dev/MyMacApp.xcodeproj" ' +
+          'xcodebuild -project "/Users/dev/MyMacApp.xcodeproj" ' +
           '-scheme "MyMacApp" -configuration "Release" ' +
           '-destination \'platform=macOS\' ' +
           'ARCHS=x86_64 arm64 ONLY_ACTIVE_ARCH=NO ' +
-          'build 2>&1 | xcbeautify';
+          'build 2>&1';
         expect(command).toBe(expected);
       });
     });

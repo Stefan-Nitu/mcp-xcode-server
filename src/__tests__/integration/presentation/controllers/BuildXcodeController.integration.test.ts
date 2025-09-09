@@ -3,11 +3,22 @@ import { BuildXcodeController } from '../../../../presentation/controllers/Build
 import { BuildXcodeControllerFactory } from '../../../../factories/BuildXcodeControllerFactory.js';
 import { exec } from 'child_process';
 import { existsSync } from 'fs';
+import type { NodeExecError, ExecMockCall } from '../../../utils/types/execTypes.js';
 
 // Mock ONLY external boundaries
-jest.mock('child_process', () => ({
-  exec: jest.fn()
-}));
+jest.mock('child_process');
+
+// Mock promisify to return {stdout, stderr} for exec (as node's promisify does)
+jest.mock('util', () => {
+  const actualUtil = jest.requireActual('util') as typeof import('util');
+  const { createPromisifiedExec } = require('../../../utils/mocks/promisifyExec');
+  
+  return {
+    ...actualUtil,
+    promisify: (fn: Function) => 
+      fn?.name === 'exec' ? createPromisifiedExec(fn) : actualUtil.promisify(fn)
+  };
+});
 
 jest.mock('fs', () => ({
   existsSync: jest.fn<(path: string) => boolean>(),
@@ -33,53 +44,51 @@ const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 describe('BuildXcodeController Integration', () => {
   let controller: BuildXcodeController;
   let execCallIndex: number;
-  let execMockResponses: Array<{ stdout: string; stderr: string; error?: Error }>;
+  let execMockResponses: Array<{ stdout: string; stderr: string; error?: NodeExecError }>;
 
-  // Factory methods for common mock responses
-  const createArchitectureDetectionResponses = () => [
-    { stdout: '1', stderr: '' }, // sysctl -n hw.optional.arm64
-    { stdout: 'arm64', stderr: '' } // uname -m
-  ];
-
-  const createSuccessfulBuildResponse = (output = '** BUILD SUCCEEDED **') => ({
-    stdout: output,
-    stderr: ''
-  });
-
-  const createAppFoundResponse = (appPath: string) => ({
-    stdout: appPath,
-    stderr: ''
-  });
-
-  const createBuildFailureResponse = (output: string, stderr = 'Build failed') => ({
-    stdout: output,
-    stderr
-  });
-
-  const createSuccessfulBuildSequence = (appPath: string, buildOutput = '** BUILD SUCCEEDED **') => [
-    ...createArchitectureDetectionResponses(),
-    createSuccessfulBuildResponse(buildOutput),
-    createAppFoundResponse(appPath)
-  ];
+  // Factory for xcodebuild mock responses
+  const XcodebuildResponse = {
+    success: (output = '** BUILD SUCCEEDED **') => ({
+      stdout: output,
+      stderr: ''
+    }),
+    
+    buildFailure: (output: string, stderr = 'Build failed') => {
+      const error = new Error(`Command failed: xcodebuild`) as NodeExecError;
+      error.code = 65; // xcodebuild exit code for build failure
+      error.stdout = output;
+      error.stderr = stderr;
+      return { error, stdout: output, stderr };
+    },
+    
+    commandNotFound: (command: string, stderr: string) => ({
+      error: Object.assign(new Error(`Command failed: ${command}`), {
+        code: 127, // Exit code 127 = command not found
+        stdout: '',
+        stderr
+      }),
+      stdout: '',
+      stderr
+    })
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     execCallIndex = 0;
     execMockResponses = [];
     
-    // Setup exec mock to return sequential responses
-    (mockExec as any).mockImplementation((cmd: string, options: any, callback: (error: any, stdout: string, stderr: string) => void) => {
-      const response = execMockResponses[execCallIndex++];
-      if (response) {
-        if (response.error) {
-          callback(response.error, '', '');
-        } else {
-          callback(null, response.stdout, response.stderr);
-        }
-      } else {
-        callback(new Error('No mock response configured'), '', '');
-      }
-    });
+    // Setup selective exec mock - only mocks xcodebuild commands
+    const actualExec = (jest.requireActual('child_process') as typeof import('child_process')).exec;
+    const { createSelectiveExecMock } = require('../../../utils/mocks/selectiveExecMock');
+    const { isXcodebuildCommand } = require('../../../utils/mocks/xcodebuildHelpers');
+    
+    mockExec.mockImplementation(
+      createSelectiveExecMock(
+        isXcodebuildCommand,
+        () => execMockResponses[execCallIndex++],
+        actualExec
+      )
+    );
     
     // Default filesystem mock - project exists
     mockExistsSync.mockImplementation((path) => {
@@ -101,9 +110,9 @@ describe('BuildXcodeController Integration', () => {
         destination: 'iOSSimulator'
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success('** BUILD SUCCEEDED **')
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -122,9 +131,9 @@ describe('BuildXcodeController Integration', () => {
         destination: 'iOSDevice'
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug-iphoneos/MyApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success()
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -149,9 +158,9 @@ describe('BuildXcodeController Integration', () => {
         destination: 'macOS'
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug/MacApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success()
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -170,9 +179,9 @@ describe('BuildXcodeController Integration', () => {
         destination: 'tvOSSimulator'
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug-appletvsimulator/TVApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success()
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -191,9 +200,9 @@ describe('BuildXcodeController Integration', () => {
         destination: 'watchOSSimulator'
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug-watchsimulator/WatchApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success()
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -212,9 +221,9 @@ describe('BuildXcodeController Integration', () => {
         destination: 'visionOSSimulator'
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug-xrsimulator/VisionApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success()
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -234,9 +243,9 @@ describe('BuildXcodeController Integration', () => {
         derivedDataPath: customPath
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        `${customPath}/Build/Products/Debug-iphonesimulator/MyApp.app`
-      );
+      execMockResponses = [
+        XcodebuildResponse.success()
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -260,14 +269,19 @@ describe('BuildXcodeController Integration', () => {
         destination: 'iOSSimulator'
       };
       
-      const buildOutputWithWarnings = `⚠️  /Users/dev/MyApp/ViewController.swift:42:10: warning: 'oldMethod()' is deprecated
-⚠️  /Users/dev/MyApp/AppDelegate.swift:15:5: warning: initialization of immutable value 'unused' was never used
+      // Raw xcodebuild output format (before xcbeautify formatting)
+      // Based on real xcodebuild output captured from test_artifacts/TestProjectXCTest
+      const buildOutputWithWarnings = `/Users/dev/MyApp/ViewController.swift:42:10: warning: 'oldMethod()' is deprecated: Use newMethod instead
+            oldMethod()  // This will generate a deprecation warning
+            ^
+/Users/dev/MyApp/AppDelegate.swift:15:5: warning: variable 'unused' was never used; consider replacing with '_' or removing it
+            let unused = 42
+            ^
 ** BUILD SUCCEEDED **`;
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app',
-        buildOutputWithWarnings
-      );
+      execMockResponses = [
+        XcodebuildResponse.success(buildOutputWithWarnings)
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -305,13 +319,33 @@ describe('BuildXcodeController Integration', () => {
         destination: 'iOSSimulator'
       };
       
-      const buildOutputWithErrors = `❌ /Users/dev/MyApp/ViewController.swift:23:15: error: cannot find type 'NonExistentType' in scope
-❌ /Users/dev/MyApp/Model.swift:45:8: error: missing return in closure expected to return 'String'
-** BUILD FAILED **`;
+      // Raw xcodebuild output format (before xcbeautify formatting)
+      // This is what xcodebuild actually outputs for compilation errors
+      const buildOutputWithErrors = `CompileSwift normal x86_64 /Users/dev/MyApp/ViewController.swift (in target 'MyApp' from project 'MyApp')
+    cd /Users/dev/MyApp
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift
+
+/Users/dev/MyApp/ViewController.swift:23:15: error: cannot find type 'NonExistentType' in scope
+    let value: NonExistentType = "test"
+               ^~~~~~~~~~~~~~~
+
+CompileSwift normal x86_64 /Users/dev/MyApp/Model.swift (in target 'MyApp' from project 'MyApp')
+    cd /Users/dev/MyApp
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift
+
+/Users/dev/MyApp/Model.swift:45:8: error: missing return in closure expected to return 'String'
+    }
+    ^
+
+** BUILD FAILED **
+
+The following build commands failed:
+    CompileSwift normal x86_64 /Users/dev/MyApp/ViewController.swift (in target 'MyApp' from project 'MyApp')
+    CompileSwift normal x86_64 /Users/dev/MyApp/Model.swift (in target 'MyApp' from project 'MyApp')
+(2 failures)`;
       
       execMockResponses = [
-        ...createArchitectureDetectionResponses(),
-        createBuildFailureResponse(buildOutputWithErrors, 'The following build commands failed:\n\tCompileSwift')
+        XcodebuildResponse.buildFailure(buildOutputWithErrors, 'The following build commands failed:\n\tCompileSwift')
       ];
       
       // Act
@@ -332,9 +366,12 @@ describe('BuildXcodeController Integration', () => {
         destination: 'iOSSimulator'
       };
       
+      const error = new Error('xcodebuild: error: The project "MyApp" does not contain a scheme named "NonExistentScheme".') as NodeExecError;
+      error.code = 65;
+      error.stdout = '';
+      error.stderr = '';
       execMockResponses = [
-        ...createArchitectureDetectionResponses(),
-        { error: new Error('xcodebuild: error: The project "MyApp" does not contain a scheme named "NonExistentScheme".'), stdout: '', stderr: '' }
+        { error, stdout: '', stderr: '' }
       ];
       
       // Act
@@ -354,15 +391,21 @@ describe('BuildXcodeController Integration', () => {
       };
       
       execMockResponses = [
-        { error: new Error('xcrun: error: unable to find utility "xcodebuild", not a developer tool or in PATH'), stdout: '', stderr: '' }
+        // xcodebuild command fails - shell returns error before xcbeautify runs
+        XcodebuildResponse.commandNotFound(
+          'xcodebuild',
+          'xcrun: error: unable to find utility "xcodebuild", not a developer tool or in PATH'
+        )
       ];
       
       // Act
       const result = await controller.execute(input);
       
       // Assert
-      // Error message from shell command failure
-      expect(result.content[0].text).toMatch(/Error|unable to find|xcodebuild/);
+      // The presenter should show the error message
+      expect(result.content[0].text).toContain('Build failed');
+      // Should show the actual error from xcrun
+      expect(result.content[0].text).toMatch(/xcrun.*unable to find.*xcodebuild|Errors \(1\)/);
     });
   });
 
@@ -376,9 +419,9 @@ describe('BuildXcodeController Integration', () => {
         derivedDataPath: '/Users/dev/Derived Data'
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/Derived Data/Build/Products/Debug-iphonesimulator/MyApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success()
+      ];
       
       // Act
       const result = await controller.execute(input);
@@ -387,12 +430,12 @@ describe('BuildXcodeController Integration', () => {
       expect(result.content[0].text).toContain('Build succeeded');
       // Verify proper escaping in xcodebuild command
       // First call is architecture detection, second is xcodebuild
-      const calls = (mockExec as any).mock.calls;
-      const xcodebuildCall = calls.find((call: any[]) => call[0].includes('xcodebuild'));
+      const calls = mockExec.mock.calls as ExecMockCall[];
+      const xcodebuildCall = calls.find((call) => (call[0] as string).includes('xcodebuild'));
       expect(xcodebuildCall).toBeDefined();
-      expect(xcodebuildCall[0]).toContain('"/Users/dev/My iOS App/MyApp.xcodeproj"');
-      expect(xcodebuildCall[0]).toContain('"My App Scheme"');
-      expect(xcodebuildCall[0]).toContain('"/Users/dev/Derived Data"');
+      expect(xcodebuildCall?.[0]).toContain('"/Users/dev/My iOS App/MyApp.xcodeproj"');
+      expect(xcodebuildCall?.[0]).toContain('"My App Scheme"');
+      expect(xcodebuildCall?.[0]).toContain('"/Users/dev/Derived Data"');
     });
   });
 
@@ -406,19 +449,19 @@ describe('BuildXcodeController Integration', () => {
         // No configuration specified
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success('** BUILD SUCCEEDED **')
+      ];
       
       // Act
       await controller.execute(input);
       
       // Assert  
-      const calls = (mockExec as any).mock.calls;
+      const calls = mockExec.mock.calls as ExecMockCall[];
       // Find the xcodebuild call (after architecture detection commands)
-      const xcodebuildCall = calls.find((call: any[]) => call[0].includes('xcodebuild'));
+      const xcodebuildCall = calls.find((call) => (call[0] as string).includes('xcodebuild'));
       expect(xcodebuildCall).toBeDefined();
-      expect(xcodebuildCall[0]).toContain('-configuration \"Debug\"');
+      expect(xcodebuildCall?.[0]).toContain('-configuration \"Debug\"');
     });
 
     it('should auto-detect workspace vs project', async () => {
@@ -429,19 +472,19 @@ describe('BuildXcodeController Integration', () => {
         destination: 'iOSSimulator'
       };
       
-      execMockResponses = createSuccessfulBuildSequence(
-        '/Users/dev/DerivedData/Build/Products/Debug-iphonesimulator/MyApp.app'
-      );
+      execMockResponses = [
+        XcodebuildResponse.success('** BUILD SUCCEEDED **')
+      ];
       
       // Act
       await controller.execute(input);
       
       // Assert
-      const calls = (mockExec as any).mock.calls;
-      const xcodebuildCall = calls.find((call: any[]) => call[0].includes('xcodebuild'));
+      const calls = mockExec.mock.calls as ExecMockCall[];
+      const xcodebuildCall = calls.find((call) => (call[0] as string).includes('xcodebuild'));
       expect(xcodebuildCall).toBeDefined();
-      expect(xcodebuildCall[0]).toContain('-workspace');
-      expect(xcodebuildCall[0]).not.toContain('-project');
+      expect(xcodebuildCall?.[0]).toContain('-workspace');
+      expect(xcodebuildCall?.[0]).not.toContain('-project');
     });
   });
 });

@@ -1,10 +1,9 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { InstallAppUseCase } from '../../../../application/use-cases/InstallAppUseCase.js';
-import { AppPath } from '../../../../domain/value-objects/AppPath.js';
+import { InstallRequest } from '../../../../domain/value-objects/InstallRequest.js';
 import { SimulatorState } from '../../../../domain/value-objects/SimulatorState.js';
 import { 
-  ISimulatorLocator, 
-  ISimulatorStateQuery,
+  ISimulatorLocator,
   ISimulatorControl,
   IAppInstaller, 
   SimulatorInfo 
@@ -22,11 +21,6 @@ describe('InstallAppUseCase', () => {
     const mockSimulatorLocator: ISimulatorLocator = {
       findSimulator: mockFindSimulator,
       findBootedSimulator: mockFindBootedSimulator
-    };
-
-    const mockGetState = jest.fn<ISimulatorStateQuery['getState']>();
-    const mockStateQuery: ISimulatorStateQuery = {
-      getState: mockGetState
     };
 
     const mockBoot = jest.fn<ISimulatorControl['boot']>();
@@ -50,7 +44,6 @@ describe('InstallAppUseCase', () => {
 
     const sut = new InstallAppUseCase(
       mockSimulatorLocator,
-      mockStateQuery,
       mockSimulatorControl,
       mockAppInstaller,
       mockLogManager
@@ -60,17 +53,18 @@ describe('InstallAppUseCase', () => {
       sut,
       mockFindSimulator,
       mockFindBootedSimulator,
-      mockGetState,
       mockBoot,
       mockInstallApp,
-      mockSaveDebugData
+      mockSaveDebugData,
+      mockSaveLog
     };
   }
 
-  function createTestSimulator(): SimulatorInfo {
+  function createTestSimulator(state: SimulatorState = SimulatorState.Booted): SimulatorInfo {
     return {
       id: 'test-simulator-id',
       name: 'iPhone 15',
+      state,
       platform: 'iOS',
       runtime: 'iOS 17.0'
     };
@@ -79,156 +73,180 @@ describe('InstallAppUseCase', () => {
   describe('when installing with specific simulator ID', () => {
     it('should install app on already booted simulator', async () => {
       // Arrange
-      const { sut, mockFindSimulator, mockGetState, mockInstallApp } = createSUT();
-      const appPath = AppPath.create('/path/to/MyApp.app');
-      const simulator = createTestSimulator();
+      const { sut, mockFindSimulator, mockInstallApp } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app', 'test-simulator-id');
+      const simulator = createTestSimulator(SimulatorState.Booted);
       
       mockFindSimulator.mockResolvedValue(simulator);
-      mockGetState.mockResolvedValue(SimulatorState.Booted);
       mockInstallApp.mockResolvedValue(undefined);
 
       // Act
-      const result = await sut.execute({
-        appPath,
-        simulatorId: 'test-simulator-id'
-      });
+      const result = await sut.execute(request);
 
       // Assert
-      expect(result).toEqual({
-        success: true,
-        message: 'Successfully installed MyApp.app on iPhone 15',
-        simulatorName: 'iPhone 15',
-        appName: 'MyApp.app'
-      });
+      expect(result.isSuccess).toBe(true);
+      expect(result.bundleId).toBe('MyApp.app');
+      expect(result.simulatorId).toBe('test-simulator-id');
       expect(mockInstallApp).toHaveBeenCalledWith('/path/to/MyApp.app', 'test-simulator-id');
     });
 
     it('should auto-boot shutdown simulator before installing', async () => {
       // Arrange
-      const { sut, mockFindSimulator, mockGetState, mockBoot, mockInstallApp } = createSUT();
-      const appPath = AppPath.create('/path/to/MyApp.app');
-      const simulator = createTestSimulator();
+      const { sut, mockFindSimulator, mockBoot, mockInstallApp } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app', 'test-simulator-id');
+      const simulator = createTestSimulator(SimulatorState.Shutdown);
       
       mockFindSimulator.mockResolvedValue(simulator);
-      mockGetState.mockResolvedValue(SimulatorState.Shutdown);
       mockBoot.mockResolvedValue(undefined);
       mockInstallApp.mockResolvedValue(undefined);
 
       // Act
-      const result = await sut.execute({
-        appPath,
-        simulatorId: 'test-simulator-id'
-      });
+      const result = await sut.execute(request);
 
       // Assert
       expect(mockBoot).toHaveBeenCalledWith('test-simulator-id');
       expect(mockInstallApp).toHaveBeenCalledWith('/path/to/MyApp.app', 'test-simulator-id');
-      expect(result.success).toBe(true);
+      expect(result.isSuccess).toBe(true);
     });
 
-    it('should throw error when simulator not found', async () => {
+    it('should return failure when simulator not found', async () => {
       // Arrange
-      const { sut, mockFindSimulator } = createSUT();
-      const appPath = AppPath.create('/path/to/MyApp.app');
+      const { sut, mockFindSimulator, mockSaveDebugData } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app', 'non-existent-id');
       
       mockFindSimulator.mockResolvedValue(null);
 
-      // Act & Assert
-      await expect(sut.execute({
-        appPath,
-        simulatorId: 'non-existent'
-      })).rejects.toThrow('Simulator not found: non-existent');
+      // Act
+      const result = await sut.execute(request);
+
+      // Assert
+      expect(result.isSuccess).toBe(false);
+      expect(result.error).toContain('Simulator not found');
+      expect(mockSaveDebugData).toHaveBeenCalledWith(
+        'install-app-failed',
+        expect.objectContaining({ reason: 'simulator_not_found' }),
+        'MyApp.app'
+      );
+    });
+
+    it('should return failure when boot fails', async () => {
+      // Arrange  
+      const { sut, mockFindSimulator, mockBoot, mockSaveDebugData } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app', 'test-simulator-id');
+      const simulator = createTestSimulator(SimulatorState.Shutdown);
+      
+      mockFindSimulator.mockResolvedValue(simulator);
+      mockBoot.mockRejectedValue(new Error('Boot failed'));
+
+      // Act
+      const result = await sut.execute(request);
+
+      // Assert
+      expect(result.isSuccess).toBe(false);
+      expect(result.error).toContain('Failed to boot simulator');
+      expect(mockSaveDebugData).toHaveBeenCalledWith(
+        'simulator-boot-failed',
+        expect.objectContaining({ error: 'Boot failed' }),
+        'MyApp.app'
+      );
     });
   });
 
   describe('when installing without simulator ID', () => {
-    it('should use the single booted simulator', async () => {
+    it('should use booted simulator', async () => {
       // Arrange
       const { sut, mockFindBootedSimulator, mockInstallApp } = createSUT();
-      const appPath = AppPath.create('/path/to/TestApp.app');
-      const simulator = createTestSimulator();
+      const request = InstallRequest.create('/path/to/MyApp.app');
+      const simulator = createTestSimulator(SimulatorState.Booted);
       
       mockFindBootedSimulator.mockResolvedValue(simulator);
       mockInstallApp.mockResolvedValue(undefined);
 
       // Act
-      const result = await sut.execute({ appPath });
+      const result = await sut.execute(request);
 
       // Assert
-      expect(result).toEqual({
-        success: true,
-        message: 'Successfully installed TestApp.app on iPhone 15',
-        simulatorName: 'iPhone 15',
-        appName: 'TestApp.app'
-      });
-      expect(mockInstallApp).toHaveBeenCalledWith('/path/to/TestApp.app', 'test-simulator-id');
+      expect(result.isSuccess).toBe(true);
+      expect(result.simulatorId).toBe('test-simulator-id');
+      expect(mockFindBootedSimulator).toHaveBeenCalled();
+      expect(mockInstallApp).toHaveBeenCalledWith('/path/to/MyApp.app', 'test-simulator-id');
     });
 
-    it('should throw clear error when no booted simulator found', async () => {
+    it('should return failure when no booted simulator found', async () => {
       // Arrange
-      const { sut, mockFindBootedSimulator } = createSUT();
-      const appPath = AppPath.create('/path/to/MyApp.app');
+      const { sut, mockFindBootedSimulator, mockSaveDebugData } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app');
       
       mockFindBootedSimulator.mockResolvedValue(null);
 
-      // Act & Assert
-      await expect(sut.execute({ appPath }))
-        .rejects.toThrow('No booted simulator found. Please boot a simulator first or specify a simulator ID.');
+      // Act
+      const result = await sut.execute(request);
+
+      // Assert
+      expect(result.isSuccess).toBe(false);
+      expect(result.error).toContain('No booted simulator found');
+      expect(mockSaveDebugData).toHaveBeenCalledWith(
+        'install-app-failed',
+        expect.objectContaining({ reason: 'simulator_not_found' }),
+        'MyApp.app'
+      );
     });
   });
 
-  describe('error handling', () => {
-    it('should throw error with details when installation fails', async () => {
+  describe('when installation fails', () => {
+    it('should return failure with error message', async () => {
       // Arrange
-      const { sut, mockFindSimulator, mockGetState, mockInstallApp } = createSUT();
-      const appPath = AppPath.create('/path/to/MyApp.app');
-      const simulator = createTestSimulator();
+      const { sut, mockFindSimulator, mockInstallApp, mockSaveDebugData } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app', 'test-simulator-id');
+      const simulator = createTestSimulator(SimulatorState.Booted);
       
       mockFindSimulator.mockResolvedValue(simulator);
-      mockGetState.mockResolvedValue(SimulatorState.Booted);
-      mockInstallApp.mockRejectedValue(new Error('Invalid app bundle'));
+      mockInstallApp.mockRejectedValue(new Error('Code signing error'));
 
-      // Act & Assert
-      await expect(sut.execute({
-        appPath,
-        simulatorId: 'test-simulator-id'
-      })).rejects.toThrow('Failed to install app: Invalid app bundle');
+      // Act
+      const result = await sut.execute(request);
+
+      // Assert
+      expect(result.isSuccess).toBe(false);
+      expect(result.error).toContain('Failed to install app');
+      expect(result.error).toContain('Code signing error');
+      expect(mockSaveDebugData).toHaveBeenCalledWith(
+        'install-app-error',
+        expect.objectContaining({ error: 'Code signing error' }),
+        'MyApp.app'
+      );
     });
 
-    it('should throw error when booting simulator fails', async () => {
+    it('should handle generic error', async () => {
       // Arrange
-      const { sut, mockFindSimulator, mockGetState, mockBoot } = createSUT();
-      const appPath = AppPath.create('/path/to/MyApp.app');
-      const simulator = createTestSimulator();
+      const { sut, mockFindSimulator, mockInstallApp } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app', 'test-simulator-id');
+      const simulator = createTestSimulator(SimulatorState.Booted);
       
       mockFindSimulator.mockResolvedValue(simulator);
-      mockGetState.mockResolvedValue(SimulatorState.Shutdown);
-      mockBoot.mockRejectedValue(new Error('Unable to boot simulator'));
+      mockInstallApp.mockRejectedValue('String error');
 
-      // Act & Assert
-      await expect(sut.execute({
-        appPath,
-        simulatorId: 'test-simulator-id'
-      })).rejects.toThrow('Failed to boot simulator: Unable to boot simulator');
+      // Act
+      const result = await sut.execute(request);
+
+      // Assert
+      expect(result.isSuccess).toBe(false);
+      expect(result.error).toContain('Failed to install app');
     });
   });
 
-  describe('logging', () => {
-    it('should log success with simulator details', async () => {
+  describe('debug data logging', () => {
+    it('should log success with app name and simulator info', async () => {
       // Arrange
-      const { sut, mockFindSimulator, mockGetState, mockInstallApp, mockSaveDebugData } = createSUT();
-      const appPath = AppPath.create('/path/to/MyApp.app');
-      const simulator = createTestSimulator();
+      const { sut, mockFindSimulator, mockInstallApp, mockSaveDebugData } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app', 'test-simulator-id');
+      const simulator = createTestSimulator(SimulatorState.Booted);
       
       mockFindSimulator.mockResolvedValue(simulator);
-      mockGetState.mockResolvedValue(SimulatorState.Booted);
       mockInstallApp.mockResolvedValue(undefined);
 
       // Act
-      await sut.execute({
-        appPath,
-        simulatorId: 'test-simulator-id'
-      });
+      await sut.execute(request);
 
       // Assert
       expect(mockSaveDebugData).toHaveBeenCalledWith(
@@ -242,26 +260,25 @@ describe('InstallAppUseCase', () => {
       );
     });
 
-    it('should log error details on failure', async () => {
+    it('should log auto-boot event', async () => {
       // Arrange
-      const { sut, mockFindSimulator, mockGetState, mockInstallApp, mockSaveDebugData } = createSUT();
-      const appPath = AppPath.create('/path/to/MyApp.app');
-      const simulator = createTestSimulator();
+      const { sut, mockFindSimulator, mockBoot, mockInstallApp, mockSaveDebugData } = createSUT();
+      const request = InstallRequest.create('/path/to/MyApp.app', 'test-simulator-id');
+      const simulator = createTestSimulator(SimulatorState.Shutdown);
       
       mockFindSimulator.mockResolvedValue(simulator);
-      mockGetState.mockResolvedValue(SimulatorState.Booted);
-      mockInstallApp.mockRejectedValue(new Error('Invalid bundle'));
+      mockBoot.mockResolvedValue(undefined);
+      mockInstallApp.mockResolvedValue(undefined);
 
-      // Act & Assert
-      await expect(sut.execute({
-        appPath,
-        simulatorId: 'test-simulator-id'
-      })).rejects.toThrow();
+      // Act
+      await sut.execute(request);
 
+      // Assert
       expect(mockSaveDebugData).toHaveBeenCalledWith(
-        'install-app-error',
+        'simulator-auto-booted',
         expect.objectContaining({
-          error: 'Invalid bundle'
+          simulatorId: 'test-simulator-id',
+          simulatorName: 'iPhone 15'
         }),
         'MyApp.app'
       );

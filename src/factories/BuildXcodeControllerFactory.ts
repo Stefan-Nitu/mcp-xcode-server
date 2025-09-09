@@ -11,6 +11,7 @@ import { ShellCommandExecutorAdapter } from '../infrastructure/adapters/ShellCom
 import { BuildArtifactLocatorAdapter } from '../infrastructure/adapters/BuildArtifactLocatorAdapter.js';
 import { LogManagerInstance } from '../utils/LogManagerInstance.js';
 import { XcbeautifyOutputParserAdapter } from '../infrastructure/adapters/XcbeautifyOutputParserAdapter.js';
+import { XcbeautifyFormatterAdapter } from '../infrastructure/adapters/XcbeautifyFormatterAdapter.js';
 import { ConfigProviderAdapter } from '../infrastructure/adapters/ConfigProviderAdapter.js';
 import { SystemArchitectureDetector } from '../infrastructure/services/SystemArchitectureDetector.js';
 
@@ -28,6 +29,7 @@ export class BuildXcodeControllerFactory {
     const appLocator = new BuildArtifactLocatorAdapter(executor);
     const logManager = new LogManagerInstance();
     const outputParser = new XcbeautifyOutputParserAdapter();
+    const outputFormatter = new XcbeautifyFormatterAdapter(executor);
     
     // Create use case with infrastructure
     const buildUseCase = new BuildProjectUseCase(
@@ -36,7 +38,8 @@ export class BuildXcodeControllerFactory {
       executor,
       appLocator,
       logManager,
-      outputParser
+      outputParser,
+      outputFormatter
     );
     
     // Create infrastructure services
@@ -48,14 +51,4 @@ export class BuildXcodeControllerFactory {
     // Create and return the controller
     return new BuildXcodeController(buildUseCase, presenter, configProvider);
   }
-}
-
-/**
- * Factory function to create BuildXcodeController with all dependencies
- * The controller serves as the MCP tool interface
- * 
- * @deprecated Use BuildXcodeControllerFactory.create() instead
- */
-export function createBuildXcodeTool(): BuildXcodeController {
-  return BuildXcodeControllerFactory.create();
 }

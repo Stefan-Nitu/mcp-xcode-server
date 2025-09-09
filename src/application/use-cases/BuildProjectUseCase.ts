@@ -11,6 +11,7 @@ import { IAppLocator } from '../ports/ArtifactPorts.js';
 import { ILogManager } from '../ports/LoggingPorts.js';
 import { IOutputParser } from '../ports/OutputParserPorts.js';
 import { IBuildDestinationMapper } from '../ports/MappingPorts.js';
+import { IOutputFormatter } from '../ports/OutputFormatterPorts.js';
 
 /**
  * Use Case: Build an Xcode project
@@ -23,7 +24,8 @@ export class BuildProjectUseCase {
     private executor: ICommandExecutor,
     private appLocator: IAppLocator,
     private logManager: ILogManager,
-    private outputParser: IOutputParser
+    private outputParser: IOutputParser,
+    private outputFormatter: IOutputFormatter
   ) {}
   
   async execute(request: BuildRequest): Promise<BuildResult> {
@@ -57,9 +59,11 @@ export class BuildProjectUseCase {
       shell: '/bin/bash'
     });
     
-    const output = result.stdout + (result.stderr ? `\n${result.stderr}` : '');
+    // 6. Format the output (e.g., through xcbeautify)
+    const rawOutput = result.stdout + (result.stderr ? `\n${result.stderr}` : '');
+    const output = await this.outputFormatter.format(rawOutput);
     
-    // 6. Process result
+    // 7. Process result
     if (result.exitCode === 0) {
       // Success path
       const appPath = await this.appLocator.findApp(request.derivedDataPath);

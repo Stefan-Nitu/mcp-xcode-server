@@ -43,6 +43,7 @@ export class SimulatorLocatorAdapter implements ISimulatorLocator {
     return {
       id: selected.device.udid,
       name: selected.device.name,
+      state: selected.device.state as SimulatorState,
       platform: this.extractPlatform(selected.runtime),
       runtime: selected.runtime
     };
@@ -60,6 +61,7 @@ export class SimulatorLocatorAdapter implements ISimulatorLocator {
           bootedDevices.push({
             id: device.udid,
             name: device.name,
+            state: SimulatorState.Booted,
             platform: this.extractPlatform(runtime),
             runtime: runtime
           });

@@ -56,8 +56,8 @@ export class XcodeBuildCommandAdapter implements IBuildCommand {
     // Add build action
     command += ` build`;
     
-    // Pipe through xcbeautify for clean output
-    command = `set -o pipefail && ${command} 2>&1 | xcbeautify`;
+    // Redirect stderr to stdout so we capture all output
+    command += ` 2>&1`;
     
     return command;
   }
