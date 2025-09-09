@@ -45,6 +45,9 @@ export class BuildDestinationMapperAdapter implements IBuildDestinationMapper {
           additionalSettings: [`ARCHS=${currentArch}`, 'ONLY_ACTIVE_ARCH=YES']
         };
         
+      case BuildDestination.tvOSDevice:
+        return { destination: 'generic/platform=tvOS' };
+        
       case BuildDestination.tvOSSimulatorUniversal:
         return { destination: 'generic/platform=tvOS Simulator' };
         
@@ -55,6 +58,9 @@ export class BuildDestinationMapperAdapter implements IBuildDestinationMapper {
           additionalSettings: [`ARCHS=${currentArch}`, 'ONLY_ACTIVE_ARCH=YES']
         };
         
+      case BuildDestination.watchOSDevice:
+        return { destination: 'generic/platform=watchOS' };
+        
       case BuildDestination.watchOSSimulatorUniversal:
         return { destination: 'generic/platform=watchOS Simulator' };
         
@@ -64,6 +70,9 @@ export class BuildDestinationMapperAdapter implements IBuildDestinationMapper {
           destination: 'generic/platform=xrOS Simulator',
           additionalSettings: [`ARCHS=${currentArch}`, 'ONLY_ACTIVE_ARCH=YES']
         };
+        
+      case BuildDestination.visionOSDevice:
+        return { destination: 'generic/platform=xrOS' };
         
       case BuildDestination.visionOSSimulatorUniversal:
         return { destination: 'generic/platform=xrOS Simulator' };

@@ -13,7 +13,7 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
 
-describe('Build Xcode E2E', () => {
+describe('Build Xcode MCP E2E', () => {
   let client: Client;
   let transport: StdioClientTransport;
   let testManager: TestProjectManager;

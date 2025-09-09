@@ -167,14 +167,19 @@ src/infrastructure/
 **Purpose**: Handles all user interaction and presents data to users. Translates user input into application use case calls.
 
 **What Goes Here**:
-- **Controllers/Handlers**: HTTP request handlers, CLI command handlers
+- **Controllers**: MCP tool controllers that define tool metadata and orchestrate flow
+- **Presenters**: Complex output formatting for rich responses
+- **Formatters**: Shared formatting utilities (error formatting, etc.)
+- **Validators**: Reusable validation schemas
 - **View Models**: Data structures optimized for presentation
-- **Request/Response Models**: API request and response schemas
-- **Formatters**: Output formatting (JSON, XML, plain text)
-- **Validators**: Input validation for API requests
-- **Middleware**: Authentication, error handling, logging middleware
-- **Routes**: API route definitions
-- **CLI Commands**: Command-line interface implementations
+- **Request/Response Models**: Protocol-specific request and response schemas
+
+**Special Pattern for MCP Servers**:
+In MCP servers, controllers serve dual purpose:
+1. Define MCP tool metadata (name, description, input schema)
+2. Orchestrate the flow (validate → use case → present)
+
+This eliminates the need for separate Tool classes. Controllers ARE the tools.
 
 **Rules**:
 - Depends on Application layer (through use cases)
@@ -186,20 +191,50 @@ src/infrastructure/
 **Example Structure**:
 ```
 src/presentation/
-├── controllers/
-│   ├── BuildController.ts
-│   └── TestController.ts
-├── formatters/
-│   ├── JSONFormatter.ts
-│   └── XMLFormatter.ts
-├── validators/
-│   └── RequestValidator.ts
-├── middleware/
-│   ├── ErrorHandler.ts
-│   └── RequestLogger.ts
-└── cli/
-    └── commands/
+├── controllers/       # MCP tool controllers
+│   ├── BuildXcodeController.ts
+│   └── InstallAppController.ts
+├── presenters/        # Complex formatting (optional)
+│   └── BuildXcodePresenter.ts
+├── formatters/        # Shared formatting utilities
+│   ├── ErrorFormatter.ts
+│   └── strategies/
+└── validation/        # Reusable validators
+    └── ToolInputValidators.ts
 ```
+
+**Controller Pattern**:
+```typescript
+// Controllers combine MCP tool definition with orchestration
+export class BuildXcodeController {
+  // MCP tool metadata
+  name = 'build_xcode';
+  description = 'Build an Xcode project';
+  
+  // MCP input schema (JSON Schema)
+  get inputSchema() { /* ... */ }
+  
+  // Tool execution with validation and orchestration
+  async execute(args: unknown) {
+    // 1. Validate input (parse don't validate)
+    const validated = schema.parse(args);
+    
+    // 2. Create domain objects
+    const request = BuildRequest.create(...);
+    
+    // 3. Execute use case
+    const result = await this.useCase.execute(request);
+    
+    // 4. Present result (use presenter for complex formatting)
+    return this.presenter?.present(result) || this.formatSimple(result);
+  }
+}
+```
+
+**When to Use Presenters**:
+- Use a separate Presenter class when formatting is complex (errors, warnings, truncation)
+- For simple responses, format directly in the controller
+- Always use ErrorFormatter for consistent error messages
 
 ## Additional Directories
 
@@ -213,15 +248,24 @@ src/presentation/
 - Factory classes for complex object creation
 - Application bootstrapping code
 
-### Tools (Special Case)
-**Location**: `src/tools/`
+**MCP-Specific Pattern**:
+Factories create controllers (which serve as MCP tools) with all their dependencies:
+```typescript
+export function createBuildXcodeController(): BuildXcodeController {
+  // Create infrastructure
+  const executor = new ShellCommandExecutorAdapter(promisify(exec));
+  
+  // Create use case
+  const useCase = new BuildProjectUseCase(...);
+  
+  // Create presenter (if needed)
+  const presenter = new BuildXcodePresenter();
+  
+  // Return controller that serves as MCP tool
+  return new BuildXcodeController(useCase, presenter);
+}
+```
 
-**Purpose**: For MCP (Model Context Protocol) servers, this contains tool definitions that act as entry points.
-
-**What Goes Here**:
-- Tool definitions that delegate to use cases
-- Tool-specific input/output adapters
-- Should be thin wrappers around use cases
 
 ### Utils/Shared
 **Location**: `src/utils/` or `src/shared/`

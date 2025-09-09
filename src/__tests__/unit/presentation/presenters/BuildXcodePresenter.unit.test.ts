@@ -41,6 +41,41 @@ describe('BuildXcodePresenter', () => {
       expect(response.content[0].text).toContain('✅ Build succeeded: MyApp');
     });
     
+    it('should show warning count for successful build with warnings', () => {
+      const presenter = createSUT();
+      // Create a successful build result with warnings
+      const warnings = [
+        BuildIssue.warning('Deprecated API', 'api.swift', 5),
+        BuildIssue.warning('Unused variable', 'vars.swift', 15)
+      ];
+      const result = BuildResult.success('Build succeeded', '/path/to/app.app', undefined, warnings);
+      const metadata = createTestMetadata();
+      
+      const response = presenter.present(result, metadata);
+      
+      expect(response.content[0].text).toContain('✅ Build succeeded: MyApp');
+      expect(response.content[0].text).toContain('Warnings: 2');
+      expect(response.content[0].text).not.toContain('Deprecated API'); // Details not shown by default
+    });
+    
+    it('should show warning details for successful build when requested', () => {
+      const presenter = createSUT();
+      const warnings = [
+        BuildIssue.warning('Deprecated API', 'api.swift', 5),
+        BuildIssue.warning('Unused variable', 'vars.swift', 15)
+      ];
+      const result = BuildResult.success('Build succeeded', '/path/to/app.app', undefined, warnings);
+      const metadata = createTestMetadata({ showWarningDetails: true });
+      
+      const response = presenter.present(result, metadata);
+      
+      expect(response.content[0].text).toContain('✅ Build succeeded: MyApp');
+      expect(response.content[0].text).toContain('Warnings: 2');
+      expect(response.content[0].text).toContain('⚠️  Warnings:');
+      expect(response.content[0].text).toContain('Deprecated API');
+      expect(response.content[0].text).toContain('Unused variable');
+    });
+    
     it('should include platform and configuration', () => {
       const presenter = createSUT();
       const result = createSuccessResult();

@@ -39,7 +39,7 @@ import { logger, logToolExecution, logError } from './logger.js';
 // } from './tools/index.js';
 
 // Import factory for BuildXcodeTool
-import { createBuildXcodeTool } from './factories/BuildXcodeToolFactory.js';
+import { createBuildXcodeTool } from './factories/BuildXcodeControllerFactory.js';
 
 type Tool = {
   execute(args: any): Promise<any>;

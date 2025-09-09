@@ -2,13 +2,9 @@
  * Type definitions for Apple Simulator MCP Server
  */
 
-export enum Platform {
-  iOS = 'iOS',
-  macOS = 'macOS',
-  tvOS = 'tvOS',
-  watchOS = 'watchOS',
-  visionOS = 'visionOS'
-}
+// Re-export Platform from domain for backward compatibility
+// TODO: Update all imports to use domain directly
+export { Platform } from './domain/value-objects/Platform.js';
 
 export interface SimulatorDevice {
   udid: string;
@@ -25,27 +21,6 @@ export interface TestResult {
   errors?: string;
   testCount?: number;
   failureCount?: number;
-}
-
-export interface BuildConfiguration {
-  projectPath: string;
-  scheme?: string;
-  platform?: Platform;
-  deviceId?: string;
-  configuration?: string;
-}
-
-export interface TestConfiguration extends BuildConfiguration {
-  testTarget?: string;
-  testFilter?: string;
-  parallelTesting?: boolean;
-}
-
-export interface PlatformConfig {
-  platform: Platform;
-  needsSimulator: boolean;
-  defaultDevice?: string;
-  destinationString: (deviceName?: string) => string;
 }
 
 export interface Tool {

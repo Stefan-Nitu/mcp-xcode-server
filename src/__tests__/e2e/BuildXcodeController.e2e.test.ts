@@ -1,22 +1,22 @@
 /**
- * Integration Test for BuildXcodeTool
+ * E2E Test for BuildXcodeController
  * 
- * Tests BEHAVIOR not implementation:
- * - Can the tool actually build real projects?
+ * Tests BEHAVIOR with REAL xcodebuild:
+ * - Can the controller actually build real projects?
  * - Do the destination mappings produce valid xcodebuild commands that work?
  * - Does error handling work with real build failures?
  * 
  * NO MOCKS - uses real xcodebuild with test projects
- * Direct tool calls - does NOT test through MCP protocol
+ * Direct controller calls - does NOT test through MCP protocol
  */
 
-import { BuildXcodeTool } from '../../../tools/BuildXcodeTool.js';
-import { createBuildXcodeTool } from '../../../factories/BuildXcodeToolFactory.js';
-import { TestProjectManager } from '../../utils/TestProjectManager.js';
+import { BuildXcodeController } from '../../presentation/controllers/BuildXcodeController.js';
+import { createBuildXcodeTool } from '../../factories/BuildXcodeControllerFactory.js';
+import { TestProjectManager } from '../utils/TestProjectManager.js';
 import * as fs from 'fs';
 
-describe('BuildXcodeTool Integration', () => {
-  let tool: BuildXcodeTool;
+describe('BuildXcodeController E2E', () => {
+  let controller: BuildXcodeController;
   let testManager: TestProjectManager;
   
   beforeAll(async () => {
@@ -29,8 +29,8 @@ describe('BuildXcodeTool Integration', () => {
   });
   
   beforeEach(() => {
-    // Create tool with all real dependencies
-    tool = createBuildXcodeTool();
+    // Create controller with all real dependencies
+    controller = createBuildXcodeTool();
   });
 
   describe('build real Xcode projects', () => {
@@ -40,7 +40,7 @@ describe('BuildXcodeTool Integration', () => {
       // 2. The entire stack can handle real xcodebuild output
       // 3. Success is properly detected and reported
       
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'iOSSimulator'
@@ -59,7 +59,7 @@ describe('BuildXcodeTool Integration', () => {
 
     it('should successfully build macOS test project', async () => {
       // This tests macOS destination mapping works
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'macOS'
@@ -77,7 +77,7 @@ describe('BuildXcodeTool Integration', () => {
 
     it('should build with Release configuration', async () => {
       // This tests configuration is properly passed through
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'iOSSimulator',
@@ -101,7 +101,7 @@ describe('BuildXcodeTool Integration', () => {
       // This tests that derived data path is properly used
       const customPath = `/tmp/TestDerivedData_${Date.now()}`;
       
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'iOSSimulator',
@@ -121,7 +121,7 @@ describe('BuildXcodeTool Integration', () => {
   describe('handle real build failures', () => {
     it('should report error for non-existent scheme', async () => {
       // This tests real xcodebuild error handling
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'NonExistentScheme',
         destination: 'iOSSimulator'
@@ -137,7 +137,7 @@ describe('BuildXcodeTool Integration', () => {
     it('should handle invalid platform for project', async () => {
       // Try to build a macOS-only project for iOS (if we have one)
       // or iOS-only project for watchOS
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'watchOSSimulator'
@@ -150,7 +150,7 @@ describe('BuildXcodeTool Integration', () => {
 
   describe('build for all supported platforms', () => {
     it('should attempt to build for tvOS simulator', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'tvOSSimulator'
@@ -163,7 +163,7 @@ describe('BuildXcodeTool Integration', () => {
     }, 60000);
 
     it('should attempt to build for watchOS simulator', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'watchOSSimulator'
@@ -176,7 +176,7 @@ describe('BuildXcodeTool Integration', () => {
     }, 60000);
 
     it('should attempt to build for visionOS simulator', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'visionOSSimulator'
@@ -189,7 +189,7 @@ describe('BuildXcodeTool Integration', () => {
     }, 60000);
 
     it('should build for iOS device', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'iOSDevice'
@@ -202,7 +202,7 @@ describe('BuildXcodeTool Integration', () => {
     }, 60000);
 
     it('should attempt to build for tvOS device', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'tvOSDevice'
@@ -215,7 +215,7 @@ describe('BuildXcodeTool Integration', () => {
     }, 60000);
 
     it('should attempt to build for watchOS device', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'watchOSDevice'
@@ -228,7 +228,7 @@ describe('BuildXcodeTool Integration', () => {
     }, 60000);
 
     it('should build for visionOS device', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'visionOSDevice'
@@ -243,7 +243,7 @@ describe('BuildXcodeTool Integration', () => {
 
   describe('input validation', () => {
     it('should reject non-Xcode project files', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: '/tmp/readme.txt',
         scheme: 'SomeScheme',
         destination: 'iOSSimulator'
@@ -254,7 +254,7 @@ describe('BuildXcodeTool Integration', () => {
     });
 
     it('should reject empty scheme', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: '',
         destination: 'iOSSimulator'
@@ -269,7 +269,7 @@ describe('BuildXcodeTool Integration', () => {
     });
 
     it('should reject invalid destination', async () => {
-      const result = await tool.execute({
+      const result = await controller.execute({
         projectPath: testManager.paths.xcodeProjectXCTestPath,
         scheme: 'TestProjectXCTest',
         destination: 'Android'

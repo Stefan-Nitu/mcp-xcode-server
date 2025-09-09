@@ -32,11 +32,31 @@ export class BuildXcodePresenter {
     result: BuildResult,
     metadata: { scheme: string; platform: Platform; configuration: string; showWarningDetails?: boolean }
   ): MCPResponse {
-    const text = `✅ Build succeeded: ${metadata.scheme}
+    const warnings = result.getWarnings();
+    
+    let text = `✅ Build succeeded: ${metadata.scheme}
 
 Platform: ${metadata.platform}
-Configuration: ${metadata.configuration}
-App path: ${result.appPath || 'N/A'}${result.logPath ? `
+Configuration: ${metadata.configuration}`;
+
+    // Show warning count if there are any
+    if (warnings.length > 0) {
+      text += `\nWarnings: ${warnings.length}`;
+      
+      // Show warning details if requested
+      if (metadata.showWarningDetails) {
+        text += '\n\n⚠️  Warnings:';
+        const warningsToShow = Math.min(warnings.length, this.maxWarningsToShow);
+        warnings.slice(0, warningsToShow).forEach(warning => {
+          text += `\n  • ${this.formatIssue(warning)}`;
+        });
+        if (warnings.length > this.maxWarningsToShow) {
+          text += `\n  ... and ${warnings.length - this.maxWarningsToShow} more warnings`;
+        }
+      }
+    }
+
+    text += `\nApp path: ${result.appPath || 'N/A'}${result.logPath ? `
 
 📁 Full logs saved to: ${result.logPath}` : ''}`;
     

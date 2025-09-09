@@ -64,12 +64,17 @@ export class BuildProjectUseCase {
       // Success path
       const appPath = await this.appLocator.findApp(request.derivedDataPath);
       
+      // Parse output to extract any warnings even for successful builds
+      const parsed = this.outputParser.parseBuildOutput(output);
+      const warnings = parsed.issues.filter(issue => issue.isWarning());
+      
       // Log success via LogManager
       this.logManager.saveDebugData('build-success', {
         project: request.projectPath.name,
         scheme: request.scheme,
         configuration: request.configuration,
-        destination: request.destination 
+        destination: request.destination,
+        warningCount: warnings.length
       }, request.projectPath.name);
       
       const logPath = this.logManager.saveLog('build', output, request.projectPath.name, {
@@ -80,7 +85,7 @@ export class BuildProjectUseCase {
         command
       });
       
-      return BuildResult.success(output, appPath, logPath);
+      return BuildResult.success(output, appPath, logPath, warnings);
     } else {
       // Failure path
       // Log failure via LogManager

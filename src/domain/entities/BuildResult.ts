@@ -16,9 +16,10 @@ export class BuildResult {
   static success(
     output: string,
     appPath?: string,
-    logPath?: string
+    logPath?: string,
+    warnings: BuildIssue[] = []
   ): BuildResult {
-    return new BuildResult(true, output, appPath, logPath, [], 0);
+    return new BuildResult(true, output, appPath, logPath, warnings, 0);
   }
   
   static failure(

@@ -207,7 +207,7 @@ describe('BuildDestinationMapper', () => {
         // Arrange
         const { sut } = createSUT();
         // Force an invalid enum value through type casting
-        const unknownDestination = 999 as BuildDestination;
+        const unknownDestination = 'UnknownDestination' as BuildDestination;
         
         // Act
         const result = await sut.toXcodeBuildOptions(unknownDestination);

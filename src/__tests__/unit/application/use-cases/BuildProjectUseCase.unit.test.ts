@@ -133,6 +133,32 @@ describe('BuildProjectUseCase', () => {
       );
     });
     
+    it('should extract warnings from successful build output', async () => {
+      // Arrange
+      const { sut, mockExecutor, mockAppLocator } = createSUT();
+      const request = createBuildRequest();
+      
+      // Output with warnings in xcbeautify format
+      mockExecutor.execute.mockResolvedValue({
+        exitCode: 0,
+        stdout: `⚠️  /Users/dev/MyApp/ViewController.swift:42:10: warning: 'oldMethod()' is deprecated
+⚠️  /Users/dev/MyApp/AppDelegate.swift:15:5: warning: initialization of immutable value 'unused' was never used
+** BUILD SUCCEEDED **`,
+        stderr: ''
+      });
+      mockAppLocator.findApp.mockResolvedValue('/path/to/DerivedData/MyApp.app');
+      
+      // Act
+      const result = await sut.execute(request);
+      
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.getWarnings()).toHaveLength(2);
+      const warnings = result.getWarnings();
+      expect(warnings[0].message).toContain('deprecated');
+      expect(warnings[1].message).toContain('unused');
+    });
+    
     it('should handle workspace projects correctly', async () => {
       // Arrange
       const { sut, mockExecutor } = createSUT();
