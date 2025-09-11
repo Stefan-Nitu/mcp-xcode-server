@@ -261,11 +261,7 @@ describe('BuildXcodeController E2E', () => {
       });
       
       // Tool returns formatted error response
-      const expected = 
-`❌ Validation errors:
-  • Scheme is required
-  • Scheme cannot be empty or whitespace`;
-      expect(result.content[0].text).toBe(expected);
+      expect(result.content[0].text).toBe('❌ Scheme cannot be empty');
     });
 
     it('should reject invalid destination', async () => {

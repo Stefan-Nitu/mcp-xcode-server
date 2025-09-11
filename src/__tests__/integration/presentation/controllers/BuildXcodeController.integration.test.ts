@@ -409,6 +409,66 @@ The following build commands failed:
     });
   });
 
+  describe('input validation', () => {
+    it('should reject missing projectPath', async () => {
+      // Arrange
+      const input = {
+        scheme: 'MyApp',
+        destination: 'iOSSimulator'
+      } as any;
+      
+      // Act
+      const result = await controller.execute(input);
+      
+      // Assert - validation error returned
+      expect(result.content[0].text).toBe('❌ Project path is required');
+    });
+
+    it('should reject empty projectPath', async () => {
+      // Arrange
+      const input = {
+        projectPath: '',
+        scheme: 'MyApp',
+        destination: 'iOSSimulator'
+      };
+      
+      // Act
+      const result = await controller.execute(input);
+      
+      // Assert - validation error returned
+      expect(result.content[0].text).toBe('❌ Project path cannot be empty');
+    });
+
+    it('should reject missing scheme', async () => {
+      // Arrange
+      const input = {
+        projectPath: '/Users/dev/MyApp/MyApp.xcodeproj',
+        destination: 'iOSSimulator'
+      } as any;
+      
+      // Act
+      const result = await controller.execute(input);
+      
+      // Assert - validation error returned
+      expect(result.content[0].text).toBe('❌ Scheme is required');
+    });
+
+    it('should reject invalid destination value', async () => {
+      // Arrange
+      const input = {
+        projectPath: '/Users/dev/MyApp/MyApp.xcodeproj',
+        scheme: 'MyApp',
+        destination: 'invalidDestination'
+      };
+      
+      // Act
+      const result = await controller.execute(input);
+      
+      // Assert - validation error returned
+      expect(result.content[0].text).toBe('❌ Invalid destination. Use format: [platform][Simulator|Device|SimulatorUniversal]');
+    });
+  });
+
   describe('edge cases and robustness', () => {
     it('should handle paths with spaces correctly', async () => {
       // Arrange

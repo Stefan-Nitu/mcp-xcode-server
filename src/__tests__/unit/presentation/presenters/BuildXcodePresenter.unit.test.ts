@@ -22,11 +22,11 @@ describe('BuildXcodePresenter', () => {
   }
   
   function createSuccessResult(appPath?: string, logPath?: string): BuildResult {
-    return BuildResult.success('Build succeeded', appPath, logPath);
+    return BuildResult.succeeded('Build succeeded', appPath, logPath);
   }
   
   function createFailureResult(issues: BuildIssue[] = [], logPath?: string): BuildResult {
-    return BuildResult.failure('Build failed', issues, 1, logPath);
+    return BuildResult.failed('Build failed', issues, 1, logPath);
   }
   
   describe('when presenting successful build', () => {
@@ -48,7 +48,7 @@ describe('BuildXcodePresenter', () => {
         BuildIssue.warning('Deprecated API', 'api.swift', 5),
         BuildIssue.warning('Unused variable', 'vars.swift', 15)
       ];
-      const result = BuildResult.success('Build succeeded', '/path/to/app.app', undefined, warnings);
+      const result = BuildResult.succeeded('Build succeeded', '/path/to/app.app', undefined, warnings);
       const metadata = createTestMetadata();
       
       const response = presenter.present(result, metadata);
@@ -64,7 +64,7 @@ describe('BuildXcodePresenter', () => {
         BuildIssue.warning('Deprecated API', 'api.swift', 5),
         BuildIssue.warning('Unused variable', 'vars.swift', 15)
       ];
-      const result = BuildResult.success('Build succeeded', '/path/to/app.app', undefined, warnings);
+      const result = BuildResult.succeeded('Build succeeded', '/path/to/app.app', undefined, warnings);
       const metadata = createTestMetadata({ showWarningDetails: true });
       
       const response = presenter.present(result, metadata);
@@ -332,8 +332,8 @@ describe('BuildXcodePresenter', () => {
   describe('when presenting errors', () => {
     it('should format validation errors in user-friendly way', () => {
       const presenter = createSUT();
-      // Create a real ZodError-like object
-      const zodError = {
+      // Create a mock ZodError with the structure we need
+      const zodError = Object.assign(new Error('Validation failed'), {
         name: 'ZodError',
         issues: [{
           code: 'too_small',
@@ -342,7 +342,7 @@ describe('BuildXcodePresenter', () => {
           message: 'Scheme is required',
           path: ['scheme']
         }]
-      };
+      });
       
       const response = presenter.presentError(zodError);
       
@@ -355,13 +355,13 @@ describe('BuildXcodePresenter', () => {
     it('should format multiple validation errors clearly', () => {
       const presenter = createSUT();
       // Create a real ZodError-like object with multiple issues
-      const zodError = {
+      const zodError = Object.assign(new Error('Validation failed'), {
         name: 'ZodError',
         issues: [
           { message: 'Scheme is required', path: ['scheme'] },
           { message: 'Invalid destination', path: ['destination'] }
         ]
-      };
+      });
       
       const response = presenter.presentError(zodError);
       
@@ -392,7 +392,7 @@ describe('BuildXcodePresenter', () => {
         message: 'Validation failed'
       };
       
-      const response = presenter.presentError(zodError as any);
+      const response = presenter.presentError(zodError);
       
       // We WANT the issues formatted nicely
       expect(response.content[0].text).toContain('❌ Validation errors:');

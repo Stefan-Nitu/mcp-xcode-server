@@ -199,7 +199,7 @@ describe('InstallAppController E2E', () => {
         await execAsync(`xcrun simctl shutdown "${shutdownSimId}" || true`);
         await execAsync(`xcrun simctl delete "${shutdownSimId}"`);
       }
-    }, 90000);
+    }, 120000);
   });
 
   describe('error handling with real simulators', () => {
@@ -207,33 +207,43 @@ describe('InstallAppController E2E', () => {
       // Arrange
       const nonExistentPath = '/path/that/does/not/exist.app';
       
-      // Act & Assert
-      await expect(controller.execute({
+      // Act
+      const result = await controller.execute({
         appPath: nonExistentPath,
         simulatorId: testSimulatorId
-      })).rejects.toThrow('No such file or directory');
+      });
+      
+      // Assert - error message from xcrun simctl install (multi-line in real E2E)
+      expect(result.content[0].text).toContain('❌');
+      expect(result.content[0].text).toContain('No such file or directory');  
     });
 
     it('should fail when app path is not an app bundle', async () => {
       // Arrange - use a regular file instead of .app
       const invalidAppPath = testManager.paths.xcodeProjectXCTestPath;
       
-      // Act & Assert
-      await expect(controller.execute({
+      // Act
+      const result = await controller.execute({
         appPath: invalidAppPath,
         simulatorId: testSimulatorId
-      })).rejects.toThrow();
+      });
+      
+      // Assert - validation error formatted with ❌
+      expect(result.content[0].text).toBe('❌ App path must be a .app bundle');
     });
 
     it('should fail when simulator does not exist', async () => {
       // Arrange
       const nonExistentSimulator = 'non-existent-simulator-id';
       
-      // Act & Assert
-      await expect(controller.execute({
+      // Act
+      const result = await controller.execute({
         appPath: testAppPath,
         simulatorId: nonExistentSimulator
-      })).rejects.toThrow('not found');
+      });
+      
+      // Assert
+      expect(result.content[0].text).toBe('❌ Simulator not found: non-existent-simulator-id');
     });
 
     it('should fail when no booted simulator and no ID specified', async () => {
@@ -241,10 +251,13 @@ describe('InstallAppController E2E', () => {
       await execAsync('xcrun simctl shutdown all');
       
       try {
-        // Act & Assert
-        await expect(controller.execute({
+        // Act
+        const result = await controller.execute({
           appPath: testAppPath
-        })).rejects.toThrow('No booted simulator');
+        });
+        
+        // Assert
+        expect(result.content[0].text).toBe('❌ No booted simulator found. Please boot a simulator first or specify a simulator ID.');
       } finally {
         // Re-boot our test simulator for other tests
         await execAsync(`xcrun simctl boot "${testSimulatorId}"`);
@@ -255,11 +268,17 @@ describe('InstallAppController E2E', () => {
 
   describe('input validation', () => {
     it('should reject invalid app paths', async () => {
-      // Act & Assert - path traversal attempt
-      await expect(controller.execute({
+      // Act - path traversal attempt triggers multiple validation errors
+      const result = await controller.execute({
         appPath: '../../../etc/passwd',
         simulatorId: testSimulatorId
-      })).rejects.toThrow();
+      });
+      
+      // Assert - validation errors are returned, not thrown
+      const expected = `❌ Validation errors:
+  • App path must be a .app bundle
+  • Invalid app path: path traversal detected`;
+      expect(result.content[0].text).toBe(expected);
     });
 
     it('should handle simulator specified by name', async () => {

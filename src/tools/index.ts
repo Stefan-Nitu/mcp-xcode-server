@@ -6,7 +6,6 @@
 export { ArchiveProjectTool } from './ArchiveProjectTool.js';
 export { BootSimulatorTool } from './BootSimulatorTool.js';
 export { BuildSwiftPackageTool } from './BuildSwiftPackageTool.js';
-export { BuildXcodeTool } from './BuildXcodeTool.js';
 export { CleanBuildTool } from './CleanBuildTool.js';
 export { ExportIPATool } from './ExportIPATool.js';
 export { GetBuildSettingsTool } from './GetBuildSettingsTool.js';

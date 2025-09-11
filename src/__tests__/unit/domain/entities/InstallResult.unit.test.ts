@@ -1,11 +1,16 @@
 import { describe, it, expect } from '@jest/globals';
-import { InstallResult } from '../../../../domain/entities/InstallResult.js';
+import { 
+  InstallResult,
+  InstallOutcome,
+  InstallCommandFailedError,
+  SimulatorNotFoundError
+} from '../../../../domain/entities/InstallResult.js';
 
 describe('InstallResult', () => {
-  describe('success', () => {
+  describe('succeeded', () => {
     it('should create successful install result', () => {
       // Arrange & Act
-      const result = InstallResult.success(
+      const result = InstallResult.succeeded(
         'com.example.app',
         'iPhone-15-Simulator',
         'iPhone 15',
@@ -13,18 +18,18 @@ describe('InstallResult', () => {
       );
       
       // Assert
-      expect(result.isSuccess).toBe(true);
-      expect(result.bundleId).toBe('com.example.app');
-      expect(result.simulatorId).toBe('iPhone-15-Simulator');
-      expect(result.simulatorName).toBe('iPhone 15');
-      expect(result.appPath).toBe('/path/to/app.app');
-      expect(result.error).toBeUndefined();
+      expect(result.outcome).toBe(InstallOutcome.Succeeded);
+      expect(result.diagnostics.bundleId).toBe('com.example.app');
+      expect(result.diagnostics.simulatorId).toBe('iPhone-15-Simulator');
+      expect(result.diagnostics.simulatorName).toBe('iPhone 15');
+      expect(result.diagnostics.appPath).toBe('/path/to/app.app');
+      expect(result.diagnostics.error).toBeUndefined();
     });
 
     it('should include install timestamp', () => {
       // Arrange & Act
       const before = Date.now();
-      const result = InstallResult.success(
+      const result = InstallResult.succeeded(
         'com.example.app',
         'test-sim',
         'Test Simulator',
@@ -33,77 +38,94 @@ describe('InstallResult', () => {
       const after = Date.now();
       
       // Assert
-      expect(result.installedAt.getTime()).toBeGreaterThanOrEqual(before);
-      expect(result.installedAt.getTime()).toBeLessThanOrEqual(after);
+      expect(result.diagnostics.installedAt.getTime()).toBeGreaterThanOrEqual(before);
+      expect(result.diagnostics.installedAt.getTime()).toBeLessThanOrEqual(after);
     });
   });
 
-  describe('failure', () => {
-    it('should create failed install result', () => {
-      // Arrange & Act
-      const result = InstallResult.failure(
-        'Simulator not found',
+  describe('failed', () => {
+    it('should create failed install result with SimulatorNotFoundError', () => {
+      // Arrange
+      const error = new SimulatorNotFoundError('non-existent-sim');
+      
+      // Act
+      const result = InstallResult.failed(
+        error,
         '/path/to/app.app',
         'non-existent-sim',
         'Unknown Simulator'
       );
       
       // Assert
-      expect(result.isSuccess).toBe(false);
-      expect(result.error).toBe('Simulator not found');
-      expect(result.appPath).toBe('/path/to/app.app');
-      expect(result.simulatorId).toBe('non-existent-sim');
-      expect(result.bundleId).toBeUndefined();
+      expect(result.outcome).toBe(InstallOutcome.Failed);
+      expect(result.diagnostics.error).toBe(error);
+      expect(result.diagnostics.appPath).toBe('/path/to/app.app');
+      expect(result.diagnostics.simulatorId).toBe('non-existent-sim');
+      expect(result.diagnostics.bundleId).toBeUndefined();
     });
 
     it('should handle failure without simulator ID', () => {
-      // Arrange & Act
-      const result = InstallResult.failure(
-        'No booted simulator found',
-        '/path/to/app.app'
-      );
-      
-      // Assert
-      expect(result.isSuccess).toBe(false);
-      expect(result.error).toBe('No booted simulator found');
-      expect(result.appPath).toBe('/path/to/app.app');
-      expect(result.simulatorId).toBeUndefined();
-    });
-  });
-
-  describe('toString', () => {
-    it('should format successful result with name and ID', () => {
       // Arrange
-      const result = InstallResult.success(
-        'com.example.app',
-        'iPhone-15-UUID',
-        'iPhone 15',
-        '/path/to/app.app'
-      );
+      const error = new SimulatorNotFoundError('booted');
       
       // Act
-      const str = result.toString();
+      const result = InstallResult.failed(
+        error,
+        '/path/to/app.app'
+      );
       
       // Assert
-      expect(str).toBe('Successfully installed com.example.app on iPhone 15 (iPhone-15-UUID)');
+      expect(result.outcome).toBe(InstallOutcome.Failed);
+      expect(result.diagnostics.error).toBe(error);
+      expect(result.diagnostics.appPath).toBe('/path/to/app.app');
+      expect(result.diagnostics.simulatorId).toBeUndefined();
     });
 
-    it('should format failed result', () => {
+    it('should create failed install result with InstallCommandFailedError', () => {
       // Arrange
-      const result = InstallResult.failure(
-        'App bundle not found',
+      const error = new InstallCommandFailedError('App bundle not found');
+      
+      // Act
+      const result = InstallResult.failed(
+        error,
         '/path/to/app.app',
         'test-sim',
         'Test Simulator'
       );
       
-      // Act
-      const str = result.toString();
+      // Assert
+      expect(result.outcome).toBe(InstallOutcome.Failed);
+      expect(result.diagnostics.error).toBe(error);
+      expect((result.diagnostics.error as InstallCommandFailedError).stderr).toBe('App bundle not found');
+    });
+  });
+
+  describe('outcome checking', () => {
+    it('should identify successful installation', () => {
+      // Arrange & Act
+      const result = InstallResult.succeeded(
+        'com.example.app',
+        'sim-id',
+        'Simulator',
+        '/app.app'
+      );
       
       // Assert
-      expect(str).toContain('Failed to install');
-      expect(str).toContain('App bundle not found');
-      expect(str).toContain('/path/to/app.app');
+      expect(result.outcome).toBe(InstallOutcome.Succeeded);
+    });
+
+    it('should identify failed installation', () => {
+      // Arrange
+      const error = new InstallCommandFailedError('Installation failed');
+      
+      // Act
+      const result = InstallResult.failed(
+        error,
+        '/app.app'
+      );
+      
+      // Assert
+      expect(result.outcome).toBe(InstallOutcome.Failed);
     });
   });
 });

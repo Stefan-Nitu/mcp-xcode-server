@@ -57,7 +57,7 @@ describe('SimulatorControlAdapter', () => {
 
       // Act & Assert
       await expect(sut.boot('ABC-123'))
-        .rejects.toThrow('Failed to boot simulator: Invalid device: ABC-123');
+        .rejects.toThrow('Invalid device: ABC-123');
     });
 
     it('should throw error when simulator runtime is not installed on system', async () => {
@@ -71,7 +71,7 @@ describe('SimulatorControlAdapter', () => {
 
       // Act & Assert
       await expect(sut.boot('ABC-123'))
-        .rejects.toThrow('Failed to boot simulator: The device runtime is not available');
+        .rejects.toThrow('The device runtime is not available');
     });
   });
 
@@ -116,7 +116,7 @@ describe('SimulatorControlAdapter', () => {
 
       // Act & Assert
       await expect(sut.shutdown('ABC-123'))
-        .rejects.toThrow('Failed to shutdown simulator: Invalid device: ABC-123');
+        .rejects.toThrow('Invalid device: ABC-123');
     });
   });
 });

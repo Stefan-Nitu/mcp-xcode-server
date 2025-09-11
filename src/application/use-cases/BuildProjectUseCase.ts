@@ -89,7 +89,7 @@ export class BuildProjectUseCase {
         command
       });
       
-      return BuildResult.success(output, appPath, logPath, warnings);
+      return BuildResult.succeeded(output, appPath, logPath, warnings);
     } else {
       // Failure path
       // Log failure via LogManager
@@ -114,7 +114,7 @@ export class BuildProjectUseCase {
       }
       
       // Return failure result
-      return BuildResult.failure(output, parsed.issues, result.exitCode, logPath);
+      return BuildResult.failed(output, parsed.issues, result.exitCode, logPath);
     }
   }
 }

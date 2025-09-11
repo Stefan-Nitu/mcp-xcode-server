@@ -1,28 +1,23 @@
 import { z } from 'zod';
 import { InstallAppUseCase } from '../../application/use-cases/InstallAppUseCase.js';
 import { InstallRequest } from '../../domain/value-objects/InstallRequest.js';
-import { InstallResult } from '../../domain/entities/InstallResult.js';
-import { MCPResponse } from '../interfaces/MCPResponse.js';
-import { createModuleLogger } from '../../logger.js';
+import { 
+  InstallResult,
+  InstallOutcome,
+  InstallCommandFailedError,
+  SimulatorNotFoundError 
+} from '../../domain/entities/InstallResult.js';
+import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 import {
   appPathSchema,
   simulatorIdSchema
 } from '../validation/ToolInputValidators.js';
-
-const logger = createModuleLogger('InstallAppController');
+import { MCPController } from '../interfaces/MCPController.js';
 
 /**
  * MCP Controller for installing apps on simulators
  * 
- * Dual Responsibility (per architecture pattern):
- * 1. MCP Tool Interface:
- *    - Define tool metadata (name, description)
- *    - Define input schema for MCP
- * 2. Orchestration:
- *    - Validate input
- *    - Create domain objects
- *    - Execute use case
- *    - Present results
+ * Handles input validation and orchestrates the install app use case
  */
 
 // Compose the validation schema from reusable validators
@@ -31,27 +26,17 @@ const installAppSchema = z.object({
   simulatorId: simulatorIdSchema
 });
 
-export type InstallAppArgs = z.infer<typeof installAppSchema>;
+type InstallAppArgs = z.infer<typeof installAppSchema>;
 
-export class InstallAppController {
+export class InstallAppController implements MCPController {
   // MCP Tool metadata
   readonly name = 'install_app';
   readonly description = 'Install an app on the simulator';
   
   constructor(
-    private installUseCase: InstallAppUseCase
+    private useCase: InstallAppUseCase
   ) {}
   
-  // MCP Tool definition
-  getToolDefinition() {
-    return {
-      name: this.name,
-      description: this.description,
-      inputSchema: this.inputSchema
-    };
-  }
-  
-  // MCP input schema
   get inputSchema() {
     return {
       type: 'object' as const,
@@ -69,76 +54,73 @@ export class InstallAppController {
     };
   }
   
-  // MCP execute method - orchestrates everything
-  async execute(args: unknown): Promise<MCPResponse> {
-    try {
-      // 1. Call internal handle method for business logic
-      const result = await this.handle(args);
-      
-      // 2. Present the result
-      return this.present(result);
-      
-    } catch (error: any) {
-      // Handle all errors uniformly
-      return this.presentError(error);
-    }
+  getToolDefinition() {
+    return {
+      name: this.name,
+      description: this.description,
+      inputSchema: this.inputSchema
+    };
   }
   
-  // Legacy handle method - kept for backward compatibility and testing
-  async handle(args: unknown): Promise<InstallResult> {
-    // 1. Validate input
-    const validated = this.validateInput(args);
-    
-    const { appPath, simulatorId } = validated;
-    logger.info({ appPath, simulatorId }, 'Handling install request');
-    
+  async execute(args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
     try {
-      // 2. Create domain request
-      const request = InstallRequest.create(appPath, simulatorId);
+      // Validate input
+      const validated = installAppSchema.parse(args) as InstallAppArgs;
       
-      // 3. Execute use case and return result
-      return await this.installUseCase.execute(request);
+      // Create domain request
+      const request = InstallRequest.create(validated.appPath, validated.simulatorId);
       
-    } catch (error: any) {
-      // Log and re-throw for proper error handling upstream
-      logger.error({ error, appPath, simulatorId }, 'Install controller error');
-      throw error;
-    }
-  }
-  
-  private validateInput(args: unknown): InstallAppArgs {
-    try {
-      return installAppSchema.parse(args);
-    } catch (error: any) {
-      logger.warn({ error, args }, 'Invalid input');
-      throw error;
-    }
-  }
-  
-  private present(result: InstallResult): MCPResponse {
-    if (result.isSuccess) {
+      // Execute use case
+      const result = await this.useCase.execute(request);
+      
+      // Format response
       return {
-        content: [
-          {
-            type: 'text',
-            text: result.toString()
-          }
-        ]
+        content: [{
+          type: 'text',
+          text: this.formatResult(result)
+        }]
       };
-    } else {
-      // This shouldn't happen as errors are thrown, but handle it anyway
-      return this.presentError(new Error(result.error || 'Installation failed'));
+    } catch (error: any) {
+      // Handle validation and use case errors consistently
+      const message = ErrorFormatter.format(error);
+      return {
+        content: [{
+          type: 'text',
+          text: `❌ ${message}`
+        }]
+      };
     }
   }
   
-  private presentError(error: any): MCPResponse {
-    // For validation errors, provide more context
-    if (error.name === 'ZodError') {
-      const zodError = error as z.ZodError;
-      const issues = zodError.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
-      throw new Error(`Validation failed: ${issues}`);
-    }
+  private formatResult(result: InstallResult): string {
+    const { outcome, diagnostics } = result;
     
-    throw error;
+    switch (outcome) {
+      case InstallOutcome.Succeeded:
+        return `✅ Successfully installed ${diagnostics.bundleId} on ${diagnostics.simulatorName} (${diagnostics.simulatorId})`;
+      
+      case InstallOutcome.Failed:
+        const { error } = diagnostics;
+        
+        if (error instanceof SimulatorNotFoundError) {
+          if (error.simulatorId === 'booted') {
+            return `❌ No booted simulator found. Please boot a simulator first or specify a simulator ID.`;
+          }
+          return `❌ Simulator not found: ${error.simulatorId}`;
+        }
+        
+        if (error instanceof InstallCommandFailedError) {
+          const message = ErrorFormatter.format(error);
+          // Include simulator context if available
+          if (diagnostics.simulatorName && diagnostics.simulatorId) {
+            return `❌ ${diagnostics.simulatorName} (${diagnostics.simulatorId}) - ${message}`;
+          }
+          return `❌ ${message}`;
+        }
+        
+        // Shouldn't happen but handle gracefully
+        const fallbackMessage = error ? ErrorFormatter.format(error) : 'Install operation failed';
+        return `❌ ${fallbackMessage}`;
+    }
   }
 }

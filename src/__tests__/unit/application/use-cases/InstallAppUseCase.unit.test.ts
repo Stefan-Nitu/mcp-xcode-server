@@ -1,3 +1,4 @@
+import { InstallResult, InstallOutcome, InstallCommandFailedError, SimulatorNotFoundError } from '../../../../domain/entities/InstallResult.js';
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { InstallAppUseCase } from '../../../../application/use-cases/InstallAppUseCase.js';
 import { InstallRequest } from '../../../../domain/value-objects/InstallRequest.js';
@@ -84,9 +85,9 @@ describe('InstallAppUseCase', () => {
       const result = await sut.execute(request);
 
       // Assert
-      expect(result.isSuccess).toBe(true);
-      expect(result.bundleId).toBe('MyApp.app');
-      expect(result.simulatorId).toBe('test-simulator-id');
+      expect(result.outcome).toBe(InstallOutcome.Succeeded);
+      expect(result.diagnostics.bundleId).toBe('MyApp.app');
+      expect(result.diagnostics.simulatorId).toBe('test-simulator-id');
       expect(mockInstallApp).toHaveBeenCalledWith('/path/to/MyApp.app', 'test-simulator-id');
     });
 
@@ -106,7 +107,7 @@ describe('InstallAppUseCase', () => {
       // Assert
       expect(mockBoot).toHaveBeenCalledWith('test-simulator-id');
       expect(mockInstallApp).toHaveBeenCalledWith('/path/to/MyApp.app', 'test-simulator-id');
-      expect(result.isSuccess).toBe(true);
+      expect(result.outcome).toBe(InstallOutcome.Succeeded);
     });
 
     it('should return failure when simulator not found', async () => {
@@ -120,8 +121,9 @@ describe('InstallAppUseCase', () => {
       const result = await sut.execute(request);
 
       // Assert
-      expect(result.isSuccess).toBe(false);
-      expect(result.error).toContain('Simulator not found');
+      expect(result.outcome).toBe(InstallOutcome.Failed);
+      expect(result.diagnostics.error).toBeInstanceOf(SimulatorNotFoundError);
+      expect((result.diagnostics.error as SimulatorNotFoundError).simulatorId).toBe('non-existent-id');
       expect(mockSaveDebugData).toHaveBeenCalledWith(
         'install-app-failed',
         expect.objectContaining({ reason: 'simulator_not_found' }),
@@ -142,8 +144,9 @@ describe('InstallAppUseCase', () => {
       const result = await sut.execute(request);
 
       // Assert
-      expect(result.isSuccess).toBe(false);
-      expect(result.error).toContain('Failed to boot simulator');
+      expect(result.outcome).toBe(InstallOutcome.Failed);
+      expect(result.diagnostics.error).toBeInstanceOf(InstallCommandFailedError);
+      expect((result.diagnostics.error as InstallCommandFailedError).stderr).toBe('Boot failed');
       expect(mockSaveDebugData).toHaveBeenCalledWith(
         'simulator-boot-failed',
         expect.objectContaining({ error: 'Boot failed' }),
@@ -166,8 +169,8 @@ describe('InstallAppUseCase', () => {
       const result = await sut.execute(request);
 
       // Assert
-      expect(result.isSuccess).toBe(true);
-      expect(result.simulatorId).toBe('test-simulator-id');
+      expect(result.outcome).toBe(InstallOutcome.Succeeded);
+      expect(result.diagnostics.simulatorId).toBe('test-simulator-id');
       expect(mockFindBootedSimulator).toHaveBeenCalled();
       expect(mockInstallApp).toHaveBeenCalledWith('/path/to/MyApp.app', 'test-simulator-id');
     });
@@ -183,8 +186,9 @@ describe('InstallAppUseCase', () => {
       const result = await sut.execute(request);
 
       // Assert
-      expect(result.isSuccess).toBe(false);
-      expect(result.error).toContain('No booted simulator found');
+      expect(result.outcome).toBe(InstallOutcome.Failed);
+      expect(result.diagnostics.error).toBeInstanceOf(SimulatorNotFoundError);
+      expect((result.diagnostics.error as SimulatorNotFoundError).simulatorId).toBe('booted');
       expect(mockSaveDebugData).toHaveBeenCalledWith(
         'install-app-failed',
         expect.objectContaining({ reason: 'simulator_not_found' }),
@@ -207,9 +211,9 @@ describe('InstallAppUseCase', () => {
       const result = await sut.execute(request);
 
       // Assert
-      expect(result.isSuccess).toBe(false);
-      expect(result.error).toContain('Failed to install app');
-      expect(result.error).toContain('Code signing error');
+      expect(result.outcome).toBe(InstallOutcome.Failed);
+      expect(result.diagnostics.error).toBeInstanceOf(InstallCommandFailedError);
+      expect((result.diagnostics.error as InstallCommandFailedError).stderr).toBe('Code signing error');
       expect(mockSaveDebugData).toHaveBeenCalledWith(
         'install-app-error',
         expect.objectContaining({ error: 'Code signing error' }),
@@ -230,8 +234,9 @@ describe('InstallAppUseCase', () => {
       const result = await sut.execute(request);
 
       // Assert
-      expect(result.isSuccess).toBe(false);
-      expect(result.error).toContain('Failed to install app');
+      expect(result.outcome).toBe(InstallOutcome.Failed);
+      expect(result.diagnostics.error).toBeInstanceOf(InstallCommandFailedError);
+      expect((result.diagnostics.error as InstallCommandFailedError).stderr).toBe('String error');
     });
   });
 

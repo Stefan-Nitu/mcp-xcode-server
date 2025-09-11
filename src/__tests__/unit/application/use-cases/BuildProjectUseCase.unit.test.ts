@@ -2,6 +2,7 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BuildProjectUseCase } from '../../../../application/use-cases/BuildProjectUseCase.js';
 import { BuildRequest } from '../../../../domain/value-objects/BuildRequest.js';
 import { BuildDestination } from '../../../../domain/value-objects/BuildDestination.js';
+import { BuildResult, BuildOutcome } from '../../../../domain/entities/BuildResult.js';
 import { ICommandExecutor, ExecutionResult, ExecutionOptions } from '../../../../application/ports/CommandPorts.js';
 import { IAppLocator } from '../../../../application/ports/ArtifactPorts.js';
 import { ILogManager } from '../../../../application/ports/LoggingPorts.js';
@@ -122,11 +123,11 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(true);
-      expect(result.appPath).toBe('/path/to/DerivedData/MyApp.app');
-      expect(result.logPath).toBe('/path/to/log');
-      expect(result.hasErrors()).toBe(false);
-      expect(result.output).toContain('Build succeeded');
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
+      expect(result.diagnostics.appPath).toBe('/path/to/DerivedData/MyApp.app');
+      expect(result.diagnostics.logPath).toBe('/path/to/log');
+      expect(BuildResult.hasErrors(result)).toBe(false);
+      expect(result.diagnostics.output).toContain('Build succeeded');
       
       expect(mockExecutor.execute).toHaveBeenCalled();
       expect(mockAppLocator.findApp).toHaveBeenCalled();
@@ -162,9 +163,9 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(true);
-      expect(result.getWarnings()).toHaveLength(2);
-      const warnings = result.getWarnings();
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
+      expect(BuildResult.getWarnings(result)).toHaveLength(2);
+      const warnings = BuildResult.getWarnings(result);
       expect(warnings[0].message).toContain('deprecated');
       expect(warnings[1].message).toContain('unused');
     });
@@ -186,7 +187,7 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(true);
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
       
       const executedCommand = mockExecutor.execute.mock.calls[0][0];
       expect(executedCommand).toContain('-workspace');
@@ -209,9 +210,9 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(true);
-      expect(result.appPath).toBeUndefined();
-      expect(result.hasErrors()).toBe(false);
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
+      expect(result.diagnostics.appPath).toBeUndefined();
+      expect(BuildResult.hasErrors(result)).toBe(false);
     });
     
     it('should use custom derived data path when provided', async () => {
@@ -232,7 +233,7 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(true);
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
       expect(mockAppLocator.findApp).toHaveBeenCalledWith(customPath);
       
       const executedCommand = mockExecutor.execute.mock.calls[0][0];
@@ -256,11 +257,11 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(false);
-      expect(result.exitCode).toBe(1);
+      expect(result.outcome).toBe(BuildOutcome.Failed);
+      expect(result.diagnostics.exitCode).toBe(1);
       
-      const errors = result.getErrors();
-      const warnings = result.getWarnings();
+      const errors = BuildResult.getErrors(result);
+      const warnings = BuildResult.getWarnings(result);
       expect(errors).toHaveLength(1);
       expect(warnings).toHaveLength(1);
       expect(errors[0].message).toBe('no such module');
@@ -300,9 +301,9 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(true);
-      expect(result.appPath).toBe('/path/to/MyApp.app');
-      expect(result.getWarnings()).toHaveLength(0);
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
+      expect(result.diagnostics.appPath).toBe('/path/to/MyApp.app');
+      expect(BuildResult.getWarnings(result)).toHaveLength(0);
     });
   });
   
@@ -349,7 +350,7 @@ describe('BuildProjectUseCase', () => {
           command: executedCommand
         })
       );
-      expect(result.logPath).toBe('/path/to/log');
+      expect(result.diagnostics.logPath).toBe('/path/to/log');
     });
     
     it('should log failure details', async () => {
@@ -367,14 +368,14 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(false);
+      expect(result.outcome).toBe(BuildOutcome.Failed);
       expect(mockLogger.saveDebugData).toHaveBeenCalledWith(
         'build-failure',
         { exitCode: 1 },
         'project'
       );
       
-      const errors = result.getErrors();
+      const errors = BuildResult.getErrors(result);
       expect(errors.length).toBeGreaterThan(0);
     });
   });
@@ -397,7 +398,7 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(true);
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
       
       const executedCommand = mockExecutor.execute.mock.calls[0][0];
       expect(executedCommand).toContain('platform=macOS');
@@ -420,7 +421,7 @@ describe('BuildProjectUseCase', () => {
       const result = await sut.execute(request);
       
       // Assert
-      expect(result.success).toBe(true);
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
       
       const executedCommand = mockExecutor.execute.mock.calls[0][0];
       expect(executedCommand).toContain('generic/platform=iOS');

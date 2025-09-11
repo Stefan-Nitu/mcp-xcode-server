@@ -2,44 +2,114 @@ import { BuildIssue } from '../value-objects/BuildIssue.js';
 
 /**
  * Domain Entity: Represents the result of a build operation
+ * 
+ * Separates user-facing outcome from internal diagnostics
  */
-export class BuildResult {
+
+// User-facing outcome (what happened)
+export enum BuildOutcome {
+  Succeeded = 'succeeded',
+  Failed = 'failed'
+}
+
+// Base class for all build-related errors
+export abstract class BuildError extends Error {}
+
+// Specific error types
+export class BuildCommandFailedError extends BuildError {
   constructor(
-    public readonly success: boolean,
-    public readonly output: string,
-    public readonly appPath: string | undefined,
-    public readonly logPath: string | undefined,
-    public readonly issues: BuildIssue[],
+    public readonly stderr: string,
     public readonly exitCode: number
-  ) {}
-  
-  static success(
+  ) {
+    super(stderr);
+    this.name = 'BuildCommandFailedError';
+  }
+}
+
+export class BuildConfigurationError extends BuildError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BuildConfigurationError';
+  }
+}
+
+// Internal diagnostics (why/how it happened)
+export interface BuildDiagnostics {
+  readonly output: string;
+  readonly appPath?: string;
+  readonly logPath?: string;
+  readonly issues: BuildIssue[];
+  readonly exitCode: number;
+  readonly error?: BuildError;
+  readonly scheme?: string;
+  readonly configuration?: string;
+  readonly platform?: string;
+}
+
+// Complete result combining outcome and diagnostics
+export interface BuildResult {
+  readonly outcome: BuildOutcome;
+  readonly diagnostics: BuildDiagnostics;
+}
+
+export const BuildResult = {
+  /**
+   * Build succeeded
+   */
+  succeeded(
     output: string,
     appPath?: string,
     logPath?: string,
-    warnings: BuildIssue[] = []
+    warnings: BuildIssue[] = [],
+    diagnostics?: Partial<BuildDiagnostics>
   ): BuildResult {
-    return new BuildResult(true, output, appPath, logPath, warnings, 0);
-  }
-  
-  static failure(
+    return Object.freeze({
+      outcome: BuildOutcome.Succeeded,
+      diagnostics: Object.freeze({
+        output,
+        appPath,
+        logPath,
+        issues: warnings,
+        exitCode: 0,
+        ...diagnostics
+      })
+    });
+  },
+
+  /**
+   * Build failed
+   */
+  failed(
     output: string,
     issues: BuildIssue[],
     exitCode: number,
-    logPath?: string
+    logPath?: string,
+    error?: BuildError,
+    diagnostics?: Partial<BuildDiagnostics>
   ): BuildResult {
-    return new BuildResult(false, output, undefined, logPath, issues, exitCode);
+    return Object.freeze({
+      outcome: BuildOutcome.Failed,
+      diagnostics: Object.freeze({
+        output,
+        issues,
+        exitCode,
+        logPath,
+        error,
+        ...diagnostics
+      })
+    });
+  },
+
+  // Helper methods
+  hasErrors(result: BuildResult): boolean {
+    return result.diagnostics.issues.some(issue => issue.isError());
+  },
+
+  getErrors(result: BuildResult): BuildIssue[] {
+    return result.diagnostics.issues.filter(issue => issue.isError());
+  },
+
+  getWarnings(result: BuildResult): BuildIssue[] {
+    return result.diagnostics.issues.filter(issue => issue.isWarning());
   }
-  
-  hasErrors(): boolean {
-    return this.issues.some(issue => issue.isError());
-  }
-  
-  getErrors(): BuildIssue[] {
-    return this.issues.filter(issue => issue.isError());
-  }
-  
-  getWarnings(): BuildIssue[] {
-    return this.issues.filter(issue => issue.isWarning());
-  }
-}
+};

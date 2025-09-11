@@ -1,136 +1,141 @@
 import { describe, it, expect } from '@jest/globals';
-import { BuildResult } from '../../../../domain/entities/BuildResult.js';
+import { 
+  BuildResult, 
+  BuildOutcome,
+  BuildCommandFailedError 
+} from '../../../../domain/entities/BuildResult.js';
 import { BuildIssue } from '../../../../domain/value-objects/BuildIssue.js';
 
 describe('BuildResult', () => {
-  // Factory methods for test data - DAMP over DRY
-  function createSuccessResult(
-    output = 'Build succeeded',
-    appPath?: string,
-    logPath?: string
-  ): BuildResult {
-    return BuildResult.success(output, appPath, logPath);
-  }
-  
-  function createFailureResult(
-    output = 'Build failed',
-    issues: BuildIssue[] = [],
-    exitCode = 1,
-    logPath?: string
-  ): BuildResult {
-    return BuildResult.failure(output, issues, exitCode, logPath);
-  }
-  
-  function createTestError(message = 'Test error', file?: string): BuildIssue {
-    return BuildIssue.error(message, file);
-  }
-  
-  function createTestWarning(message = 'Test warning', file?: string): BuildIssue {
-    return BuildIssue.warning(message, file);
-  }
-  
-  describe('when build succeeds', () => {
-    it('should indicate success', () => {
-      // Arrange & Act - all visible in test
-      const result = BuildResult.success('Build completed', '/path/to/app.app');
+  describe('succeeded', () => {
+    it('should create result with succeeded outcome', () => {
+      // Arrange & Act
+      const result = BuildResult.succeeded('Build completed', '/path/to/app.app');
       
       // Assert - test the behavior
-      expect(result.success).toBe(true);
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
+      expect(result.diagnostics.appPath).toBe('/path/to/app.app');
     });
     
-    it('should provide the built artifact path', () => {
-      const appPath = '/path/to/app.app';
-      const result = BuildResult.success('Build completed', appPath);
-      
-      expect(result.appPath).toBe(appPath);
-    });
-    
-    it('should have no compilation issues', () => {
-      const result = createSuccessResult();
-      
-      expect(result.hasErrors()).toBe(false);
-      expect(result.getErrors()).toEqual([]);
-      expect(result.getWarnings()).toEqual([]);
-    });
-  });
-  
-  describe('when build fails', () => {
-    it('should indicate failure', () => {
-      const result = BuildResult.failure('Compilation failed', [], 1);
-      
-      expect(result.success).toBe(false);
-    });
-    
-    it('should not have an artifact path', () => {
-      const result = createFailureResult();
-      
-      expect(result.appPath).toBeUndefined();
-    });
-    
-    it('should report compilation errors', () => {
-      const error = createTestError('Cannot find type "Foo"');
-      const result = BuildResult.failure('Compilation failed', [error], 1);
-      
-      expect(result.hasErrors()).toBe(true);
-      expect(result.getErrors()).toEqual([error]);
-    });
-  });
-  
-  describe('when build has warnings', () => {
-    it('should report warnings separately from errors', () => {
-      const error = createTestError('Syntax error');
-      const warning = createTestWarning('Deprecated API usage');
-      const result = BuildResult.failure('Build failed', [error, warning], 1);
-      
-      expect(result.getErrors()).toEqual([error]);
-      expect(result.getWarnings()).toEqual([warning]);
-    });
-    
-    it('should allow successful builds with warnings', () => {
-      const warning = createTestWarning('Unused variable');
-      const result = new BuildResult(
-        true, 
-        'Build succeeded with warnings',
+    it('should include output and log path', () => {
+      // Arrange & Act
+      const result = BuildResult.succeeded(
+        'Build output',
         '/path/to/app.app',
-        undefined,
-        [warning],
-        0
+        '/logs/build.log'
       );
       
-      expect(result.success).toBe(true);
-      expect(result.getWarnings()).toEqual([warning]);
-      expect(result.hasErrors()).toBe(false);
+      // Assert
+      expect(result.diagnostics.output).toBe('Build output');
+      expect(result.diagnostics.logPath).toBe('/logs/build.log');
+    });
+    
+    it('should handle warnings in successful build', () => {
+      // Arrange
+      const warning = BuildIssue.warning('Deprecated API');
+      
+      // Act
+      const result = BuildResult.succeeded(
+        'Build completed with warnings',
+        '/path/to/app.app',
+        undefined,
+        [warning]
+      );
+      
+      // Assert
+      expect(result.outcome).toBe(BuildOutcome.Succeeded);
+      expect(BuildResult.getWarnings(result)).toEqual([warning]);
+      expect(BuildResult.hasErrors(result)).toBe(false);
     });
   });
   
-  describe('when accessing build output', () => {
-    it('should preserve the build output', () => {
-      const output = 'Compiling main.swift...\nLinking...';
-      const result = BuildResult.success(output);
+  describe('failed', () => {
+    it('should create result with failed outcome', () => {
+      // Arrange
+      const error = BuildIssue.error('Compilation error');
       
-      expect(result.output).toBe(output);
+      // Act
+      const result = BuildResult.failed('Build failed', [error], 1);
+      
+      // Assert
+      expect(result.outcome).toBe(BuildOutcome.Failed);
+      expect(result.diagnostics.exitCode).toBe(1);
     });
     
-    it('should provide log file path when available', () => {
-      const logPath = '/var/logs/build-12345.log';
-      const result = createSuccessResult('Build completed', undefined, logPath);
+    it('should include build error details', () => {
+      // Arrange
+      const buildError = new BuildCommandFailedError('xcodebuild failed', 65);
+      const issue = BuildIssue.error('Cannot find type');
       
-      expect(result.logPath).toBe(logPath);
+      // Act
+      const result = BuildResult.failed(
+        'Build failed',
+        [issue],
+        65,
+        '/logs/build.log',
+        buildError
+      );
+      
+      // Assert
+      expect(result.diagnostics.error).toBe(buildError);
+      expect(result.diagnostics.logPath).toBe('/logs/build.log');
+      expect(BuildResult.getErrors(result)).toEqual([issue]);
     });
   });
   
-  describe('when tracking exit codes', () => {
-    it('should track the process exit code', () => {
-      const exitCode = 139;
-      const result = BuildResult.failure('Segmentation fault', [], exitCode);
+  describe('helper methods', () => {
+    it('should detect errors in issues', () => {
+      // Arrange
+      const error = BuildIssue.error('Syntax error');
+      const warning = BuildIssue.warning('Unused variable');
+      const result = BuildResult.failed('Failed', [error, warning], 1);
       
-      expect(result.exitCode).toBe(exitCode);
+      // Act & Assert
+      expect(BuildResult.hasErrors(result)).toBe(true);
+      expect(BuildResult.getErrors(result)).toEqual([error]);
     });
     
-    it('should use exit code 0 for success', () => {
-      const result = createSuccessResult();
+    it('should filter warnings from issues', () => {
+      // Arrange
+      const error = BuildIssue.error('Error');
+      const warning1 = BuildIssue.warning('Warning 1');
+      const warning2 = BuildIssue.warning('Warning 2');
+      const result = BuildResult.failed('Failed', [error, warning1, warning2], 1);
       
-      expect(result.exitCode).toBe(0);
+      // Act & Assert
+      expect(BuildResult.getWarnings(result)).toEqual([warning1, warning2]);
+    });
+    
+    it('should handle empty issues list', () => {
+      // Arrange
+      const result = BuildResult.succeeded('Success');
+      
+      // Act & Assert
+      expect(BuildResult.hasErrors(result)).toBe(false);
+      expect(BuildResult.getErrors(result)).toEqual([]);
+      expect(BuildResult.getWarnings(result)).toEqual([]);
+    });
+  });
+  
+  describe('diagnostics metadata', () => {
+    it('should include build metadata in diagnostics', () => {
+      // Arrange & Act
+      const result = BuildResult.succeeded(
+        'Build output',
+        '/app.app',
+        '/log.txt',
+        [],
+        {
+          scheme: 'MyApp',
+          configuration: 'Debug',
+          platform: 'iOS'
+        }
+      );
+      
+      // Assert
+      expect(result.diagnostics.scheme).toBe('MyApp');
+      expect(result.diagnostics.configuration).toBe('Debug');
+      expect(result.diagnostics.platform).toBe('iOS');
     });
   });
 });

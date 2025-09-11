@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { BuildProjectUseCase } from '../../application/use-cases/BuildProjectUseCase.js';
 import { BuildRequest } from '../../domain/value-objects/BuildRequest.js';
-import { BuildResult } from '../../domain/entities/BuildResult.js';
 import { BuildDestination } from '../../domain/value-objects/BuildDestination.js';
 import { BuildXcodePresenter } from '../presenters/BuildXcodePresenter.js';
 import { PlatformDetector } from '../../domain/services/PlatformDetector.js';
@@ -15,7 +14,7 @@ import {
   derivedDataPathSchema
 } from '../validation/ToolInputValidators.js';
 import { MCPResponse } from '../interfaces/MCPResponse.js';
-import { BuildXcodeTool } from '../../tools/BuildXcodeTool.js';
+import { MCPController } from '../interfaces/MCPController.js';
 
 const logger = createModuleLogger('BuildXcodeController');
 
@@ -44,7 +43,7 @@ const buildXcodeSchema = z.object({
 
 export type BuildXcodeArgs = z.infer<typeof buildXcodeSchema>;
 
-export class BuildXcodeController {
+export class BuildXcodeController implements MCPController {
   // MCP Tool metadata
   readonly name = 'build_xcode';
   readonly description = 'Build an Xcode project or workspace';
@@ -104,13 +103,16 @@ export class BuildXcodeController {
   // MCP execute method - orchestrates everything
   async execute(args: unknown): Promise<MCPResponse> {
     try {
-      // 1. Call internal handle method for business logic
-      const result = await this.handle(args);
+      // 1. Validate input
+      const validated = buildXcodeSchema.parse(args) as BuildXcodeArgs;
       
-      // 2. Extract metadata for presentation (presenter decides what to show)
-      const validated = args as BuildXcodeArgs; // Safe because handle validates
+      // 2. Create domain request
+      const request = this.createBuildRequest(validated);
       
-      // Derive platform from destination for presenter
+      // 3. Execute use case
+      const result = await this.buildUseCase.execute(request);
+      
+      // 4. Extract metadata for presentation
       const platform = PlatformDetector.fromDestination(validated.destination as BuildDestination);
       
       const metadata = {
@@ -119,44 +121,12 @@ export class BuildXcodeController {
         configuration: validated.configuration || 'Debug'
       };
       
-      // 3. Present the result
+      // 5. Present the result
       return this.presenter.present(result, metadata);
       
     } catch (error: any) {
       // Handle all errors uniformly
       return this.presenter.presentError(error);
-    }
-  }
-  
-  // Legacy handle method - kept for backward compatibility and testing
-  async handle(args: unknown): Promise<BuildResult> {
-    // 1. Validate input
-    const validated = this.validateInput(args);
-    
-    const { projectPath, scheme, destination, configuration } = validated;
-    logger.info({ projectPath, scheme, destination, configuration }, 'Handling build request');
-    
-    try {
-      // 2. Create domain request
-      const request = this.createBuildRequest(validated);
-      
-      // 3. Execute use case and return result
-      return await this.buildUseCase.execute(request);
-      
-    } catch (error: any) {
-      // Log and re-throw for proper error handling upstream
-      logger.error({ error, projectPath, scheme, destination }, 'Build controller error');
-      throw error;
-    }
-  }
-  
-  private validateInput(args: unknown): BuildXcodeArgs {
-    try {
-      return buildXcodeSchema.parse(args);
-    } catch (error: any) {
-      logger.warn({ error, args }, 'Invalid input');
-      // Pass the raw error to the presenter for formatting
-      throw error;
     }
   }
   

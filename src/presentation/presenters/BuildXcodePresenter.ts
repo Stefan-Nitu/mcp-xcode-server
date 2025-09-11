@@ -1,4 +1,4 @@
-import { BuildResult } from '../../domain/entities/BuildResult.js';
+import { BuildResult, BuildOutcome } from '../../domain/entities/BuildResult.js';
 import { Platform } from '../../domain/value-objects/Platform.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 import { MCPResponse } from '../interfaces/MCPResponse.js';
@@ -22,7 +22,7 @@ export class BuildXcodePresenter {
     configuration: string;
     showWarningDetails?: boolean;
   }): MCPResponse {
-    if (result.success) {
+    if (result.outcome === BuildOutcome.Succeeded) {
       return this.presentSuccess(result, metadata);
     }
     return this.presentFailure(result, metadata);
@@ -32,7 +32,7 @@ export class BuildXcodePresenter {
     result: BuildResult,
     metadata: { scheme: string; platform: Platform; configuration: string; showWarningDetails?: boolean }
   ): MCPResponse {
-    const warnings = result.getWarnings();
+    const warnings = BuildResult.getWarnings(result);
     
     let text = `✅ Build succeeded: ${metadata.scheme}
 
@@ -56,9 +56,9 @@ Configuration: ${metadata.configuration}`;
       }
     }
 
-    text += `\nApp path: ${result.appPath || 'N/A'}${result.logPath ? `
+    text += `\nApp path: ${result.diagnostics.appPath || 'N/A'}${result.diagnostics.logPath ? `
 
-📁 Full logs saved to: ${result.logPath}` : ''}`;
+📁 Full logs saved to: ${result.diagnostics.logPath}` : ''}`;
     
     return {
       content: [{ type: 'text', text }]
@@ -69,8 +69,8 @@ Configuration: ${metadata.configuration}`;
     result: BuildResult,
     metadata: { scheme: string; platform: Platform; configuration: string; showWarningDetails?: boolean }
   ): MCPResponse {
-    const errors = result.getErrors();
-    const warnings = result.getWarnings();
+    const errors = BuildResult.getErrors(result);
+    const warnings = BuildResult.getWarnings(result);
     
     let text = `❌ Build failed: ${metadata.scheme}\n`;
     text += `Platform: ${metadata.platform}\n`;
@@ -106,8 +106,8 @@ Configuration: ${metadata.configuration}`;
       }
     }
     
-    if (result.logPath) {
-      text += `\n📁 Full logs saved to: ${result.logPath}`;
+    if (result.diagnostics.logPath) {
+      text += `\n📁 Full logs saved to: ${result.diagnostics.logPath}\n`;
     }
     
     return {
@@ -116,25 +116,21 @@ Configuration: ${metadata.configuration}`;
   }
   
   private formatIssue(issue: any): string {
-    // Use toString() if available, otherwise format manually
-    if (issue.toString) {
-      return issue.toString();
-    }
-    
-    // Fallback formatting
     if (issue.file && issue.line) {
+      if (issue.column) {
+        return `${issue.file}:${issue.line}:${issue.column}: ${issue.message}`;
+      }
       return `${issue.file}:${issue.line}: ${issue.message}`;
     }
-    return issue.message || 'Unknown issue';
+    return issue.message;
   }
   
-  presentError(error: Error | any): MCPResponse {
-    const errorMessage = ErrorFormatter.format(error);
-    
+  presentError(error: Error): MCPResponse {
+    const message = ErrorFormatter.format(error);
     return {
-      content: [{
-        type: 'text',
-        text: `❌ ${errorMessage}`
+      content: [{ 
+        type: 'text', 
+        text: `❌ ${message}` 
       }]
     };
   }

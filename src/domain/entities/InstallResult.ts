@@ -1,74 +1,100 @@
 /**
  * Domain Entity: Represents the result of an app installation
  * 
- * Captures the outcome of installing an app on a simulator,
- * including success/failure status and relevant metadata.
+ * Separates user-facing outcome from internal diagnostics
  */
-export class InstallResult {
-  private constructor(
-    public readonly isSuccess: boolean,
-    public readonly appPath: string,
-    public readonly simulatorId?: string,
-    public readonly simulatorName?: string,
-    public readonly bundleId?: string,
-    public readonly error?: string,
-    public readonly installedAt: Date = new Date()
-  ) {}
 
+// User-facing outcome (what happened)
+export enum InstallOutcome {
+  Succeeded = 'succeeded',
+  Failed = 'failed'
+}
+
+// Base class for all install-related errors  
+export abstract class InstallError extends Error {}
+
+// Specific error types
+export class AppNotFoundError extends InstallError {
+  constructor(public readonly appPath: string) {
+    super(appPath);
+    this.name = 'AppNotFoundError';
+  }
+}
+
+export class SimulatorNotFoundError extends InstallError {
+  constructor(public readonly simulatorId: string) {
+    super(simulatorId);
+    this.name = 'SimulatorNotFoundError';
+  }
+}
+
+export class InstallCommandFailedError extends InstallError {
+  constructor(public readonly stderr: string) {
+    super(stderr);
+    this.name = 'InstallCommandFailedError';
+  }
+}
+
+// Internal diagnostics (why/how it happened)
+export interface InstallDiagnostics {
+  readonly appPath: string;
+  readonly simulatorId?: string;
+  readonly simulatorName?: string;
+  readonly bundleId?: string;
+  readonly error?: InstallError;
+  readonly installedAt: Date;
+}
+
+// Complete result combining outcome and diagnostics
+export interface InstallResult {
+  readonly outcome: InstallOutcome;
+  readonly diagnostics: InstallDiagnostics;
+}
+
+export const InstallResult = {
   /**
-   * Create a successful installation result
+   * Installation succeeded
    */
-  static success(
+  succeeded(
     bundleId: string,
     simulatorId: string,
     simulatorName: string,
-    appPath: string
+    appPath: string,
+    diagnostics?: Partial<InstallDiagnostics>
   ): InstallResult {
-    return new InstallResult(
-      true,
-      appPath,
-      simulatorId,
-      simulatorName,
-      bundleId,
-      undefined
-    );
-  }
+    return Object.freeze({
+      outcome: InstallOutcome.Succeeded,
+      diagnostics: Object.freeze({
+        bundleId,
+        simulatorId,
+        simulatorName,
+        appPath,
+        installedAt: new Date(),
+        ...diagnostics
+      })
+    });
+  },
 
   /**
-   * Create a failed installation result
+   * Installation failed
    */
-  static failure(
-    error: string,
+  failed(
+    error: InstallError,
     appPath: string,
     simulatorId?: string,
-    simulatorName?: string
+    simulatorName?: string,
+    diagnostics?: Partial<InstallDiagnostics>
   ): InstallResult {
-    return new InstallResult(
-      false,
-      appPath,
-      simulatorId,
-      simulatorName,
-      undefined,
-      error
-    );
+    return Object.freeze({
+      outcome: InstallOutcome.Failed,
+      diagnostics: Object.freeze({
+        error,
+        appPath,
+        simulatorId,
+        simulatorName,
+        installedAt: new Date(),
+        ...diagnostics
+      })
+    });
   }
-
-  /**
-   * String representation for logging/display
-   */
-  toString(): string {
-    if (this.isSuccess) {
-      const simulator = this.simulatorName 
-        ? `${this.simulatorName} (${this.simulatorId})`
-        : this.simulatorId;
-      return `Successfully installed ${this.bundleId} on ${simulator}`;
-    } else {
-      const target = this.simulatorName 
-        ? `on ${this.simulatorName} (${this.simulatorId})`
-        : this.simulatorId 
-        ? `on ${this.simulatorId}` 
-        : '';
-      return `Failed to install ${this.appPath} ${target}: ${this.error}`;
-    }
-  }
-}
+};

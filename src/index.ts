@@ -41,6 +41,7 @@ import { logger, logToolExecution, logError } from './logger.js';
 // Import factories for Clean Architecture controllers
 import { BuildXcodeControllerFactory } from './factories/BuildXcodeControllerFactory.js';
 import { InstallAppControllerFactory } from './factories/InstallAppControllerFactory.js';
+import { BootSimulatorControllerFactory } from './factories/BootSimulatorControllerFactory.js';
 
 type Tool = {
   execute(args: any): Promise<any>;
@@ -75,7 +76,7 @@ class XcodeServer {
     const toolInstances = [
       // Simulator management
       // new ListSimulatorsTool(),
-      // new BootSimulatorTool(),
+      BootSimulatorControllerFactory.create(),
       // new ShutdownSimulatorTool(),
       // new ViewSimulatorScreenTool(),
       // Build and test

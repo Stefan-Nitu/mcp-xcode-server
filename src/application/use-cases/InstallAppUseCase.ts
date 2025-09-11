@@ -1,7 +1,11 @@
 import { AppPath } from '../../domain/value-objects/AppPath.js';
 import { SimulatorState } from '../../domain/value-objects/SimulatorState.js';
 import { InstallRequest } from '../../domain/value-objects/InstallRequest.js';
-import { InstallResult } from '../../domain/entities/InstallResult.js';
+import { 
+  InstallResult,
+  InstallCommandFailedError,
+  SimulatorNotFoundError 
+} from '../../domain/entities/InstallResult.js';
 import { 
   ISimulatorLocator,
   ISimulatorControl,
@@ -32,16 +36,13 @@ export class InstallAppUseCase {
       : await this.simulatorLocator.findBootedSimulator();
     
     if (!simulator) {
-      const message = request.simulatorId
-        ? `Simulator not found: ${request.simulatorId}`
-        : 'No booted simulator found. Please boot a simulator first or specify a simulator ID.';
-      
       this.logManager.saveDebugData('install-app-failed', {
         reason: 'simulator_not_found',
         requestedId: request.simulatorId
       }, appName);
       
-      return InstallResult.failure(message, request.appPath, request.simulatorId);
+      const error = new SimulatorNotFoundError(request.simulatorId || 'booted');
+      return InstallResult.failed(error, request.appPath, request.simulatorId);
     }
     
     // Boot simulator if needed (only when specific ID provided)
@@ -58,8 +59,9 @@ export class InstallAppUseCase {
             simulatorId: simulator.id,
             error: error.message
           }, appName);
-          return InstallResult.failure(
-            `Failed to boot simulator: ${error.message}`,
+          const installError = new InstallCommandFailedError(error.message || error.toString());
+          return InstallResult.failed(
+            installError,
             request.appPath,
             simulator.id,
             simulator.name
@@ -84,7 +86,7 @@ export class InstallAppUseCase {
       // Try to get bundle ID from app (could be enhanced later)
       const bundleId = appName; // For now, use app name as bundle ID
       
-      return InstallResult.success(
+      return InstallResult.succeeded(
         bundleId,
         simulator.id,
         simulator.name,
@@ -98,8 +100,9 @@ export class InstallAppUseCase {
         error: error.message
       }, appName);
       
-      return InstallResult.failure(
-        `Failed to install app: ${error.message}`,
+      const installError = new InstallCommandFailedError(error.message || error.toString());
+      return InstallResult.failed(
+        installError,
         request.appPath,
         simulator.id,
         simulator.name

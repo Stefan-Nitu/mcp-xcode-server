@@ -242,11 +242,14 @@ describe('InstallAppController Integration', () => {
         }
       ];
       
-      // Act & Assert
-      await expect(controller.execute({
+      // Act
+      const result = await controller.execute({
         appPath: nonExistentPath,
         simulatorId: 'test-sim'
-      })).rejects.toThrow('No such file or directory');
+      });
+      
+      // Assert
+      expect(result.content[0].text).toBe('❌ iPhone 15 (test-sim) - xcrun simctl install: No such file or directory');
     });
 
     it('should fail when app path is not an app bundle', async () => {
@@ -258,11 +261,14 @@ describe('InstallAppController Integration', () => {
         isFile: () => true
       } as any);
       
-      // Act & Assert
-      await expect(controller.execute({
+      // Act
+      const result = await controller.execute({
         appPath: invalidPath,
         simulatorId: 'test-sim'
-      })).rejects.toThrow();
+      });
+      
+      // Assert
+      expect(result.content[0].text).toBe('❌ App path must be a .app bundle');
     });
 
     it('should fail when simulator does not exist', async () => {
@@ -282,11 +288,14 @@ describe('InstallAppController Integration', () => {
         }
       ];
       
-      // Act & Assert
-      await expect(controller.execute({
+      // Act
+      const result = await controller.execute({
         appPath,
         simulatorId: nonExistentSim
-      })).rejects.toThrow('not found');
+      });
+      
+      // Assert
+      expect(result.content[0].text).toBe(`❌ Simulator not found: ${nonExistentSim}`);
     });
 
     it('should fail when no booted simulator and no ID specified', async () => {
@@ -312,10 +321,13 @@ describe('InstallAppController Integration', () => {
         }
       ];
       
-      // Act & Assert
-      await expect(controller.execute({
+      // Act
+      const result = await controller.execute({
         appPath
-      })).rejects.toThrow('No booted simulator');
+      });
+      
+      // Assert
+      expect(result.content[0].text).toBe('❌ No booted simulator found. Please boot a simulator first or specify a simulator ID.');
     });
 
     it('should handle installation failure gracefully', async () => {
@@ -337,11 +349,14 @@ describe('InstallAppController Integration', () => {
         { error, stdout: '', stderr: error.stderr }
       ];
       
-      // Act & Assert
-      await expect(controller.execute({
+      // Act
+      const result = await controller.execute({
         appPath,
         simulatorId
-      })).rejects.toThrow('incompatible architecture');
+      });
+      
+      // Assert
+      expect(result.content[0].text).toBe('❌ iPhone 15 (test-sim) - incompatible architecture');
     });
   });
 

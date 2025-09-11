@@ -42,7 +42,7 @@ describe('InstallAppController', () => {
     it('should install app on specified simulator', async () => {
       // Arrange
       const { sut, mockExecute } = createSUT();
-      const mockResult = InstallResult.success(
+      const mockResult = InstallResult.succeeded(
         'com.example.app',
         'iPhone-15-Simulator',
         'iPhone 15',
@@ -60,13 +60,13 @@ describe('InstallAppController', () => {
       expect(mockExecute).toHaveBeenCalledWith(
         expect.any(InstallRequest)
       );
-      expect(result.content[0].text).toBe('Successfully installed com.example.app on iPhone 15 (iPhone-15-Simulator)');
+      expect(result.content[0].text).toBe('✅ Successfully installed com.example.app on iPhone 15 (iPhone-15-Simulator)');
     });
 
     it('should install app on booted simulator when no ID specified', async () => {
       // Arrange
       const { sut, mockExecute } = createSUT();
-      const mockResult = InstallResult.success(
+      const mockResult = InstallResult.succeeded(
         'com.example.app',
         'Booted-iPhone-15',
         'iPhone 15',
@@ -83,18 +83,21 @@ describe('InstallAppController', () => {
       expect(mockExecute).toHaveBeenCalledWith(
         expect.any(InstallRequest)
       );
-      expect(result.content[0].text).toContain('Successfully installed');
+      expect(result.content[0].text).toBe('✅ Successfully installed com.example.app on iPhone 15 (Booted-iPhone-15)');
     });
 
     it('should handle validation errors', async () => {
       // Arrange
       const { sut } = createSUT();
       
-      // Act & Assert
-      await expect(sut.execute({
+      // Act
+      const result = await sut.execute({
         // Missing required appPath
         simulatorId: 'test-sim'
-      })).rejects.toThrow();
+      });
+      
+      // Assert
+      expect(result.content[0].text).toBe('❌ App path is required');
     });
 
     it('should handle use case errors', async () => {
@@ -102,21 +105,30 @@ describe('InstallAppController', () => {
       const { sut, mockExecute } = createSUT();
       mockExecute.mockRejectedValue(new Error('Simulator not found'));
       
-      // Act & Assert
-      await expect(sut.execute({
+      // Act
+      const result = await sut.execute({
         appPath: '/path/to/app.app',
         simulatorId: 'non-existent'
-      })).rejects.toThrow('Simulator not found');
+      });
+      
+      // Assert
+      expect(result.content[0].text).toBe('❌ Simulator not found');
     });
 
     it('should validate app path format', async () => {
       // Arrange
       const { sut } = createSUT();
       
-      // Act & Assert
-      await expect(sut.execute({
+      // Act
+      const result = await sut.execute({
         appPath: '../../../etc/passwd' // Path traversal attempt
-      })).rejects.toThrow();
+      });
+      
+      // Assert - Both validation errors should be present
+      const expected = `❌ Validation errors:
+  • App path must be a .app bundle
+  • Invalid app path: path traversal detected`;
+      expect(result.content[0].text).toBe(expected);
     });
 
     it('should handle app not found errors', async () => {
@@ -124,34 +136,14 @@ describe('InstallAppController', () => {
       const { sut, mockExecute } = createSUT();
       mockExecute.mockRejectedValue(new Error('App bundle not found at path'));
       
-      // Act & Assert
-      await expect(sut.execute({
-        appPath: '/non/existent/app.app'
-      })).rejects.toThrow('App bundle not found');
-    });
-  });
-
-  describe('handle method (legacy support)', () => {
-    it('should validate and execute use case', async () => {
-      // Arrange
-      const { sut, mockExecute } = createSUT();
-      const mockResult = InstallResult.success(
-        'com.example.app',
-        'test-sim',
-        'Test Simulator',
-        '/path/to/app.app'
-      );
-      mockExecute.mockResolvedValue(mockResult);
-      
       // Act
-      const result = await sut.handle({
-        appPath: '/path/to/app.app',
-        simulatorId: 'test-sim'
+      const result = await sut.execute({
+        appPath: '/non/existent/app.app'
       });
       
       // Assert
-      expect(result).toBe(mockResult);
-      expect(mockExecute).toHaveBeenCalled();
+      expect(result.content[0].text).toBe('❌ App bundle not found at path');
     });
   });
+
 });

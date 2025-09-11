@@ -13,7 +13,8 @@ export class SimulatorControlAdapter implements ISimulatorControl {
     // Already booted is not an error
     if (result.exitCode !== 0 && 
         !result.stderr.includes('Unable to boot device in current state: Booted')) {
-      throw new Error(`Failed to boot simulator: ${result.stderr}`);
+      // Throw raw error - presentation layer will format it
+      throw new Error(result.stderr);
     }
   }
 
@@ -23,7 +24,8 @@ export class SimulatorControlAdapter implements ISimulatorControl {
     // Already shutdown is not an error
     if (result.exitCode !== 0 && 
         !result.stderr.includes('Unable to shutdown device in current state: Shutdown')) {
-      throw new Error(`Failed to shutdown simulator: ${result.stderr}`);
+      // Throw raw error - presentation layer will format it
+      throw new Error(result.stderr);
     }
   }
 }
