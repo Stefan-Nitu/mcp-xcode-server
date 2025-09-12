@@ -1,29 +1,29 @@
 import { z } from 'zod';
-import { BootSimulatorUseCase } from '../../application/use-cases/BootSimulatorUseCase.js';
-import { BootRequest } from '../../domain/value-objects/BootRequest.js';
-import { BootResult, BootOutcome, SimulatorNotFoundError, BootCommandFailedError, SimulatorBusyError } from '../../domain/entities/BootResult.js';
+import { ShutdownSimulatorUseCase } from '../../application/use-cases/ShutdownSimulatorUseCase.js';
+import { ShutdownRequest } from '../../domain/value-objects/ShutdownRequest.js';
+import { ShutdownResult, ShutdownOutcome, SimulatorNotFoundError, ShutdownCommandFailedError } from '../../domain/entities/ShutdownResult.js';
 import { deviceIdSchema } from '../validation/ToolInputValidators.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 import { MCPController } from '../interfaces/MCPController.js';
 
 // Compose the validation schema from reusable validators
-const bootSimulatorSchema = z.object({
+const shutdownSimulatorSchema = z.object({
   deviceId: deviceIdSchema
 });
 
-type BootSimulatorArgs = z.infer<typeof bootSimulatorSchema>;
+type ShutdownSimulatorArgs = z.infer<typeof shutdownSimulatorSchema>;
 
 /**
- * Controller for the boot_simulator MCP tool
+ * Controller for the shutdown_simulator MCP tool
  * 
- * Handles input validation and orchestrates the boot simulator use case
+ * Handles input validation and orchestrates the shutdown simulator use case
  */
-export class BootSimulatorController implements MCPController {
-  readonly name = 'boot_simulator';
-  readonly description = 'Boot a simulator';
+export class ShutdownSimulatorController implements MCPController {
+  readonly name = 'shutdown_simulator';
+  readonly description = 'Shutdown a simulator';
   
   constructor(
-    private useCase: BootSimulatorUseCase
+    private useCase: ShutdownSimulatorUseCase
   ) {}
   
   get inputSchema() {
@@ -32,7 +32,7 @@ export class BootSimulatorController implements MCPController {
       properties: {
         deviceId: {
           type: 'string' as const,
-          description: 'Device UDID or name of the simulator to boot'
+          description: 'Device UDID or name of the simulator to shutdown'
         }
       },
       required: ['deviceId'] as const
@@ -50,10 +50,10 @@ export class BootSimulatorController implements MCPController {
   async execute(args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
     try {
       // Validate input
-      const validated = bootSimulatorSchema.parse(args) as BootSimulatorArgs;
+      const validated = shutdownSimulatorSchema.parse(args) as ShutdownSimulatorArgs;
       
       // Create domain request
-      const request = BootRequest.create(validated.deviceId);
+      const request = ShutdownRequest.create(validated.deviceId);
       
       // Execute use case
       const result = await this.useCase.execute(request);
@@ -77,17 +77,17 @@ export class BootSimulatorController implements MCPController {
     }
   }
   
-  private formatResult(result: BootResult): string {
+  private formatResult(result: ShutdownResult): string {
     const { outcome, diagnostics } = result;
     
     switch (outcome) {
-      case BootOutcome.Booted:
-        return `✅ Successfully booted simulator: ${diagnostics.simulatorName} (${diagnostics.simulatorId})`;
+      case ShutdownOutcome.Shutdown:
+        return `✅ Successfully shutdown simulator: ${diagnostics.simulatorName} (${diagnostics.simulatorId})`;
       
-      case BootOutcome.AlreadyBooted:
-        return `✅ Simulator already booted: ${diagnostics.simulatorName} (${diagnostics.simulatorId})`;
+      case ShutdownOutcome.AlreadyShutdown:
+        return `✅ Simulator already shutdown: ${diagnostics.simulatorName} (${diagnostics.simulatorId})`;
       
-      case BootOutcome.Failed:
+      case ShutdownOutcome.Failed:
         const { error } = diagnostics;
         
         if (error instanceof SimulatorNotFoundError) {
@@ -95,12 +95,7 @@ export class BootSimulatorController implements MCPController {
           return `❌ Simulator not found: ${error.deviceId}`;
         }
         
-        if (error instanceof SimulatorBusyError) {
-          // Handle simulator busy scenarios
-          return `❌ Cannot boot simulator: currently ${error.currentState.toLowerCase()}`;
-        }
-        
-        if (error instanceof BootCommandFailedError) {
+        if (error instanceof ShutdownCommandFailedError) {
           const message = ErrorFormatter.format(error);
           // Include simulator context if available
           if (diagnostics.simulatorName && diagnostics.simulatorId) {
@@ -110,7 +105,7 @@ export class BootSimulatorController implements MCPController {
         }
         
         // Shouldn't happen but handle gracefully
-        const fallbackMessage = error ? ErrorFormatter.format(error) : 'Boot operation failed';
+        const fallbackMessage = error ? ErrorFormatter.format(error) : 'Shutdown operation failed';
         return `❌ ${fallbackMessage}`;
     }
   }

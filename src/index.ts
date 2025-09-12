@@ -42,6 +42,7 @@ import { logger, logToolExecution, logError } from './logger.js';
 import { BuildXcodeControllerFactory } from './factories/BuildXcodeControllerFactory.js';
 import { InstallAppControllerFactory } from './factories/InstallAppControllerFactory.js';
 import { BootSimulatorControllerFactory } from './factories/BootSimulatorControllerFactory.js';
+import { ShutdownSimulatorControllerFactory } from './factories/ShutdownSimulatorControllerFactory.js';
 
 type Tool = {
   execute(args: any): Promise<any>;
@@ -77,7 +78,7 @@ class XcodeServer {
       // Simulator management
       // new ListSimulatorsTool(),
       BootSimulatorControllerFactory.create(),
-      // new ShutdownSimulatorTool(),
+      ShutdownSimulatorControllerFactory.create(),
       // new ViewSimulatorScreenTool(),
       // Build and test
       // new BuildSwiftPackageTool(),

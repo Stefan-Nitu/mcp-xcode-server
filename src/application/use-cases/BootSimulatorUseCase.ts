@@ -1,5 +1,5 @@
 import { BootRequest } from '../../domain/value-objects/BootRequest.js';
-import { BootResult, SimulatorNotFoundError, BootCommandFailedError } from '../../domain/entities/BootResult.js';
+import { BootResult, SimulatorNotFoundError, BootCommandFailedError, SimulatorBusyError } from '../../domain/entities/BootResult.js';
 import { SimulatorState } from '../../domain/value-objects/SimulatorState.js';
 import { ISimulatorLocator, ISimulatorControl } from '../ports/SimulatorPorts.js';
 
@@ -30,7 +30,7 @@ export class BootSimulatorUseCase implements IBootSimulatorUseCase {
       );
     }
     
-    // Check if already booted
+    // Check simulator state
     if (simulator.state === SimulatorState.Booted) {
       return BootResult.alreadyBooted(
         simulator.id,
@@ -42,7 +42,28 @@ export class BootSimulatorUseCase implements IBootSimulatorUseCase {
       );
     }
     
-    // Boot the simulator
+    // Handle Booting state - simulator is already in the process of booting
+    if (simulator.state === SimulatorState.Booting) {
+      return BootResult.alreadyBooted(
+        simulator.id,
+        simulator.name,
+        {
+          platform: simulator.platform,
+          runtime: simulator.runtime
+        }
+      );
+    }
+    
+    // Handle ShuttingDown state - can't boot while shutting down
+    if (simulator.state === SimulatorState.ShuttingDown) {
+      return BootResult.failed(
+        simulator.id,
+        simulator.name,
+        new SimulatorBusyError(SimulatorState.ShuttingDown)
+      );
+    }
+    
+    // Boot the simulator (handles Shutdown and Unknown states)
     try {
       await this.simulatorControl.boot(simulator.id);
       

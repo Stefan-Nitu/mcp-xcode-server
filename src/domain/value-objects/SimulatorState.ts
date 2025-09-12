@@ -4,6 +4,8 @@
  */
 export enum SimulatorState {
   Booted = 'Booted',
+  Booting = 'Booting',
   Shutdown = 'Shutdown',
+  ShuttingDown = 'Shutting Down',
   Unknown = 'Unknown'
 }

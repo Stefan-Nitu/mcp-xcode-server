@@ -29,6 +29,13 @@ export class BootCommandFailedError extends BootError {
   }
 }
 
+export class SimulatorBusyError extends BootError {
+  constructor(public readonly currentState: string) {
+    super(currentState); // Just store the state
+    this.name = 'SimulatorBusyError';
+  }
+}
+
 // Internal diagnostics (why/how it happened)
 export interface BootDiagnostics {
   readonly simulatorId: string;

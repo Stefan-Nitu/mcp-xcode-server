@@ -1,7 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BootSimulatorUseCase } from '../../../../application/use-cases/BootSimulatorUseCase.js';
 import { BootRequest } from '../../../../domain/value-objects/BootRequest.js';
-import { BootResult, BootOutcome, SimulatorNotFoundError, BootCommandFailedError } from '../../../../domain/entities/BootResult.js';
+import { BootResult, BootOutcome, SimulatorNotFoundError, BootCommandFailedError, SimulatorBusyError } from '../../../../domain/entities/BootResult.js';
 import { SimulatorState } from '../../../../domain/value-objects/SimulatorState.js';
 import { ISimulatorLocator, ISimulatorControl, SimulatorInfo } from '../../../../application/ports/SimulatorPorts.js';
 
@@ -137,6 +137,77 @@ describe('BootSimulatorUseCase', () => {
       expect(mockControl.boot).toHaveBeenCalledWith(uuid);
       expect(result.outcome).toBe(BootOutcome.Booted);
       expect(result.diagnostics.simulatorId).toBe(uuid);
+    });
+
+    it('should handle simulator in Booting state as already booted', async () => {
+      // Arrange
+      const request = BootRequest.create('iPhone-15');
+      const simulatorInfo: SimulatorInfo = {
+        id: 'ABC123',
+        name: 'iPhone 15',
+        state: SimulatorState.Booting,
+        platform: 'iOS',
+        runtime: 'iOS-17.0'
+      };
+      
+      mockLocator.findSimulator.mockResolvedValue(simulatorInfo);
+
+      // Act
+      const result = await useCase.execute(request);
+
+      // Assert
+      expect(mockControl.boot).not.toHaveBeenCalled();
+      expect(result.outcome).toBe(BootOutcome.AlreadyBooted);
+      expect(result.diagnostics.simulatorId).toBe('ABC123');
+      expect(result.diagnostics.simulatorName).toBe('iPhone 15');
+    });
+
+    it('should return failure when simulator is ShuttingDown', async () => {
+      // Arrange
+      const request = BootRequest.create('iPhone-15');
+      const simulatorInfo: SimulatorInfo = {
+        id: 'ABC123',
+        name: 'iPhone 15',
+        state: SimulatorState.ShuttingDown,
+        platform: 'iOS',
+        runtime: 'iOS-17.0'
+      };
+      
+      mockLocator.findSimulator.mockResolvedValue(simulatorInfo);
+
+      // Act
+      const result = await useCase.execute(request);
+
+      // Assert
+      expect(mockControl.boot).not.toHaveBeenCalled();
+      expect(result.outcome).toBe(BootOutcome.Failed);
+      expect(result.diagnostics.error).toBeInstanceOf(SimulatorBusyError);
+      expect((result.diagnostics.error as SimulatorBusyError).currentState).toBe(SimulatorState.ShuttingDown);
+      expect(result.diagnostics.simulatorId).toBe('ABC123');
+      expect(result.diagnostics.simulatorName).toBe('iPhone 15');
+    });
+
+    it('should attempt to boot simulator in Unknown state', async () => {
+      // Arrange
+      const request = BootRequest.create('iPhone-15');
+      const simulatorInfo: SimulatorInfo = {
+        id: 'ABC123',
+        name: 'iPhone 15',
+        state: SimulatorState.Unknown,
+        platform: 'iOS',
+        runtime: 'iOS-17.0'
+      };
+      
+      mockLocator.findSimulator.mockResolvedValue(simulatorInfo);
+      mockControl.boot.mockResolvedValue(undefined);
+
+      // Act
+      const result = await useCase.execute(request);
+
+      // Assert
+      expect(mockControl.boot).toHaveBeenCalledWith('ABC123');
+      expect(result.outcome).toBe(BootOutcome.Booted);
+      expect(result.diagnostics.simulatorId).toBe('ABC123');
     });
   });
 });
