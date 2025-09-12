@@ -34,6 +34,8 @@ export class BootCommandFailedError extends BootError {
 }
 ```
 
+**Important**: Domain errors should NEVER contain user-facing messages. They should only contain data. The presentation layer is responsible for formatting messages based on the error type and data.
+
 ### 3. Error Type Checking
 Use `instanceof` to check error types in the presentation layer:
 
@@ -226,7 +228,19 @@ export class CommandFailedError extends DomainError {
 `❌ Command failed: ${error.stderr}`
 ```
 
-### 3. Validation Failed
+### 3. Resource Busy/State Conflicts
+```typescript
+export class SimulatorBusyError extends DomainError {
+  constructor(public readonly currentState: string) {
+    super(currentState); // Just store the state, no message
+  }
+}
+
+// Presentation layer formats the message
+`❌ Cannot boot simulator: currently ${error.currentState.toLowerCase()}`
+```
+
+### 4. Validation Failed
 Use Zod for input validation, ErrorFormatter handles the formatting:
 ```typescript
 // Throws ZodError automatically

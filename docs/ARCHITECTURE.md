@@ -307,10 +307,10 @@ export function createBuildXcodeController(): BuildXcodeController {
 - Factories handle wiring at application startup
 
 ### 5. Error Handling
-- Domain exceptions for business rule violations
-- Application exceptions for use case failures
+- Domain exceptions for business rule violations (data only, no messages)
+- Application layer returns domain errors without formatting
 - Infrastructure exceptions for technical failures
-- Presentation layer translates to appropriate HTTP status codes
+- Presentation layer formats all errors for user display
 
 ## Migration Strategy
 
