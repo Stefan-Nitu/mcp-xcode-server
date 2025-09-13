@@ -147,8 +147,8 @@ jobs:
         name: e2e-test-logs
         path: |
           ~/.mcp-xcode-server/logs/
-          /var/folders/**/T/ResultBundle*.xcresult
         retention-days: 7
+        if-no-files-found: warn
 
   lint:
     runs-on: macos-latest
