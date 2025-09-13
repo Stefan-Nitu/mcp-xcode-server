@@ -15,7 +15,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
+import { createAndConnectClient, cleanupClientAndTransport, bootAndWaitForSimulator } from '../utils/testHelpers.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -75,11 +75,8 @@ describe('Install App MCP E2E', () => {
     );
     testSimulatorId = createResult.stdout.trim();
     
-    // Boot the simulator
-    await execAsync(`xcrun simctl boot "${testSimulatorId}"`);
-    
-    // Wait for boot to complete
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Boot the simulator and wait for it to be ready
+    await bootAndWaitForSimulator(testSimulatorId, 30);
   });
   
   afterAll(async () => {

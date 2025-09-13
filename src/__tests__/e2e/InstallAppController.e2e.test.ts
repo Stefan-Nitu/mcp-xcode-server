@@ -22,6 +22,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SimulatorState } from '../../domain/value-objects/SimulatorState.js';
+import { bootAndWaitForSimulator } from '../utils/testHelpers.js';
 
 const execAsync = promisify(exec);
 
@@ -72,11 +73,8 @@ describe('InstallAppController E2E', () => {
     );
     testSimulatorId = createResult.stdout.trim();
     
-    // Boot the simulator
-    await execAsync(`xcrun simctl boot "${testSimulatorId}"`);
-    
-    // Wait for boot to complete
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Boot the simulator and wait for it to be ready
+    await bootAndWaitForSimulator(testSimulatorId, 30);
   });
   
   afterAll(async () => {
