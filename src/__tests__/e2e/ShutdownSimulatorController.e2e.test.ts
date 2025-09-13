@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import { ShutdownSimulatorController } from '../../presentation/controllers/ShutdownSimulatorController.js';
+import { MCPController } from '../../presentation/interfaces/MCPController.js';
 import { ShutdownSimulatorControllerFactory } from '../../factories/ShutdownSimulatorControllerFactory.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -16,7 +16,7 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 describe('ShutdownSimulatorController E2E', () => {
-  let controller: ShutdownSimulatorController;
+  let controller: MCPController;
   let testSimulatorId: string;
   let testSimulatorName: string;
   

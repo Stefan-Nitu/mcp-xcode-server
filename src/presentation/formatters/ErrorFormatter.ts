@@ -1,6 +1,7 @@
 import { ErrorFormattingStrategy } from './strategies/ErrorFormattingStrategy.js';
 import { ZodErrorStrategy } from './strategies/ZodErrorStrategy.js';
 import { BuildIssuesStrategy } from './strategies/BuildIssuesStrategy.js';
+import { OutputFormatterErrorStrategy } from './strategies/OutputFormatterErrorStrategy.js';
 import { DefaultErrorStrategy } from './strategies/DefaultErrorStrategy.js';
 
 /**
@@ -10,6 +11,7 @@ export class ErrorFormatter {
   private static strategies: ErrorFormattingStrategy[] = [
     new ZodErrorStrategy(),
     new BuildIssuesStrategy(),
+    new OutputFormatterErrorStrategy(),
     new DefaultErrorStrategy() // Must be last - catches all other errors
   ];
   

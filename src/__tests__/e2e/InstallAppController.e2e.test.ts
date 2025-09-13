@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import { InstallAppController } from '../../presentation/controllers/InstallAppController.js';
+import { MCPController } from '../../presentation/interfaces/MCPController.js';
 import { InstallAppControllerFactory } from '../../factories/InstallAppControllerFactory.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
 import { exec } from 'child_process';
@@ -26,7 +26,7 @@ import { SimulatorState } from '../../domain/value-objects/SimulatorState.js';
 const execAsync = promisify(exec);
 
 describe('InstallAppController E2E', () => {
-  let controller: InstallAppController;
+  let controller: MCPController;
   let testManager: TestProjectManager;
   let testSimulatorId: string;
   let testAppPath: string;

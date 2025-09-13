@@ -1,6 +1,8 @@
+import { MCPResponse } from './MCPResponse.js';
+
 /**
  * Interface for MCP Tool Controllers
- * 
+ *
  * All MCP controllers must implement this interface to ensure
  * consistent tool definition and execution patterns
  */
@@ -29,10 +31,5 @@ export interface MCPController {
    * @param args - Unknown input that will be validated
    * @returns MCP-formatted response with content array
    */
-  execute(args: unknown): Promise<{
-    content: Array<{
-      type: string;
-      text: string;
-    }>;
-  }>;
+  execute(args: unknown): Promise<MCPResponse>;
 }

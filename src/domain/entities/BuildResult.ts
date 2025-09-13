@@ -33,6 +33,16 @@ export class BuildConfigurationError extends BuildError {
   }
 }
 
+export class OutputFormatterError extends BuildError {
+  constructor(
+    public readonly tool: string,
+    public readonly installCommand?: string
+  ) {
+    super(tool);
+    this.name = 'OutputFormatterError';
+  }
+}
+
 // Internal diagnostics (why/how it happened)
 export interface BuildDiagnostics {
   readonly output: string;

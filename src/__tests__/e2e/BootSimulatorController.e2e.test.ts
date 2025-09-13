@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import { BootSimulatorController } from '../../presentation/controllers/BootSimulatorController.js';
+import { MCPController } from '../../presentation/interfaces/MCPController.js';
 import { BootSimulatorControllerFactory } from '../../factories/BootSimulatorControllerFactory.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -16,7 +16,7 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 describe('BootSimulatorController E2E', () => {
-  let controller: BootSimulatorController;
+  let controller: MCPController;
   let testSimulatorId: string;
   let testSimulatorName: string;
   

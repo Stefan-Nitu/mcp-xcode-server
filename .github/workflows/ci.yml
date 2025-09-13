@@ -108,6 +108,11 @@ jobs:
           -scheme TestProjectXCTest \
           -destination 'platform=iOS Simulator,name=iPhone 16' 2>&1 | grep -E "PLATFORM|SDK|error" | head -10 || true
     
+    - name: Install xcbeautify
+      run: |
+        brew install xcbeautify
+        which xcbeautify
+    
     - name: Use Node.js 20.x
       uses: actions/setup-node@v4
       with:

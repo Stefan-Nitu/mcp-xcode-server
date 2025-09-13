@@ -61,7 +61,35 @@ export class BuildProjectUseCase {
     
     // 6. Format the output (e.g., through xcbeautify)
     const rawOutput = result.stdout + (result.stderr ? `\n${result.stderr}` : '');
-    const output = await this.outputFormatter.format(rawOutput);
+    
+    let output: string;
+    try {
+      output = await this.outputFormatter.format(rawOutput);
+    } catch (formatterError: any) {
+      // If formatter fails (e.g., xcbeautify not installed), return build failure
+      this.logManager.saveDebugData('formatter-error', { 
+        error: formatterError.message,
+        rawOutput: rawOutput.substring(0, 500) // Save first 500 chars for debugging
+      }, request.projectPath.name);
+      
+      const logPath = this.logManager.saveLog('build', rawOutput, request.projectPath.name, {
+        scheme: request.scheme,
+        configuration: request.configuration,
+        destination: request.destination,
+        exitCode: result.exitCode,
+        command,
+        formatterError: formatterError.message
+      });
+      
+      // Return build failure with formatter error
+      return BuildResult.failed(
+        rawOutput,
+        [],  // No parsed issues since formatter failed
+        result.exitCode || 1,
+        logPath,
+        formatterError
+      );
+    }
     
     // 7. Process result
     if (result.exitCode === 0) {

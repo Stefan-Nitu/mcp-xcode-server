@@ -1,4 +1,4 @@
-import { BuildResult, BuildOutcome } from '../../domain/entities/BuildResult.js';
+import { BuildResult, BuildOutcome, OutputFormatterError } from '../../domain/entities/BuildResult.js';
 import { Platform } from '../../domain/value-objects/Platform.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 import { MCPResponse } from '../interfaces/MCPResponse.js';
@@ -69,12 +69,26 @@ Configuration: ${metadata.configuration}`;
     result: BuildResult,
     metadata: { scheme: string; platform: Platform; configuration: string; showWarningDetails?: boolean }
   ): MCPResponse {
+    // Check if this is a dependency/tool error (not an actual build failure)
+    if (result.diagnostics.error && result.diagnostics.error instanceof OutputFormatterError) {
+      // Tool dependency missing - show only that error
+      const text = `❌ ${ErrorFormatter.format(result.diagnostics.error)}`;
+      return {
+        content: [{ type: 'text', text }]
+      };
+    }
+    
     const errors = BuildResult.getErrors(result);
     const warnings = BuildResult.getWarnings(result);
     
     let text = `❌ Build failed: ${metadata.scheme}\n`;
     text += `Platform: ${metadata.platform}\n`;
     text += `Configuration: ${metadata.configuration}\n`;
+    
+    // Check for other errors in diagnostics
+    if (result.diagnostics.error) {
+      text += `\n❌ ${ErrorFormatter.format(result.diagnostics.error)}\n`;
+    }
     
     if (errors.length > 0) {
       text += `\n❌ Errors (${errors.length}):\n`;

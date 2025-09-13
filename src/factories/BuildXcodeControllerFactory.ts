@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import { BuildXcodeController } from '../presentation/controllers/BuildXcodeController.js';
 import { BuildXcodePresenter } from '../presentation/presenters/BuildXcodePresenter.js';
 import { BuildProjectUseCase } from '../application/use-cases/BuildProjectUseCase.js';
+import { MCPController } from '../presentation/interfaces/MCPController.js';
 
 // Infrastructure adapters
 import { BuildDestinationMapperAdapter } from '../infrastructure/adapters/BuildDestinationMapperAdapter.js';
@@ -15,11 +16,15 @@ import { XcbeautifyFormatterAdapter } from '../infrastructure/adapters/Xcbeautif
 import { ConfigProviderAdapter } from '../infrastructure/adapters/ConfigProviderAdapter.js';
 import { SystemArchitectureDetector } from '../infrastructure/services/SystemArchitectureDetector.js';
 
+// Decorator and dependency checking
+import { DependencyCheckingDecorator } from '../presentation/decorators/DependencyCheckingDecorator.js';
+import { DependencyChecker } from '../infrastructure/services/DependencyChecker.js';
+
 /**
  * Factory class for creating BuildXcodeController with all dependencies
  */
 export class BuildXcodeControllerFactory {
-  static create(): BuildXcodeController {
+  static create(): MCPController {
     // Create infrastructure adapters
     const execAsync = promisify(exec);
     const executor = new ShellCommandExecutorAdapter(execAsync);
@@ -30,7 +35,7 @@ export class BuildXcodeControllerFactory {
     const logManager = new LogManagerInstance();
     const outputParser = new XcbeautifyOutputParserAdapter();
     const outputFormatter = new XcbeautifyFormatterAdapter(executor);
-    
+
     // Create use case with infrastructure
     const buildUseCase = new BuildProjectUseCase(
       destinationMapper,
@@ -41,14 +46,26 @@ export class BuildXcodeControllerFactory {
       outputParser,
       outputFormatter
     );
-    
+
     // Create infrastructure services
     const configProvider = new ConfigProviderAdapter();
-    
+
     // Create presenter
     const presenter = new BuildXcodePresenter();
 
-    // Create and return the controller
-    return new BuildXcodeController(buildUseCase, presenter, configProvider);
+    // Create the controller
+    const controller = new BuildXcodeController(buildUseCase, presenter, configProvider);
+
+    // Create dependency checker
+    const dependencyChecker = new DependencyChecker(executor);
+
+    // Wrap with dependency checking decorator
+    const decoratedController = new DependencyCheckingDecorator(
+      controller,
+      ['xcodebuild', 'xcbeautify'],
+      dependencyChecker
+    );
+
+    return decoratedController;
   }
 }

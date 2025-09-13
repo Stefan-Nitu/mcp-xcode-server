@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { BootSimulatorController } from '../../../../presentation/controllers/BootSimulatorController.js';
+import { MCPController } from '../../../../presentation/interfaces/MCPController.js';
 import { BootSimulatorControllerFactory } from '../../../../factories/BootSimulatorControllerFactory.js';
 import { SimulatorState } from '../../../../domain/value-objects/SimulatorState.js';
 import { exec } from 'child_process';
@@ -12,13 +12,20 @@ jest.mock('child_process');
 jest.mock('util', () => {
   const actualUtil = jest.requireActual('util') as typeof import('util');
   const { createPromisifiedExec } = require('../../../utils/mocks/promisifyExec');
-  
+
   return {
     ...actualUtil,
-    promisify: (fn: Function) => 
+    promisify: (fn: Function) =>
       fn?.name === 'exec' ? createPromisifiedExec(fn) : actualUtil.promisify(fn)
   };
 });
+
+// Mock DependencyChecker to always report dependencies are available in tests
+jest.mock('../../../../infrastructure/services/DependencyChecker', () => ({
+  DependencyChecker: jest.fn().mockImplementation(() => ({
+    check: jest.fn<() => Promise<[]>>().mockResolvedValue([]) // No missing dependencies
+  }))
+}));
 
 const mockExec = exec as jest.MockedFunction<typeof exec>;
 
@@ -33,7 +40,7 @@ const mockExec = exec as jest.MockedFunction<typeof exec>;
  * Tests behavior, not implementation details
  */
 describe('BootSimulatorController Integration', () => {
-  let controller: BootSimulatorController;
+  let controller: MCPController;
   let execCallIndex: number;
   let execMockResponses: Array<{ stdout: string; stderr: string; error?: NodeExecError }>;
 

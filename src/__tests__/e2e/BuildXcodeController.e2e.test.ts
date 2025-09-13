@@ -10,13 +10,13 @@
  * Direct controller calls - does NOT test through MCP protocol
  */
 
-import { BuildXcodeController } from '../../presentation/controllers/BuildXcodeController.js';
+import { MCPController } from '../../presentation/interfaces/MCPController.js';
 import { BuildXcodeControllerFactory } from '../../factories/BuildXcodeControllerFactory.js';
 import { TestProjectManager } from '../utils/TestProjectManager.js';
 import * as fs from 'fs';
 
 describe('BuildXcodeController E2E', () => {
-  let controller: BuildXcodeController;
+  let controller: MCPController;
   let testManager: TestProjectManager;
   
   beforeAll(async () => {
