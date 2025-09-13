@@ -54,6 +54,7 @@ jobs:
       run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
     
     - name: Install Required Platforms
+      if: false
       run: |
         echo "=== Installing required platforms for tests ==="
         
