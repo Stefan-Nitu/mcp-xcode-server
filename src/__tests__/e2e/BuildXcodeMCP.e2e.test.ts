@@ -43,7 +43,7 @@ describe('Build Xcode MCP E2E', () => {
   it('should complete build workflow through MCP', async () => {
     // This tests the critical user journey:
     // User connects via MCP → calls build_xcode → receives result
-    
+
     const result = await client.request(
       {
         method: 'tools/call',
@@ -56,7 +56,8 @@ describe('Build Xcode MCP E2E', () => {
           }
         }
       },
-      CallToolResultSchema
+      CallToolResultSchema,
+      { timeout: 120000 } // Match Jest's 120 second timeout
     );
     
     expect(result).toBeDefined();

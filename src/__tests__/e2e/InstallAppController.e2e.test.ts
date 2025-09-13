@@ -163,13 +163,13 @@ describe('InstallAppController E2E', () => {
       const runtimesResult = await execAsync('xcrun simctl list runtimes --json');
       const runtimes = JSON.parse(runtimesResult.stdout);
       const iosRuntime = runtimes.runtimes.find((r: { platform: string }) => r.platform === 'iOS');
-      
+
       // Create a new shutdown simulator
       const createResult = await execAsync(
         `xcrun simctl create "TestSimulator-Shutdown" "iPhone 14" "${iosRuntime.identifier}"`
       );
       const shutdownSimId = createResult.stdout.trim();
-      
+
       try {
         // Act
         const result = await controller.execute({
@@ -186,7 +186,7 @@ describe('InstallAppController E2E', () => {
             })
           ])
         });
-        
+
         // Verify simulator was booted
         const stateResult = await execAsync(
           `xcrun simctl list devices --json | jq -r '.devices[][] | select(.udid=="${shutdownSimId}") | .state'`
@@ -197,7 +197,7 @@ describe('InstallAppController E2E', () => {
         await execAsync(`xcrun simctl shutdown "${shutdownSimId}" || true`);
         await execAsync(`xcrun simctl delete "${shutdownSimId}"`);
       }
-    });
+    }, 180000);
   });
 
   describe('error handling with real simulators', () => {
