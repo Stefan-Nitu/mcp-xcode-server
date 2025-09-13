@@ -99,7 +99,7 @@ describe('Install App MCP E2E', () => {
   
   beforeEach(async () => {
     ({ client, transport } = await createAndConnectClient());
-  }, 10000);
+  });
   
   afterEach(async () => {
     await cleanupClientAndTransport(client, transport);

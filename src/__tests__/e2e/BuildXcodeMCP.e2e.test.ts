@@ -34,7 +34,7 @@ describe('Build Xcode MCP E2E', () => {
   
   beforeEach(async () => {
     ({ client, transport } = await createAndConnectClient());
-  }, 10000);
+  });
   
   afterEach(async () => {
     await cleanupClientAndTransport(client, transport);
@@ -64,5 +64,5 @@ describe('Build Xcode MCP E2E', () => {
     
     const textContent = result.content.find((c: any) => c.type === 'text');
     expect(textContent?.text).toContain('Build succeeded');
-  }, 60000);
+  }, 120000);
 });

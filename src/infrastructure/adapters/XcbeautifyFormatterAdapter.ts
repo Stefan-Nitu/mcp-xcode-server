@@ -14,25 +14,17 @@ export class XcbeautifyFormatterAdapter implements IOutputFormatter {
   ) {}
 
   async format(rawOutput: string): Promise<string> {
-    // First check if xcbeautify is available
-    const whichResult = await this.executor.execute('which xcbeautify', {
-      shell: '/bin/bash'
-    });
-    
-    if (whichResult.exitCode !== 0) {
-      throw new OutputFormatterError('xcbeautify', 'brew install xcbeautify');
-    }
-    
-    // Pass the raw output through xcbeautify using echo and pipe
-    // We need to escape the output for shell
     const escapedOutput = rawOutput.replace(/'/g, "'\\''");
-    const command = `echo '${escapedOutput}' | xcbeautify`;
-    
+    const command = `echo '${escapedOutput}' | xcbeautify --renderer terminal`;
+
     const result = await this.executor.execute(command, {
       shell: '/bin/bash'
     });
-    
-    // Return the formatted output
+
+    if (result.exitCode !== 0) {
+      throw new OutputFormatterError(result.stderr || 'Unknown error');
+    }
+
     return result.stdout;
   }
 }

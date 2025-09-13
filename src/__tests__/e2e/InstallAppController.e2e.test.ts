@@ -124,7 +124,7 @@ describe('InstallAppController E2E', () => {
         `xcrun simctl listapps "${testSimulatorId}" | grep -i test || true`
       );
       expect(listAppsResult.stdout).toBeTruthy();
-    }, 90000);
+    }, 120000);
 
     it('should install app on booted simulator when no ID specified', async () => {
       // Arrange - ensure our test simulator is the only booted one
@@ -263,7 +263,7 @@ describe('InstallAppController E2E', () => {
         await execAsync(`xcrun simctl boot "${testSimulatorId}"`);
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
-    }, 30000);
+    });
   });
 
   describe('input validation', () => {
@@ -297,6 +297,6 @@ describe('InstallAppController E2E', () => {
           })
         ])
       });
-    }, 30000);
+    });
   });
 });

@@ -35,10 +35,9 @@ export class BuildConfigurationError extends BuildError {
 
 export class OutputFormatterError extends BuildError {
   constructor(
-    public readonly tool: string,
-    public readonly installCommand?: string
+    public readonly stderr: string
   ) {
-    super(tool);
+    super('OutputFormatterError');
     this.name = 'OutputFormatterError';
   }
 }

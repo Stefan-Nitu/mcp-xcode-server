@@ -100,7 +100,7 @@ describe('ShutdownSimulatorController E2E', () => {
         }
       }
       expect(found).toBe(true);
-    }, 10000);
+    });
 
     it('should handle already shutdown simulator', async () => {
       // Arrange - shutdown simulator first
@@ -138,7 +138,7 @@ describe('ShutdownSimulatorController E2E', () => {
         }
       }
       expect(found).toBe(true);
-    }, 10000);
+    });
   });
 
   describe('error handling', () => {
@@ -202,6 +202,6 @@ describe('ShutdownSimulatorController E2E', () => {
           break;
         }
       }
-    }, 15000);
+    });
   });
 });

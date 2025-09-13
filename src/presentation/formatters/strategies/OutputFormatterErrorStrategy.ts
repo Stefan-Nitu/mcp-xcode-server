@@ -10,9 +10,6 @@ export class OutputFormatterErrorStrategy implements ErrorFormattingStrategy {
   }
   
   format(error: OutputFormatterError): string {
-    if (error.installCommand) {
-      return `${error.tool} is not installed. Please install it with: ${error.installCommand}`;
-    }
-    return `Output formatter '${error.tool}' is not available`;
+    return `xcbeautify failed: ${error.stderr}`;
   }
 }
