@@ -66,7 +66,7 @@ describe('Shutdown Simulator MCP E2E', () => {
     
     // Connect to MCP server
     ({ client, transport } = await createAndConnectClient());
-  }, 30000);
+  });
   
   beforeEach(async () => {
     // Ensure simulator is booted before each test (so we can shut it down)
@@ -119,7 +119,7 @@ describe('Shutdown Simulator MCP E2E', () => {
         }
       }
       expect(found).toBe(true);
-    }, 30000);
+    });
     
     it('should handle already shutdown simulator via MCP', async () => {
       // Arrange - shutdown the simulator first
@@ -137,7 +137,7 @@ describe('Shutdown Simulator MCP E2E', () => {
       // Assert
       const parsed = CallToolResultSchema.parse(result);
       expect(parsed.content[0].text).toBe(`✅ Simulator already shutdown: ${testSimulatorName} (${testSimulatorId})`);
-    }, 30000);
+    });
     
     it('should shutdown simulator by UUID via MCP', async () => {
       // Act - Call tool with UUID
@@ -162,7 +162,7 @@ describe('Shutdown Simulator MCP E2E', () => {
           break;
         }
       }
-    }, 30000);
+    });
   });
 
   describe('error handling through MCP', () => {

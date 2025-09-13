@@ -55,7 +55,7 @@ describe('BuildXcodeController E2E', () => {
           })
         ])
       });
-    }, 60000); // Real builds can take time
+    });
 
     it('should successfully build macOS test project', async () => {
       // This tests macOS destination mapping works
@@ -73,7 +73,7 @@ describe('BuildXcodeController E2E', () => {
           })
         ])
       });
-    }, 60000);
+    });
 
     it('should build with Release configuration', async () => {
       // This tests configuration is properly passed through
@@ -95,7 +95,7 @@ describe('BuildXcodeController E2E', () => {
       
       // Should mention Release configuration
       expect(result.content[0].text).toContain('Release');
-    }, 60000);
+    });
 
     it('should handle custom derived data path', async () => {
       // This tests that derived data path is properly used
@@ -115,7 +115,7 @@ describe('BuildXcodeController E2E', () => {
       
       // Cleanup
       fs.rmSync(customPath, { recursive: true, force: true });
-    }, 60000);
+    });
   });
 
   describe('handle real build failures', () => {
@@ -132,7 +132,7 @@ describe('BuildXcodeController E2E', () => {
       
       // Should include the actual xcodebuild error about the missing scheme
       expect(result.content[0].text).toContain('does not contain a scheme named "NonExistentScheme"');
-    }, 60000);
+    });
 
     it('should handle invalid platform for project', async () => {
       // Try to build a macOS-only project for iOS (if we have one)
@@ -145,7 +145,7 @@ describe('BuildXcodeController E2E', () => {
 
       // Should handle the failure gracefully
       expect(result.content[0].text).toContain('Build failed');
-    }, 60000);
+    });
   });
 
   describe('build for all supported platforms', () => {
@@ -160,7 +160,7 @@ describe('BuildXcodeController E2E', () => {
       expect(result.content[0].text).toBeDefined();
       // Should mention tvOS in the result
       expect(result.content[0].text.toLowerCase()).toContain('tvos');
-    }, 60000);
+    });
 
     it('should attempt to build for watchOS simulator', async () => {
       const result = await controller.execute({
@@ -173,7 +173,7 @@ describe('BuildXcodeController E2E', () => {
       expect(result.content[0].text).toBeDefined();
       // Should mention watchOS in the result
       expect(result.content[0].text.toLowerCase()).toContain('watchos');
-    }, 60000);
+    });
 
     it('should attempt to build for visionOS simulator', async () => {
       const result = await controller.execute({
@@ -186,7 +186,7 @@ describe('BuildXcodeController E2E', () => {
       expect(result.content[0].text).toBeDefined();
       // Should mention visionOS or xrOS (internal name) in the result
       expect(result.content[0].text.toLowerCase()).toMatch(/visionos|xros/);
-    }, 60000);
+    });
 
     it('should build for iOS device', async () => {
       const result = await controller.execute({
@@ -199,7 +199,7 @@ describe('BuildXcodeController E2E', () => {
       expect(result.content[0].text).toBeDefined();
       // Should show it's building for iOS platform
       expect(result.content[0].text).toContain('Platform: iOS');
-    }, 60000);
+    });
 
     it('should attempt to build for tvOS device', async () => {
       const result = await controller.execute({
@@ -212,7 +212,7 @@ describe('BuildXcodeController E2E', () => {
       expect(result.content[0].text).toBeDefined();
       // Should mention tvOS in the result
       expect(result.content[0].text.toLowerCase()).toContain('tvos');
-    }, 60000);
+    });
 
     it('should attempt to build for watchOS device', async () => {
       const result = await controller.execute({
@@ -225,7 +225,7 @@ describe('BuildXcodeController E2E', () => {
       expect(result.content[0].text).toBeDefined();
       // Should mention watchOS in the result
       expect(result.content[0].text.toLowerCase()).toContain('watchos');
-    }, 60000);
+    });
 
     it('should build for visionOS device', async () => {
       const result = await controller.execute({
@@ -238,7 +238,7 @@ describe('BuildXcodeController E2E', () => {
       expect(result.content[0].text).toBeDefined();
       // Should mention visionOS or xrOS in the result
       expect(result.content[0].text.toLowerCase()).toMatch(/visionos|xros/);
-    }, 60000);
+    });
   });
 
   describe('input validation', () => {

@@ -55,7 +55,7 @@ describe('ShutdownSimulatorController E2E', () => {
       testSimulatorId = createResult.stdout.trim();
       testSimulatorName = 'TestSimulator-Shutdown';
     }
-  }, 30000);
+  });
   
   beforeEach(async () => {
     // Boot simulator before each test (to ensure we can shut it down)
@@ -114,7 +114,7 @@ describe('ShutdownSimulatorController E2E', () => {
       
       // Assert
       expect(result.content[0].text).toBe(`✅ Simulator already shutdown: ${testSimulatorName} (${testSimulatorId})`);
-    }, 10000);
+    });
 
     it('should shutdown simulator by UUID', async () => {
       // Act

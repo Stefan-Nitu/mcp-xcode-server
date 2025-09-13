@@ -77,7 +77,7 @@ describe('InstallAppController E2E', () => {
     
     // Wait for boot to complete
     await new Promise(resolve => setTimeout(resolve, 5000));
-  }, 120000); // Building and booting can take time
+  });
   
   afterAll(async () => {
     // Clean up simulator
@@ -124,7 +124,7 @@ describe('InstallAppController E2E', () => {
         `xcrun simctl listapps "${testSimulatorId}" | grep -i test || true`
       );
       expect(listAppsResult.stdout).toBeTruthy();
-    }, 120000);
+    });
 
     it('should install app on booted simulator when no ID specified', async () => {
       // Arrange - ensure our test simulator is the only booted one
@@ -158,7 +158,7 @@ describe('InstallAppController E2E', () => {
           })
         ])
       });
-    }, 60000);
+    });
 
     it('should boot and install when simulator is shutdown', async () => {
       // Arrange - get iOS runtime for creating simulator
@@ -199,7 +199,7 @@ describe('InstallAppController E2E', () => {
         await execAsync(`xcrun simctl shutdown "${shutdownSimId}" || true`);
         await execAsync(`xcrun simctl delete "${shutdownSimId}"`);
       }
-    }, 120000);
+    });
   });
 
   describe('error handling with real simulators', () => {

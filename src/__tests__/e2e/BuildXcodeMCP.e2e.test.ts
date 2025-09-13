@@ -26,7 +26,7 @@ describe('Build Xcode MCP E2E', () => {
     // Build the server
     const { execSync } = await import('child_process');
     execSync('npm run build', { stdio: 'inherit' });
-  }, 30000);
+  });
   
   afterAll(async () => {
     await testManager.cleanup();
@@ -64,5 +64,5 @@ describe('Build Xcode MCP E2E', () => {
     
     const textContent = result.content.find((c: any) => c.type === 'text');
     expect(textContent?.text).toContain('Build succeeded');
-  }, 120000);
+  });
 });

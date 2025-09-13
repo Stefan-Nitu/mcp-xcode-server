@@ -80,7 +80,7 @@ describe('Install App MCP E2E', () => {
     
     // Wait for boot to complete
     await new Promise(resolve => setTimeout(resolve, 5000));
-  }, 120000);
+  });
   
   afterAll(async () => {
     // Clean up simulator
@@ -128,5 +128,5 @@ describe('Install App MCP E2E', () => {
     
     const textContent = result.content.find((c: any) => c.type === 'text');
     expect(textContent?.text).toContain('Successfully installed');
-  }, 90000);
+  });
 });

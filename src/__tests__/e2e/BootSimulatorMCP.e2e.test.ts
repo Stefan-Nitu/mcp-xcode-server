@@ -66,7 +66,7 @@ describe('Boot Simulator MCP E2E', () => {
     
     // Connect to MCP server
     ({ client, transport } = await createAndConnectClient());
-  }, 30000);
+  });
   
   beforeEach(async () => {
     // Ensure simulator is shutdown before each test
@@ -119,7 +119,7 @@ describe('Boot Simulator MCP E2E', () => {
         }
       }
       expect(found).toBe(true);
-    }, 30000);
+    });
     
     it('should handle already booted simulator via MCP', async () => {
       // Arrange - boot the simulator first
@@ -137,7 +137,7 @@ describe('Boot Simulator MCP E2E', () => {
       // Assert
       const parsed = CallToolResultSchema.parse(result);
       expect(parsed.content[0].text).toBe(`✅ Simulator already booted: ${testSimulatorName} (${testSimulatorId})`);
-    }, 30000);
+    });
   });
 
   describe('error handling through MCP', () => {

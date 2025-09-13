@@ -55,7 +55,7 @@ describe('BootSimulatorController E2E', () => {
       testSimulatorId = createResult.stdout.trim();
       testSimulatorName = 'TestSimulator-Boot';
     }
-  }, 30000);
+  });
   
   beforeEach(async () => {
     // Ensure simulator is shutdown before each test
@@ -100,7 +100,7 @@ describe('BootSimulatorController E2E', () => {
         }
       }
       expect(found).toBe(true);
-    }, 30000);
+    });
     
     it('should handle already booted simulator', async () => {
       // Arrange - boot the simulator first
@@ -114,7 +114,7 @@ describe('BootSimulatorController E2E', () => {
       
       // Assert
       expect(result.content[0].text).toBe(`✅ Simulator already booted: ${testSimulatorName} (${testSimulatorId})`);
-    }, 30000);
+    });
     
     it('should boot simulator by UUID', async () => {
       // Act - use UUID directly
@@ -124,7 +124,7 @@ describe('BootSimulatorController E2E', () => {
       
       // Assert
       expect(result.content[0].text).toBe(`✅ Successfully booted simulator: ${testSimulatorName} (${testSimulatorId})`);
-    }, 30000);
+    });
   });
 
   describe('error handling with real simulators', () => {
