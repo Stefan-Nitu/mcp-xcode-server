@@ -1,5 +1,9 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 /**
  * Cleanup MCP client and transport connections
@@ -65,4 +69,50 @@ export async function createAndConnectClient(): Promise<{
   await client.connect(transport);
   
   return { client, transport };
+}
+
+/**
+ * Wait for a simulator to reach the Booted state
+ * @param simulatorId The simulator UUID to wait for
+ * @param maxSeconds Maximum seconds to wait (default 30)
+ * @returns Promise that resolves when booted or rejects on timeout
+ */
+export async function waitForSimulatorBoot(
+  simulatorId: string,
+  maxSeconds: number = 30
+): Promise<void> {
+  for (let i = 0; i < maxSeconds; i++) {
+    const listResult = await execAsync('xcrun simctl list devices --json');
+    const devices = JSON.parse(listResult.stdout);
+
+    for (const runtime of Object.values(devices.devices) as any[]) {
+      const device = runtime.find((d: any) => d.udid === simulatorId);
+      if (device && device.state === 'Booted') {
+        return; // Successfully booted
+      }
+    }
+
+    // Wait 1 second before trying again
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  throw new Error(`Failed to boot simulator ${simulatorId} after ${maxSeconds} seconds`);
+}
+
+/**
+ * Boot a simulator and wait for it to be ready
+ * @param simulatorId The simulator UUID to boot
+ * @param maxSeconds Maximum seconds to wait (default 30)
+ */
+export async function bootAndWaitForSimulator(
+  simulatorId: string,
+  maxSeconds: number = 30
+): Promise<void> {
+  try {
+    await execAsync(`xcrun simctl boot "${simulatorId}"`);
+  } catch {
+    // Ignore if already booted
+  }
+
+  await waitForSimulatorBoot(simulatorId, maxSeconds);
 }

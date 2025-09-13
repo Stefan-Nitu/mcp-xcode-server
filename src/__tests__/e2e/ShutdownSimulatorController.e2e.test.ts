@@ -12,6 +12,7 @@ import { MCPController } from '../../presentation/interfaces/MCPController.js';
 import { ShutdownSimulatorControllerFactory } from '../../factories/ShutdownSimulatorControllerFactory.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { bootAndWaitForSimulator } from '../utils/testHelpers.js';
 
 const execAsync = promisify(exec);
 
@@ -59,13 +60,7 @@ describe('ShutdownSimulatorController E2E', () => {
   
   beforeEach(async () => {
     // Boot simulator before each test (to ensure we can shut it down)
-    try {
-      await execAsync(`xcrun simctl boot "${testSimulatorId}"`);
-      // Wait for boot to complete
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch {
-      // Ignore if already booted
-    }
+    await bootAndWaitForSimulator(testSimulatorId, 30);
   });
   
   afterAll(async () => {

@@ -15,7 +15,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/glo
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { createAndConnectClient, cleanupClientAndTransport } from '../utils/testHelpers.js';
+import { createAndConnectClient, cleanupClientAndTransport, bootAndWaitForSimulator } from '../utils/testHelpers.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -70,13 +70,7 @@ describe('Shutdown Simulator MCP E2E', () => {
   
   beforeEach(async () => {
     // Ensure simulator is booted before each test (so we can shut it down)
-    try {
-      await execAsync(`xcrun simctl boot "${testSimulatorId}"`);
-      // Wait for boot to complete
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch {
-      // Ignore if already booted
-    }
+    await bootAndWaitForSimulator(testSimulatorId, 30);
   });
   
   afterAll(async () => {
