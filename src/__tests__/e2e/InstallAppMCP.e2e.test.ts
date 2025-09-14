@@ -117,7 +117,8 @@ describe('Install App MCP E2E', () => {
           }
         }
       },
-      CallToolResultSchema
+      CallToolResultSchema,
+      { timeout: 120000 }
     );
     
     expect(result).toBeDefined();

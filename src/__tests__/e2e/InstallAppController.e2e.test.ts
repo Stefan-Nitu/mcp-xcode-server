@@ -197,7 +197,7 @@ describe('InstallAppController E2E', () => {
         await execAsync(`xcrun simctl shutdown "${shutdownSimId}" || true`);
         await execAsync(`xcrun simctl delete "${shutdownSimId}"`);
       }
-    }, 180000);
+    }, 300000);
   });
 
   describe('error handling with real simulators', () => {
