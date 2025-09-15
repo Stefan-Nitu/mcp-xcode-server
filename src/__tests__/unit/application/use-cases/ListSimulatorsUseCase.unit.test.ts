@@ -289,7 +289,7 @@ describe('ListSimulatorsUseCase', () => {
       expect(result.simulators[0].state).toBe(SimulatorState.ShuttingDown);
     });
 
-    it('should handle unknown device state', async () => {
+    it('should handle unknown device state by throwing error', async () => {
       // Arrange
       mockDeviceRepository.getAllDevices.mockResolvedValue({
         'com.apple.CoreSimulator.SimRuntime.iOS-17-0': [
@@ -307,9 +307,9 @@ describe('ListSimulatorsUseCase', () => {
       // Act
       const result = await sut.execute(request);
 
-      // Assert
-      expect(result.isSuccess).toBe(true);
-      expect(result.simulators[0].state).toBe(SimulatorState.Unknown);
+      // Assert - should fail with error about unrecognized state
+      expect(result.isSuccess).toBe(false);
+      expect(result.error?.message).toContain('Invalid simulator state: WeirdState');
     });
 
     it('should handle runtime without version number', async () => {

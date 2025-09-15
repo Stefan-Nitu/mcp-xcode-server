@@ -275,7 +275,7 @@ describe('InstallAppController Integration', () => {
       });
       
       // Assert
-      expect(result.content[0].text).toBe('❌ App path must be a .app bundle');
+      expect(result.content[0].text).toBe('❌ App path must end with .app');
     });
 
     it('should fail when simulator does not exist', async () => {

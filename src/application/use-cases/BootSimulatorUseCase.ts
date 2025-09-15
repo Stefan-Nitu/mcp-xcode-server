@@ -63,7 +63,7 @@ export class BootSimulatorUseCase implements IBootSimulatorUseCase {
       );
     }
     
-    // Boot the simulator (handles Shutdown and Unknown states)
+    // Boot the simulator (handles Shutdown state)
     try {
       await this.simulatorControl.boot(simulator.id);
       

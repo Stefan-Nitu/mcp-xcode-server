@@ -3,7 +3,8 @@ import { InstallAppController } from '../../../../presentation/controllers/Insta
 import { InstallAppUseCase } from '../../../../application/use-cases/InstallAppUseCase.js';
 import { InstallRequest } from '../../../../domain/value-objects/InstallRequest.js';
 import { InstallResult } from '../../../../domain/entities/InstallResult.js';
-import { z } from 'zod';
+import { AppPath } from '../../../../domain/value-objects/AppPath.js';
+import { DeviceId } from '../../../../domain/value-objects/DeviceId.js';
 
 describe('InstallAppController', () => {
   function createSUT() {
@@ -44,9 +45,9 @@ describe('InstallAppController', () => {
       const { sut, mockExecute } = createSUT();
       const mockResult = InstallResult.succeeded(
         'com.example.app',
-        'iPhone-15-Simulator',
+        DeviceId.create('iPhone-15-Simulator'),
         'iPhone 15',
-        '/path/to/app.app'
+        AppPath.create('/path/to/app.app')
       );
       mockExecute.mockResolvedValue(mockResult);
       
@@ -68,9 +69,9 @@ describe('InstallAppController', () => {
       const { sut, mockExecute } = createSUT();
       const mockResult = InstallResult.succeeded(
         'com.example.app',
-        'Booted-iPhone-15',
+        DeviceId.create('Booted-iPhone-15'),
         'iPhone 15',
-        '/path/to/app.app'
+        AppPath.create('/path/to/app.app')
       );
       mockExecute.mockResolvedValue(mockResult);
       
@@ -118,17 +119,14 @@ describe('InstallAppController', () => {
     it('should validate app path format', async () => {
       // Arrange
       const { sut } = createSUT();
-      
+
       // Act
       const result = await sut.execute({
         appPath: '../../../etc/passwd' // Path traversal attempt
       });
-      
-      // Assert - Both validation errors should be present
-      const expected = `❌ Validation errors:
-  • App path must be a .app bundle
-  • Invalid app path: path traversal detected`;
-      expect(result.content[0].text).toBe(expected);
+
+      // Assert
+      expect(result.content[0].text).toBe('❌ App path cannot contain directory traversal');
     });
 
     it('should handle app not found errors', async () => {

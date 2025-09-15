@@ -46,7 +46,7 @@ export class ShutdownSimulatorUseCase implements IShutdownSimulatorUseCase {
       );
     }
     
-    // Shutdown the simulator (handles Booted, Booting, and Unknown states)
+    // Shutdown the simulator (handles Booted and Booting states)
     try {
       await this.simulatorControl.shutdown(simulator.id);
       

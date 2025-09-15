@@ -1,21 +1,13 @@
-import { z } from 'zod';
 import { BootSimulatorUseCase } from '../../application/use-cases/BootSimulatorUseCase.js';
+import { DeviceId } from '../../domain/value-objects/DeviceId.js';
 import { BootRequest } from '../../domain/value-objects/BootRequest.js';
 import { BootResult, BootOutcome, SimulatorNotFoundError, BootCommandFailedError, SimulatorBusyError } from '../../domain/entities/BootResult.js';
-import { deviceIdSchema } from '../validation/ToolInputValidators.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 import { MCPController } from '../interfaces/MCPController.js';
 
-// Compose the validation schema from reusable validators
-const bootSimulatorSchema = z.object({
-  deviceId: deviceIdSchema
-});
-
-type BootSimulatorArgs = z.infer<typeof bootSimulatorSchema>;
-
 /**
  * Controller for the boot_simulator MCP tool
- * 
+ *
  * Handles input validation and orchestrates the boot simulator use case
  */
 export class BootSimulatorController implements MCPController {
@@ -49,12 +41,15 @@ export class BootSimulatorController implements MCPController {
   
   async execute(args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
     try {
-      // Validate input
-      const validated = bootSimulatorSchema.parse(args) as BootSimulatorArgs;
-      
+      // Cast to expected shape
+      const input = args as { deviceId: unknown };
+
+      // Create domain value object - will validate
+      const deviceId = DeviceId.create(input.deviceId);
+
       // Create domain request
-      const request = BootRequest.create(validated.deviceId);
-      
+      const request = BootRequest.create(deviceId);
+
       // Execute use case
       const result = await this.useCase.execute(request);
       

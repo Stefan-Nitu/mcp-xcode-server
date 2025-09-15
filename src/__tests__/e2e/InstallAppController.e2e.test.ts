@@ -29,7 +29,7 @@ const execAsync = promisify(exec);
 describe('InstallAppController E2E', () => {
   let controller: MCPController;
   let testManager: TestProjectManager;
-  let testSimulatorId: string;
+  let testDeviceId: string;
   let testAppPath: string;
   
   beforeAll(async () => {
@@ -71,18 +71,18 @@ describe('InstallAppController E2E', () => {
     const createResult = await execAsync(
       `xcrun simctl create "TestSimulator-InstallApp" "iPhone 15" "${iosRuntime.identifier}"`
     );
-    testSimulatorId = createResult.stdout.trim();
+    testDeviceId = createResult.stdout.trim();
     
     // Boot the simulator and wait for it to be ready
-    await bootAndWaitForSimulator(testSimulatorId, 30);
+    await bootAndWaitForSimulator(testDeviceId, 30);
   });
   
   afterAll(async () => {
     // Clean up simulator
-    if (testSimulatorId) {
+    if (testDeviceId) {
       try {
-        await execAsync(`xcrun simctl shutdown "${testSimulatorId}"`);
-        await execAsync(`xcrun simctl delete "${testSimulatorId}"`);
+        await execAsync(`xcrun simctl shutdown "${testDeviceId}"`);
+        await execAsync(`xcrun simctl delete "${testDeviceId}"`);
       } catch (error) {
         // Ignore cleanup errors
       }
@@ -104,7 +104,7 @@ describe('InstallAppController E2E', () => {
       // Act
       const result = await controller.execute({
         appPath: testAppPath,
-        simulatorId: testSimulatorId
+        simulatorId: testDeviceId
       });
 
       // Assert
@@ -119,7 +119,7 @@ describe('InstallAppController E2E', () => {
       
       // Verify app is actually installed
       const listAppsResult = await execAsync(
-        `xcrun simctl listapps "${testSimulatorId}" | grep -i test || true`
+        `xcrun simctl listapps "${testDeviceId}" | grep -i test || true`
       );
       expect(listAppsResult.stdout).toBeTruthy();
     });
@@ -136,7 +136,7 @@ describe('InstallAppController E2E', () => {
       }
       for (const runtime of Object.values(devices.devices) as Device[][]) {
         for (const device of runtime) {
-          if (device.state === SimulatorState.Booted && device.udid !== testSimulatorId) {
+          if (device.state === SimulatorState.Booted && device.udid !== testDeviceId) {
             await execAsync(`xcrun simctl shutdown "${device.udid}"`);
           }
         }
@@ -208,7 +208,7 @@ describe('InstallAppController E2E', () => {
       // Act
       const result = await controller.execute({
         appPath: nonExistentPath,
-        simulatorId: testSimulatorId
+        simulatorId: testDeviceId
       });
       
       // Assert - error message from xcrun simctl install (multi-line in real E2E)
@@ -223,11 +223,11 @@ describe('InstallAppController E2E', () => {
       // Act
       const result = await controller.execute({
         appPath: invalidAppPath,
-        simulatorId: testSimulatorId
+        simulatorId: testDeviceId
       });
       
       // Assert - validation error formatted with ❌
-      expect(result.content[0].text).toBe('❌ App path must be a .app bundle');
+      expect(result.content[0].text).toBe('❌ App path must end with .app');
     });
 
     it('should fail when simulator does not exist', async () => {
@@ -258,7 +258,7 @@ describe('InstallAppController E2E', () => {
         expect(result.content[0].text).toBe('❌ No booted simulator found. Please boot a simulator first or specify a simulator ID.');
       } finally {
         // Re-boot our test simulator for other tests
-        await execAsync(`xcrun simctl boot "${testSimulatorId}"`);
+        await execAsync(`xcrun simctl boot "${testDeviceId}"`);
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
     });
@@ -269,14 +269,11 @@ describe('InstallAppController E2E', () => {
       // Act - path traversal attempt triggers multiple validation errors
       const result = await controller.execute({
         appPath: '../../../etc/passwd',
-        simulatorId: testSimulatorId
+        simulatorId: testDeviceId
       });
       
-      // Assert - validation errors are returned, not thrown
-      const expected = `❌ Validation errors:
-  • App path must be a .app bundle
-  • Invalid app path: path traversal detected`;
-      expect(result.content[0].text).toBe(expected);
+      // Assert - domain validation fails fast on first error
+      expect(result.content[0].text).toBe('❌ App path cannot contain directory traversal');
     });
 
     it('should handle simulator specified by name', async () => {

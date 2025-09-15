@@ -69,13 +69,13 @@ describe('ProjectPath', () => {
     
     it('should reject null path', () => {
       expect(() => ProjectPath.create(null as any))
-        .toThrow('Project path cannot be empty');
+        .toThrow('Project path is required');
       expect(mockExistsSync).not.toHaveBeenCalled();
     });
     
     it('should reject undefined path', () => {
       expect(() => ProjectPath.create(undefined as any))
-        .toThrow('Project path cannot be empty');
+        .toThrow('Project path is required');
       expect(mockExistsSync).not.toHaveBeenCalled();
     });
     
@@ -102,7 +102,7 @@ describe('ProjectPath', () => {
       
       invalidFiles.forEach(file => {
         expect(() => ProjectPath.create(file))
-          .toThrow('Path must be an .xcodeproj or .xcworkspace file');
+          .toThrow('Project path must be an .xcodeproj or .xcworkspace file');
       });
     });
     
@@ -111,7 +111,7 @@ describe('ProjectPath', () => {
       mockExistsSync.mockReturnValue(true);
       
       expect(() => ProjectPath.create(directory))
-        .toThrow('Path must be an .xcodeproj or .xcworkspace file');
+        .toThrow('Project path must be an .xcodeproj or .xcworkspace file');
     });
   });
   

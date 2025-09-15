@@ -127,7 +127,6 @@ describe('BuildProjectUseCase', () => {
       expect(result.diagnostics.appPath).toBe('/path/to/DerivedData/MyApp.app');
       expect(result.diagnostics.logPath).toBe('/path/to/log');
       expect(BuildResult.hasErrors(result)).toBe(false);
-      expect(result.diagnostics.output).toContain('Build succeeded');
       
       expect(mockExecutor.execute).toHaveBeenCalled();
       expect(mockAppLocator.findApp).toHaveBeenCalled();

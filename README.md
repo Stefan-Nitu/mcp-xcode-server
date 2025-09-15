@@ -178,26 +178,33 @@ Add to `~/.claude.json` (global) or `.claude/settings.json` (project):
 
 ## Architecture
 
-The server follows SOLID principles with a modular, class-based architecture:
+The server follows Clean/Hexagonal Architecture with SOLID principles:
 
 ### Core Structure
 ```
 src/
-├── index.ts           # MCP server entry point
-├── tools/            # Self-contained tool implementations
-├── utils/            # Shared utilities
-│   ├── devices/      # Simulator management
-│   ├── projects/     # Xcode/SPM operations
-│   └── errors/       # Error parsing and handling
-└── validation.ts     # Zod schemas for security
+├── domain/           # Core business logic (no dependencies)
+│   ├── entities/     # Business entities
+│   ├── value-objects/# Immutable value types with validation
+│   └── errors/       # Domain-specific errors
+├── application/      # Use cases and application logic
+│   ├── use-cases/    # Application-specific workflows
+│   └── ports/        # Interface definitions
+├── infrastructure/   # External integrations
+│   ├── adapters/     # Implementations of ports
+│   └── services/     # External service integrations
+├── presentation/     # MCP interface layer
+│   ├── controllers/  # MCP tool controllers
+│   └── formatters/   # Output formatting
+└── factories/        # Dependency injection
 ```
 
 ### Key Design Principles
-- **Single Responsibility**: Each class has one clear purpose
-- **Dependency Injection**: Testable, mockable components
-- **Type Safety**: Full TypeScript with Zod validation
-- **Security First**: Path validation, command injection protection
-- **Error Recovery**: Graceful handling with helpful suggestions
+- **Clean Architecture**: Dependency rule - inner layers know nothing about outer layers
+- **Domain-Driven Design**: Rich domain models with embedded validation
+- **Type Safety**: Full TypeScript with domain primitives and parse-don't-validate pattern
+- **Security First**: Path validation, command injection protection at boundaries
+- **Error Recovery**: Typed domain errors with graceful handling and helpful suggestions
 
 ## Logging
 

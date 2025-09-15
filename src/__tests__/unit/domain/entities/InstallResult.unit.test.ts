@@ -1,39 +1,45 @@
 import { describe, it, expect } from '@jest/globals';
-import { 
+import {
   InstallResult,
   InstallOutcome,
   InstallCommandFailedError,
   SimulatorNotFoundError
 } from '../../../../domain/entities/InstallResult.js';
+import { DeviceId } from '../../../../domain/value-objects/DeviceId.js';
+import { AppPath } from '../../../../domain/value-objects/AppPath.js';
 
 describe('InstallResult', () => {
   describe('succeeded', () => {
     it('should create successful install result', () => {
       // Arrange & Act
+      const simulatorId = DeviceId.create('iPhone-15-Simulator');
+      const appPath = AppPath.create('/path/to/app.app');
       const result = InstallResult.succeeded(
         'com.example.app',
-        'iPhone-15-Simulator',
+        simulatorId,
         'iPhone 15',
-        '/path/to/app.app'
+        appPath
       );
       
       // Assert
       expect(result.outcome).toBe(InstallOutcome.Succeeded);
       expect(result.diagnostics.bundleId).toBe('com.example.app');
-      expect(result.diagnostics.simulatorId).toBe('iPhone-15-Simulator');
+      expect(result.diagnostics.simulatorId?.toString()).toBe('iPhone-15-Simulator');
       expect(result.diagnostics.simulatorName).toBe('iPhone 15');
-      expect(result.diagnostics.appPath).toBe('/path/to/app.app');
+      expect(result.diagnostics.appPath.toString()).toBe('/path/to/app.app');
       expect(result.diagnostics.error).toBeUndefined();
     });
 
     it('should include install timestamp', () => {
       // Arrange & Act
       const before = Date.now();
+      const simulatorId = DeviceId.create('test-sim');
+      const appPath = AppPath.create('/path/to/app.app');
       const result = InstallResult.succeeded(
         'com.example.app',
-        'test-sim',
+        simulatorId,
         'Test Simulator',
-        '/path/to/app.app'
+        appPath
       );
       const after = Date.now();
       
@@ -46,38 +52,42 @@ describe('InstallResult', () => {
   describe('failed', () => {
     it('should create failed install result with SimulatorNotFoundError', () => {
       // Arrange
-      const error = new SimulatorNotFoundError('non-existent-sim');
+      const simulatorId = DeviceId.create('non-existent-sim');
+      const error = new SimulatorNotFoundError(simulatorId);
       
       // Act
+      const appPath = AppPath.create('/path/to/app.app');
       const result = InstallResult.failed(
         error,
-        '/path/to/app.app',
-        'non-existent-sim',
+        appPath,
+        simulatorId,
         'Unknown Simulator'
       );
       
       // Assert
       expect(result.outcome).toBe(InstallOutcome.Failed);
       expect(result.diagnostics.error).toBe(error);
-      expect(result.diagnostics.appPath).toBe('/path/to/app.app');
-      expect(result.diagnostics.simulatorId).toBe('non-existent-sim');
+      expect(result.diagnostics.appPath.toString()).toBe('/path/to/app.app');
+      expect(result.diagnostics.simulatorId?.toString()).toBe('non-existent-sim');
       expect(result.diagnostics.bundleId).toBeUndefined();
     });
 
     it('should handle failure without simulator ID', () => {
       // Arrange
-      const error = new SimulatorNotFoundError('booted');
+      const simulatorId = DeviceId.create('booted');
+      const error = new SimulatorNotFoundError(simulatorId);
       
       // Act
+      const appPath = AppPath.create('/path/to/app.app');
       const result = InstallResult.failed(
         error,
-        '/path/to/app.app'
+        appPath
       );
       
       // Assert
       expect(result.outcome).toBe(InstallOutcome.Failed);
       expect(result.diagnostics.error).toBe(error);
-      expect(result.diagnostics.appPath).toBe('/path/to/app.app');
+      expect(result.diagnostics.appPath.toString()).toBe('/path/to/app.app');
       expect(result.diagnostics.simulatorId).toBeUndefined();
     });
 
@@ -86,10 +96,12 @@ describe('InstallResult', () => {
       const error = new InstallCommandFailedError('App bundle not found');
       
       // Act
+      const appPath = AppPath.create('/path/to/app.app');
+      const simulatorId = DeviceId.create('test-sim');
       const result = InstallResult.failed(
         error,
-        '/path/to/app.app',
-        'test-sim',
+        appPath,
+        simulatorId,
         'Test Simulator'
       );
       
@@ -103,11 +115,13 @@ describe('InstallResult', () => {
   describe('outcome checking', () => {
     it('should identify successful installation', () => {
       // Arrange & Act
+      const simulatorId = DeviceId.create('sim-id');
+      const appPath = AppPath.create('/app.app');
       const result = InstallResult.succeeded(
         'com.example.app',
-        'sim-id',
+        simulatorId,
         'Simulator',
-        '/app.app'
+        appPath
       );
       
       // Assert
@@ -119,9 +133,10 @@ describe('InstallResult', () => {
       const error = new InstallCommandFailedError('Installation failed');
       
       // Act
+      const appPath = AppPath.create('/app.app');
       const result = InstallResult.failed(
         error,
-        '/app.app'
+        appPath
       );
       
       // Assert

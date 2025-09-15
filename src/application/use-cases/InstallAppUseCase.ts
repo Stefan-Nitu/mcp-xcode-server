@@ -1,10 +1,11 @@
-import { AppPath } from '../../domain/value-objects/AppPath.js';
 import { SimulatorState } from '../../domain/value-objects/SimulatorState.js';
 import { InstallRequest } from '../../domain/value-objects/InstallRequest.js';
-import { 
+import { DeviceId } from '../../domain/value-objects/DeviceId.js';
+import {
   InstallResult,
   InstallCommandFailedError,
-  SimulatorNotFoundError 
+  SimulatorNotFoundError,
+  NoBootedSimulatorError
 } from '../../domain/entities/InstallResult.js';
 import { 
   ISimulatorLocator,
@@ -26,22 +27,23 @@ export class InstallAppUseCase {
   ) {}
 
   async execute(request: InstallRequest): Promise<InstallResult> {
-    // Create AppPath from the string path in request
-    const appPath = AppPath.create(request.appPath);
-    const appName = appPath.name;
-    
+    // Get app name from the AppPath value object
+    const appName = request.appPath.name;
+
     // Find target simulator
     const simulator = request.simulatorId
-      ? await this.simulatorLocator.findSimulator(request.simulatorId)
+      ? await this.simulatorLocator.findSimulator(request.simulatorId.toString())
       : await this.simulatorLocator.findBootedSimulator();
     
     if (!simulator) {
       this.logManager.saveDebugData('install-app-failed', {
         reason: 'simulator_not_found',
-        requestedId: request.simulatorId
+        requestedId: request.simulatorId?.toString()
       }, appName);
-      
-      const error = new SimulatorNotFoundError(request.simulatorId || 'booted');
+
+      const error = request.simulatorId
+        ? new SimulatorNotFoundError(request.simulatorId)
+        : new NoBootedSimulatorError();
       return InstallResult.failed(error, request.appPath, request.simulatorId);
     }
     
@@ -63,7 +65,7 @@ export class InstallAppUseCase {
           return InstallResult.failed(
             installError,
             request.appPath,
-            simulator.id,
+            DeviceId.create(simulator.id),
             simulator.name
           );
         }
@@ -73,7 +75,7 @@ export class InstallAppUseCase {
     // Install the app
     try {
       await this.appInstaller.installApp(
-        appPath.toString(),
+        request.appPath.toString(),
         simulator.id
       );
       
@@ -88,7 +90,7 @@ export class InstallAppUseCase {
       
       return InstallResult.succeeded(
         bundleId,
-        simulator.id,
+        DeviceId.create(simulator.id),
         simulator.name,
         request.appPath
       );
@@ -104,7 +106,7 @@ export class InstallAppUseCase {
       return InstallResult.failed(
         installError,
         request.appPath,
-        simulator.id,
+        DeviceId.create(simulator.id),
         simulator.name
       );
     }

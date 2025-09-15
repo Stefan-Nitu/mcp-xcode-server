@@ -28,7 +28,7 @@ export class ListSimulatorsUseCase {
           const simulatorInfo: SimulatorInfo = {
             udid: device.udid,
             name: device.name,
-            state: this.mapDeviceState(device.state),
+            state: SimulatorState.parse(device.state),
             platform: platform,
             runtime: `${platform} ${runtimeVersion}`
           };
@@ -76,13 +76,4 @@ export class ListSimulatorsUseCase {
     return match ? match[1].replace(/-/g, '.') : 'Unknown';
   }
 
-  private mapDeviceState(state: string): SimulatorState {
-    switch (state) {
-      case 'Booted': return SimulatorState.Booted;
-      case 'Booting': return SimulatorState.Booting;
-      case 'Shutdown': return SimulatorState.Shutdown;
-      case 'Shutting Down': return SimulatorState.ShuttingDown;
-      default: return SimulatorState.Unknown;
-    }
-  }
 }

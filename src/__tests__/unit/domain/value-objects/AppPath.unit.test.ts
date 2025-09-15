@@ -37,22 +37,22 @@ describe('AppPath', () => {
 
     it('should throw error for path without .app extension', () => {
       // Arrange, Act & Assert
-      expect(() => AppPath.create('/path/to/MyApp')).toThrow('Path must end with .app extension');
-      expect(() => AppPath.create('/path/to/MyApp.ipa')).toThrow('Path must end with .app extension');
-      expect(() => AppPath.create('/path/to/binary')).toThrow('Path must end with .app extension');
+      expect(() => AppPath.create('/path/to/MyApp')).toThrow('App path must end with .app');
+      expect(() => AppPath.create('/path/to/MyApp.ipa')).toThrow('App path must end with .app');
+      expect(() => AppPath.create('/path/to/binary')).toThrow('App path must end with .app');
     });
 
     it('should throw error for path with directory traversal', () => {
       // Arrange, Act & Assert
-      expect(() => AppPath.create('../../../etc/passwd.app')).toThrow('Path cannot contain directory traversal');
-      expect(() => AppPath.create('/path/../../../etc/evil.app')).toThrow('Path cannot contain directory traversal');
-      expect(() => AppPath.create('/valid/path/../../sneaky.app')).toThrow('Path cannot contain directory traversal');
+      expect(() => AppPath.create('../../../etc/passwd.app')).toThrow('App path cannot contain directory traversal');
+      expect(() => AppPath.create('/path/../../../etc/evil.app')).toThrow('App path cannot contain directory traversal');
+      expect(() => AppPath.create('/valid/path/../../sneaky.app')).toThrow('App path cannot contain directory traversal');
     });
 
     it('should throw error for path with null characters', () => {
       // Arrange, Act & Assert
-      expect(() => AppPath.create('/path/to/MyApp.app\0')).toThrow('Path cannot contain null characters');
-      expect(() => AppPath.create('/path\0/to/MyApp.app')).toThrow('Path cannot contain null characters');
+      expect(() => AppPath.create('/path/to/MyApp.app\0')).toThrow('App path cannot contain null characters');
+      expect(() => AppPath.create('/path\0/to/MyApp.app')).toThrow('App path cannot contain null characters');
     });
 
     it('should handle paths ending with slash after .app', () => {

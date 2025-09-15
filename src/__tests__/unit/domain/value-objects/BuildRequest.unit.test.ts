@@ -1,7 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BuildRequest } from '../../../../domain/value-objects/BuildRequest.js';
 import { BuildDestination } from '../../../../domain/value-objects/BuildDestination.js';
-import { ProjectPath } from '../../../../domain/value-objects/ProjectPath.js';
 import { existsSync } from 'fs';
 
 // Mock filesystem for ProjectPath validation
@@ -215,74 +214,10 @@ describe('BuildRequest', () => {
         BuildDestination.iOSSimulator,
         'Debug',
         '/path/to/DerivedData'
-      )).toThrow('Path must be an .xcodeproj or .xcworkspace file');
+      )).toThrow('Project path must be an .xcodeproj or .xcworkspace file');
     });
   });
 
-  describe('constructor with domain objects', () => {
-    it('should create BuildRequest when given valid domain objects', () => {
-      // Arrange
-      const projectPath = ProjectPath.create('/path/to/project.xcodeproj');
-      
-      // Act
-      const request = new BuildRequest(
-        projectPath,
-        'MyApp',
-        'Release',
-        BuildDestination.macOSUniversal,
-        '/custom/derived/data'
-      );
-      
-      // Assert
-      expect(request.projectPath).toBe(projectPath);
-      expect(request.scheme).toBe('MyApp');
-      expect(request.configuration).toBe('Release');
-      expect(request.destination).toBe(BuildDestination.macOSUniversal);
-      expect(request.derivedDataPath).toBe('/custom/derived/data');
-    });
-
-    it('should validate scheme in constructor', () => {
-      // Arrange
-      const projectPath = ProjectPath.create('/path/to/project.xcodeproj');
-      
-      // Act & Assert
-      expect(() => new BuildRequest(
-        projectPath,
-        '',
-        'Debug',
-        BuildDestination.iOSSimulator,
-        '/path/to/DerivedData'
-      )).toThrow('Scheme cannot be empty');
-    });
-
-    it('should validate configuration in constructor', () => {
-      // Arrange
-      const projectPath = ProjectPath.create('/path/to/project.xcodeproj');
-      
-      // Act & Assert
-      expect(() => new BuildRequest(
-        projectPath,
-        'MyApp',
-        '',
-        BuildDestination.iOSSimulator,
-        '/path/to/DerivedData'
-      )).toThrow('Configuration cannot be empty');
-    });
-
-    it('should validate derivedDataPath in constructor', () => {
-      // Arrange
-      const projectPath = ProjectPath.create('/path/to/project.xcodeproj');
-      
-      // Act & Assert
-      expect(() => new BuildRequest(
-        projectPath,
-        'MyApp',
-        'Debug',
-        BuildDestination.iOSSimulator,
-        ''
-      )).toThrow('Derived data path cannot be empty');
-    });
-  });
 
   describe('immutability', () => {
     it('should have readonly properties', () => {

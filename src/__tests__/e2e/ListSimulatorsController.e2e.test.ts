@@ -168,8 +168,7 @@ describe('ListSimulatorsController E2E', () => {
         platform: 'Android'
       });
 
-      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
-      expect(result.content[0].text).toContain('Android');
+      expect(result.content[0].text).toBe('❌ Invalid platform: Android. Valid values are: iOS, macOS, tvOS, watchOS, visionOS');
     });
 
     it('should return error for invalid state', async () => {
@@ -178,8 +177,7 @@ describe('ListSimulatorsController E2E', () => {
         state: 'Running'
       });
 
-      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
-      expect(result.content[0].text).toContain('Running');
+      expect(result.content[0].text).toBe('❌ Invalid simulator state: Running. Valid values are: Booted, Booting, Shutdown, Shutting Down');
     });
 
     it('should return error for invalid input types', async () => {
@@ -188,15 +186,13 @@ describe('ListSimulatorsController E2E', () => {
         platform: 123
       });
 
-      expect(result1.content[0].text).toMatch(/^❌/);
-      expect(result1.content[0].text).toContain('Expected');
+      expect(result1.content[0].text).toBe('❌ Platform must be a string (one of: iOS, macOS, tvOS, watchOS, visionOS), got number');
 
       const result2 = await controller.execute({
         state: true
       });
 
-      expect(result2.content[0].text).toMatch(/^❌/);
-      expect(result2.content[0].text).toContain('Expected');
+      expect(result2.content[0].text).toBe('❌ Simulator state must be a string (one of: Booted, Booting, Shutdown, Shutting Down), got boolean');
     });
   });
 

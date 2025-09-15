@@ -24,7 +24,7 @@ const execAsync = promisify(exec);
 describe('Boot Simulator MCP E2E', () => {
   let client: Client;
   let transport: StdioClientTransport;
-  let testSimulatorId: string;
+  let testDeviceId: string;
   let testSimulatorName: string;
   
   beforeAll(async () => {
@@ -40,14 +40,14 @@ describe('Boot Simulator MCP E2E', () => {
     for (const runtime of Object.values(devices.devices) as any[]) {
       const testSim = runtime.find((d: any) => d.name.includes('TestSimulator-BootMCP'));
       if (testSim) {
-        testSimulatorId = testSim.udid;
+        testDeviceId = testSim.udid;
         testSimulatorName = testSim.name;
         break;
       }
     }
     
     // Create one if not found
-    if (!testSimulatorId) {
+    if (!testDeviceId) {
       // Get available runtime
       const runtimesResult = await execAsync('xcrun simctl list runtimes --json');
       const runtimes = JSON.parse(runtimesResult.stdout);
@@ -60,7 +60,7 @@ describe('Boot Simulator MCP E2E', () => {
       const createResult = await execAsync(
         `xcrun simctl create "TestSimulator-BootMCP" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "${iosRuntime.identifier}"`
       );
-      testSimulatorId = createResult.stdout.trim();
+      testDeviceId = createResult.stdout.trim();
       testSimulatorName = 'TestSimulator-BootMCP';
     }
     
@@ -71,7 +71,7 @@ describe('Boot Simulator MCP E2E', () => {
   beforeEach(async () => {
     // Ensure simulator is shutdown before each test
     try {
-      await execAsync(`xcrun simctl shutdown "${testSimulatorId}"`);
+      await execAsync(`xcrun simctl shutdown "${testDeviceId}"`);
     } catch {
       // Ignore if already shutdown
     }
@@ -82,7 +82,7 @@ describe('Boot Simulator MCP E2E', () => {
   afterAll(async () => {
     // Shutdown the test simulator
     try {
-      await execAsync(`xcrun simctl shutdown "${testSimulatorId}"`);
+      await execAsync(`xcrun simctl shutdown "${testDeviceId}"`);
     } catch {
       // Ignore if already shutdown
     }
@@ -104,14 +104,14 @@ describe('Boot Simulator MCP E2E', () => {
       // Assert - Verify MCP response
       const parsed = CallToolResultSchema.parse(result);
       expect(parsed.content[0].type).toBe('text');
-      expect(parsed.content[0].text).toBe(`✅ Successfully booted simulator: ${testSimulatorName} (${testSimulatorId})`);
+      expect(parsed.content[0].text).toBe(`✅ Successfully booted simulator: ${testSimulatorName} (${testDeviceId})`);
       
       // Verify simulator is actually booted
       const listResult = await execAsync('xcrun simctl list devices --json');
       const devices = JSON.parse(listResult.stdout);
       let found = false;
       for (const runtime of Object.values(devices.devices) as any[]) {
-        const device = runtime.find((d: any) => d.udid === testSimulatorId);
+        const device = runtime.find((d: any) => d.udid === testDeviceId);
         if (device) {
           expect(device.state).toBe('Booted');
           found = true;
@@ -123,20 +123,20 @@ describe('Boot Simulator MCP E2E', () => {
     
     it('should handle already booted simulator via MCP', async () => {
       // Arrange - boot the simulator first
-      await execAsync(`xcrun simctl boot "${testSimulatorId}"`);
+      await execAsync(`xcrun simctl boot "${testDeviceId}"`);
       await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for boot
       
       // Act - Call tool through MCP
       const result = await client.callTool({
         name: 'boot_simulator',
         arguments: {
-          deviceId: testSimulatorId
+          deviceId: testDeviceId
         }
       });
       
       // Assert
       const parsed = CallToolResultSchema.parse(result);
-      expect(parsed.content[0].text).toBe(`✅ Simulator already booted: ${testSimulatorName} (${testSimulatorId})`);
+      expect(parsed.content[0].text).toBe(`✅ Simulator already booted: ${testSimulatorName} (${testDeviceId})`);
     });
   });
 

@@ -10,23 +10,22 @@ describe('BuildResult', () => {
   describe('succeeded', () => {
     it('should create result with succeeded outcome', () => {
       // Arrange & Act
-      const result = BuildResult.succeeded('Build completed', '/path/to/app.app');
-      
+      const result = BuildResult.succeeded('/path/to/app.app');
+
       // Assert - test the behavior
       expect(result.outcome).toBe(BuildOutcome.Succeeded);
       expect(result.diagnostics.appPath).toBe('/path/to/app.app');
     });
     
-    it('should include output and log path', () => {
+    it('should include app and log path', () => {
       // Arrange & Act
       const result = BuildResult.succeeded(
-        'Build output',
         '/path/to/app.app',
         '/logs/build.log'
       );
-      
+
       // Assert
-      expect(result.diagnostics.output).toBe('Build output');
+      expect(result.diagnostics.appPath).toBe('/path/to/app.app');
       expect(result.diagnostics.logPath).toBe('/logs/build.log');
     });
     
@@ -36,7 +35,6 @@ describe('BuildResult', () => {
       
       // Act
       const result = BuildResult.succeeded(
-        'Build completed with warnings',
         '/path/to/app.app',
         undefined,
         [warning]
@@ -55,7 +53,7 @@ describe('BuildResult', () => {
       const error = BuildIssue.error('Compilation error');
       
       // Act
-      const result = BuildResult.failed('Build failed', [error], 1);
+      const result = BuildResult.failed([error], 1);
       
       // Assert
       expect(result.outcome).toBe(BuildOutcome.Failed);
@@ -69,7 +67,6 @@ describe('BuildResult', () => {
       
       // Act
       const result = BuildResult.failed(
-        'Build failed',
         [issue],
         65,
         '/logs/build.log',
@@ -88,7 +85,7 @@ describe('BuildResult', () => {
       // Arrange
       const error = BuildIssue.error('Syntax error');
       const warning = BuildIssue.warning('Unused variable');
-      const result = BuildResult.failed('Failed', [error, warning], 1);
+      const result = BuildResult.failed([error, warning], 1);
       
       // Act & Assert
       expect(BuildResult.hasErrors(result)).toBe(true);
@@ -100,7 +97,7 @@ describe('BuildResult', () => {
       const error = BuildIssue.error('Error');
       const warning1 = BuildIssue.warning('Warning 1');
       const warning2 = BuildIssue.warning('Warning 2');
-      const result = BuildResult.failed('Failed', [error, warning1, warning2], 1);
+      const result = BuildResult.failed([error, warning1, warning2], 1);
       
       // Act & Assert
       expect(BuildResult.getWarnings(result)).toEqual([warning1, warning2]);
@@ -121,7 +118,6 @@ describe('BuildResult', () => {
     it('should include build metadata in diagnostics', () => {
       // Arrange & Act
       const result = BuildResult.succeeded(
-        'Build output',
         '/app.app',
         '/log.txt',
         [],

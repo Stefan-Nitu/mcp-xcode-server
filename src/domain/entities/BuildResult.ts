@@ -44,7 +44,6 @@ export class OutputFormatterError extends BuildError {
 
 // Internal diagnostics (why/how it happened)
 export interface BuildDiagnostics {
-  readonly output: string;
   readonly appPath?: string;
   readonly logPath?: string;
   readonly issues: BuildIssue[];
@@ -66,7 +65,6 @@ export const BuildResult = {
    * Build succeeded
    */
   succeeded(
-    output: string,
     appPath?: string,
     logPath?: string,
     warnings: BuildIssue[] = [],
@@ -75,7 +73,6 @@ export const BuildResult = {
     return Object.freeze({
       outcome: BuildOutcome.Succeeded,
       diagnostics: Object.freeze({
-        output,
         appPath,
         logPath,
         issues: warnings,
@@ -89,7 +86,6 @@ export const BuildResult = {
    * Build failed
    */
   failed(
-    output: string,
     issues: BuildIssue[],
     exitCode: number,
     logPath?: string,
@@ -99,7 +95,6 @@ export const BuildResult = {
     return Object.freeze({
       outcome: BuildOutcome.Failed,
       diagnostics: Object.freeze({
-        output,
         issues,
         exitCode,
         logPath,

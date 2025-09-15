@@ -11,7 +11,6 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ZodError } from 'zod';
 import { logger, logToolExecution, logError } from './logger.js';
 
 // Import all tool classes
@@ -141,18 +140,7 @@ class XcodeServer {
         // Log successful execution
         logToolExecution(name, args, Date.now() - startTime);
         return result;
-      } catch (error) {
-        if (error instanceof ZodError) {
-          logger.warn({ tool: name, errors: error.errors }, 'Validation failed');
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Validation error: ${error.errors.map(e => e.message).join(', ')}`
-              }
-            ]
-          };
-        }
+      } catch (error: any) {
         
         logError(error as Error, { tool: name, args });
         return {

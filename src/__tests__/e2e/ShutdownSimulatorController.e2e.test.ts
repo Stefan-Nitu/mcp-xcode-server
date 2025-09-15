@@ -18,7 +18,7 @@ const execAsync = promisify(exec);
 
 describe('ShutdownSimulatorController E2E', () => {
   let controller: MCPController;
-  let testSimulatorId: string;
+  let testDeviceId: string;
   let testSimulatorName: string;
   
   beforeAll(async () => {
@@ -33,14 +33,14 @@ describe('ShutdownSimulatorController E2E', () => {
     for (const runtime of Object.values(devices.devices) as any[]) {
       const testSim = runtime.find((d: any) => d.name.includes('TestSimulator-Shutdown'));
       if (testSim) {
-        testSimulatorId = testSim.udid;
+        testDeviceId = testSim.udid;
         testSimulatorName = testSim.name;
         break;
       }
     }
     
     // Create one if not found
-    if (!testSimulatorId) {
+    if (!testDeviceId) {
       // Get available runtime
       const runtimesResult = await execAsync('xcrun simctl list runtimes --json');
       const runtimes = JSON.parse(runtimesResult.stdout);
@@ -53,20 +53,20 @@ describe('ShutdownSimulatorController E2E', () => {
       const createResult = await execAsync(
         `xcrun simctl create "TestSimulator-Shutdown" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "${iosRuntime.identifier}"`
       );
-      testSimulatorId = createResult.stdout.trim();
+      testDeviceId = createResult.stdout.trim();
       testSimulatorName = 'TestSimulator-Shutdown';
     }
   });
   
   beforeEach(async () => {
     // Boot simulator before each test (to ensure we can shut it down)
-    await bootAndWaitForSimulator(testSimulatorId, 30);
+    await bootAndWaitForSimulator(testDeviceId, 30);
   });
   
   afterAll(async () => {
     // Cleanup: shutdown the test simulator
     try {
-      await execAsync(`xcrun simctl shutdown "${testSimulatorId}"`);
+      await execAsync(`xcrun simctl shutdown "${testDeviceId}"`);
     } catch {
       // Ignore if already shutdown
     }
@@ -80,14 +80,14 @@ describe('ShutdownSimulatorController E2E', () => {
       });
       
       // Assert
-      expect(result.content[0].text).toBe(`✅ Successfully shutdown simulator: ${testSimulatorName} (${testSimulatorId})`);
+      expect(result.content[0].text).toBe(`✅ Successfully shutdown simulator: ${testSimulatorName} (${testDeviceId})`);
       
       // Verify simulator is actually shutdown
       const listResult = await execAsync('xcrun simctl list devices --json');
       const devices = JSON.parse(listResult.stdout);
       let found = false;
       for (const runtime of Object.values(devices.devices) as any[]) {
-        const device = runtime.find((d: any) => d.udid === testSimulatorId);
+        const device = runtime.find((d: any) => d.udid === testDeviceId);
         if (device) {
           expect(device.state).toBe('Shutdown');
           found = true;
@@ -99,7 +99,7 @@ describe('ShutdownSimulatorController E2E', () => {
 
     it('should handle already shutdown simulator', async () => {
       // Arrange - shutdown simulator first
-      await execAsync(`xcrun simctl shutdown "${testSimulatorId}"`);
+      await execAsync(`xcrun simctl shutdown "${testDeviceId}"`);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Act
@@ -108,24 +108,24 @@ describe('ShutdownSimulatorController E2E', () => {
       });
       
       // Assert
-      expect(result.content[0].text).toBe(`✅ Simulator already shutdown: ${testSimulatorName} (${testSimulatorId})`);
+      expect(result.content[0].text).toBe(`✅ Simulator already shutdown: ${testSimulatorName} (${testDeviceId})`);
     });
 
     it('should shutdown simulator by UUID', async () => {
       // Act
       const result = await controller.execute({
-        deviceId: testSimulatorId
+        deviceId: testDeviceId
       });
       
       // Assert
-      expect(result.content[0].text).toBe(`✅ Successfully shutdown simulator: ${testSimulatorName} (${testSimulatorId})`);
+      expect(result.content[0].text).toBe(`✅ Successfully shutdown simulator: ${testSimulatorName} (${testDeviceId})`);
       
       // Verify simulator is actually shutdown
       const listResult = await execAsync('xcrun simctl list devices --json');
       const devices = JSON.parse(listResult.stdout);
       let found = false;
       for (const runtime of Object.values(devices.devices) as any[]) {
-        const device = runtime.find((d: any) => d.udid === testSimulatorId);
+        const device = runtime.find((d: any) => d.udid === testDeviceId);
         if (device) {
           expect(device.state).toBe('Shutdown');
           found = true;
@@ -169,7 +169,7 @@ describe('ShutdownSimulatorController E2E', () => {
   describe('complex scenarios', () => {
     it('should shutdown simulator that was booting', async () => {
       // Arrange - boot and immediately try to shutdown
-      const bootPromise = execAsync(`xcrun simctl boot "${testSimulatorId}"`);
+      const bootPromise = execAsync(`xcrun simctl boot "${testDeviceId}"`);
       
       // Act - shutdown while booting
       const result = await controller.execute({
@@ -191,7 +191,7 @@ describe('ShutdownSimulatorController E2E', () => {
       const listResult = await execAsync('xcrun simctl list devices --json');
       const devices = JSON.parse(listResult.stdout);
       for (const runtime of Object.values(devices.devices) as any[]) {
-        const device = runtime.find((d: any) => d.udid === testSimulatorId);
+        const device = runtime.find((d: any) => d.udid === testDeviceId);
         if (device) {
           expect(device.state).toBe('Shutdown');
           break;

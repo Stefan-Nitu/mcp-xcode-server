@@ -1,17 +1,9 @@
-import { z } from 'zod';
 import { ListSimulatorsUseCase } from '../../application/use-cases/ListSimulatorsUseCase.js';
 import { ListSimulatorsRequest } from '../../domain/value-objects/ListSimulatorsRequest.js';
 import { Platform } from '../../domain/value-objects/Platform.js';
 import { SimulatorState } from '../../domain/value-objects/SimulatorState.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 import { MCPController } from '../interfaces/MCPController.js';
-
-const listSimulatorsSchema = z.object({
-  platform: z.enum(['iOS', 'macOS', 'tvOS', 'watchOS', 'visionOS']).optional(),
-  state: z.enum(['Booted', 'Booting', 'Shutdown', 'Shutting Down', 'Unknown']).optional()
-});
-
-type ListSimulatorsArgs = z.infer<typeof listSimulatorsSchema>;
 
 /**
  * Controller for the list_simulators MCP tool
@@ -55,10 +47,12 @@ export class ListSimulatorsController implements MCPController {
 
   async execute(args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
     try {
-      const validated = listSimulatorsSchema.parse(args);
+      // Cast to expected shape
+      const input = args as { platform?: string; state?: string };
 
-      const platform = validated.platform ? Platform[validated.platform as keyof typeof Platform] : undefined;
-      const state = validated.state ? this.mapStringToState(validated.state) : undefined;
+      // Use the new validation functions
+      const platform = Platform.parseOptional(input.platform);
+      const state = SimulatorState.parseOptional(input.state);
 
       const request = ListSimulatorsRequest.create(platform, state);
       const result = await this.useCase.execute(request);
@@ -106,14 +100,4 @@ export class ListSimulatorsController implements MCPController {
     }
   }
 
-  private mapStringToState(state: string): SimulatorState {
-    switch (state) {
-      case 'Booted': return SimulatorState.Booted;
-      case 'Booting': return SimulatorState.Booting;
-      case 'Shutdown': return SimulatorState.Shutdown;
-      case 'Shutting Down': return SimulatorState.ShuttingDown;
-      case 'Unknown': return SimulatorState.Unknown;
-      default: return SimulatorState.Unknown;
-    }
-  }
 }

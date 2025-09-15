@@ -107,8 +107,8 @@ return `❌ ${message}`;
 ```
 
 The ErrorFormatter:
-- Handles Zod validation errors
-- Formats build issues  
+- Formats domain validation errors
+- Formats build issues
 - Cleans up common error prefixes
 - Provides fallback for unknown errors
 
@@ -241,13 +241,63 @@ export class SimulatorBusyError extends DomainError {
 ```
 
 ### 4. Validation Failed
-Use Zod for input validation, ErrorFormatter handles the formatting:
-```typescript
-// Throws ZodError automatically
-const validated = schema.parse(input);
+Domain value objects handle their own validation with consistent error types:
 
-// ErrorFormatter formats it nicely
-`❌ Validation failed: Invalid project path`
+```typescript
+// Domain value objects validate themselves
+export class AppPath {
+  static create(path: unknown): AppPath {
+    // Check for missing field
+    if (path === undefined || path === null) {
+      throw new AppPath.RequiredError(); // "App path is required"
+    }
+
+    // Check type
+    if (typeof path !== 'string') {
+      throw new AppPath.InvalidTypeError(path); // "App path must be a string"
+    }
+
+    // Check empty
+    if (path.trim() === '') {
+      throw new AppPath.EmptyError(path); // "App path cannot be empty"
+    }
+
+    // Check format
+    if (!path.endsWith('.app')) {
+      throw new AppPath.InvalidFormatError(path); // "App path must end with .app"
+    }
+
+    return new AppPath(path);
+  }
+}
+```
+
+#### Validation Error Hierarchy
+Each value object follows this consistent validation order:
+1. **Required**: `undefined`/`null` → "X is required"
+2. **Type**: Wrong type → "X must be a {type}"
+3. **Empty**: Empty string → "X cannot be empty"
+4. **Format**: Invalid format → Specific format message
+
+```typescript
+// Consistent error base classes
+export abstract class DomainRequiredError extends DomainError {
+  constructor(fieldDisplayName: string) {
+    super(`${fieldDisplayName} is required`);
+  }
+}
+
+export abstract class DomainEmptyError extends DomainError {
+  constructor(fieldDisplayName: string) {
+    super(`${fieldDisplayName} cannot be empty`);
+  }
+}
+
+export abstract class DomainInvalidTypeError extends DomainError {
+  constructor(fieldDisplayName: string, expectedType: string) {
+    super(`${fieldDisplayName} must be a ${expectedType}`);
+  }
+}
 ```
 
 ## Benefits

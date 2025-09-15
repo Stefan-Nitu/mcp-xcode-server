@@ -1,14 +1,17 @@
+import { AppPath } from './AppPath.js';
+import { DeviceId } from './DeviceId.js';
+
 /**
  * Domain Value Object: Represents an app installation request
- * 
+ *
  * Contains all the data needed to install an app:
  * - What: appPath (the .app bundle to install)
  * - Where: simulatorId (optional - uses booted simulator if not specified)
  */
 export class InstallRequest {
   private constructor(
-    public readonly appPath: string,
-    public readonly simulatorId?: string
+    public readonly appPath: AppPath,
+    public readonly simulatorId?: DeviceId
   ) {}
 
   /**
@@ -16,29 +19,15 @@ export class InstallRequest {
    * Validates the inputs and creates an immutable request object
    */
   static create(
-    appPath: string,
-    simulatorId?: string
+    appPath: unknown,
+    simulatorId?: unknown
   ): InstallRequest {
-    // Validate app path
-    if (!appPath || appPath.trim() === '') {
-      throw new Error('App path cannot be empty');
-    }
+    // Validate app path using AppPath value object
+    const validatedAppPath = AppPath.create(appPath);
 
-    const trimmedPath = appPath.trim();
-    
-    // Validate .app extension
-    if (!trimmedPath.endsWith('.app')) {
-      throw new Error('App path must end with .app');
-    }
+    // Validate simulator ID if provided
+    const validatedDeviceId = DeviceId.createOptional(simulatorId);
 
-    // Basic path traversal protection
-    if (trimmedPath.includes('../..')) {
-      throw new Error('Invalid app path: path traversal detected');
-    }
-
-    // Clean up simulator ID if provided
-    const cleanSimulatorId = simulatorId?.trim() || undefined;
-
-    return new InstallRequest(trimmedPath, cleanSimulatorId);
+    return new InstallRequest(validatedAppPath, validatedDeviceId);
   }
 }

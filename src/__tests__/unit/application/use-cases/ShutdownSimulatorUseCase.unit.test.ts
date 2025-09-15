@@ -1,7 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { ShutdownSimulatorUseCase } from '../../../../application/use-cases/ShutdownSimulatorUseCase.js';
 import { ShutdownRequest } from '../../../../domain/value-objects/ShutdownRequest.js';
-import { ShutdownResult, ShutdownOutcome, SimulatorNotFoundError, ShutdownCommandFailedError } from '../../../../domain/entities/ShutdownResult.js';
+import { DeviceId } from '../../../../domain/value-objects/DeviceId.js';import { ShutdownResult, ShutdownOutcome, SimulatorNotFoundError, ShutdownCommandFailedError } from '../../../../domain/entities/ShutdownResult.js';
 import { SimulatorState } from '../../../../domain/value-objects/SimulatorState.js';
 import { ISimulatorLocator, ISimulatorControl, SimulatorInfo } from '../../../../application/ports/SimulatorPorts.js';
 
@@ -29,7 +29,7 @@ describe('ShutdownSimulatorUseCase', () => {
   describe('execute', () => {
     it('should shutdown a booted simulator', async () => {
       // Arrange
-      const request = ShutdownRequest.create('iPhone-15');
+      const request = ShutdownRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -54,7 +54,7 @@ describe('ShutdownSimulatorUseCase', () => {
 
     it('should handle already shutdown simulator', async () => {
       // Arrange
-      const request = ShutdownRequest.create('iPhone-15');
+      const request = ShutdownRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -77,7 +77,7 @@ describe('ShutdownSimulatorUseCase', () => {
 
     it('should shutdown a simulator in Booting state', async () => {
       // Arrange
-      const request = ShutdownRequest.create('iPhone-15');
+      const request = ShutdownRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -99,7 +99,7 @@ describe('ShutdownSimulatorUseCase', () => {
 
     it('should handle simulator in ShuttingDown state as already shutdown', async () => {
       // Arrange
-      const request = ShutdownRequest.create('iPhone-15');
+      const request = ShutdownRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -122,7 +122,7 @@ describe('ShutdownSimulatorUseCase', () => {
 
     it('should return failure when simulator not found', async () => {
       // Arrange
-      const request = ShutdownRequest.create('non-existent');
+      const request = ShutdownRequest.create(DeviceId.create('non-existent'));
       mockLocator.findSimulator.mockResolvedValue(null);
 
       // Act
@@ -137,7 +137,7 @@ describe('ShutdownSimulatorUseCase', () => {
 
     it('should return failure on shutdown error', async () => {
       // Arrange
-      const request = ShutdownRequest.create('iPhone-15');
+      const request = ShutdownRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -165,7 +165,7 @@ describe('ShutdownSimulatorUseCase', () => {
 
     it('should handle shutdown error without stderr', async () => {
       // Arrange
-      const request = ShutdownRequest.create('iPhone-15');
+      const request = ShutdownRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -190,7 +190,7 @@ describe('ShutdownSimulatorUseCase', () => {
 
     it('should handle shutdown error with empty message', async () => {
       // Arrange
-      const request = ShutdownRequest.create('iPhone-15');
+      const request = ShutdownRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -216,7 +216,7 @@ describe('ShutdownSimulatorUseCase', () => {
     it('should shutdown simulator by UUID', async () => {
       // Arrange
       const uuid = '550e8400-e29b-41d4-a716-446655440000';
-      const request = ShutdownRequest.create(uuid);
+      const request = ShutdownRequest.create(DeviceId.create(uuid));
       const simulatorInfo: SimulatorInfo = {
         id: uuid,
         name: 'iPhone 15 Pro',

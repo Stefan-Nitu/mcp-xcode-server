@@ -43,7 +43,7 @@ export class SimulatorLocatorAdapter implements ISimulatorLocator {
     return {
       id: selected.device.udid,
       name: selected.device.name,
-      state: selected.device.state as SimulatorState,
+      state: SimulatorState.parse(selected.device.state),
       platform: this.extractPlatform(selected.runtime),
       runtime: selected.runtime
     };

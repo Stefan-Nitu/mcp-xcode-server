@@ -22,11 +22,11 @@ describe('BuildXcodePresenter', () => {
   }
   
   function createSuccessResult(appPath?: string, logPath?: string): BuildResult {
-    return BuildResult.succeeded('Build succeeded', appPath, logPath);
+    return BuildResult.succeeded(appPath, logPath);
   }
   
   function createFailureResult(issues: BuildIssue[] = [], logPath?: string): BuildResult {
-    return BuildResult.failed('Build failed', issues, 1, logPath);
+    return BuildResult.failed(issues, 1, logPath);
   }
   
   describe('when presenting successful build', () => {
@@ -48,7 +48,7 @@ describe('BuildXcodePresenter', () => {
         BuildIssue.warning('Deprecated API', 'api.swift', 5),
         BuildIssue.warning('Unused variable', 'vars.swift', 15)
       ];
-      const result = BuildResult.succeeded('Build succeeded', '/path/to/app.app', undefined, warnings);
+      const result = BuildResult.succeeded('/path/to/app.app', undefined, warnings);
       const metadata = createTestMetadata();
       
       const response = presenter.present(result, metadata);
@@ -64,7 +64,7 @@ describe('BuildXcodePresenter', () => {
         BuildIssue.warning('Deprecated API', 'api.swift', 5),
         BuildIssue.warning('Unused variable', 'vars.swift', 15)
       ];
-      const result = BuildResult.succeeded('Build succeeded', '/path/to/app.app', undefined, warnings);
+      const result = BuildResult.succeeded('/path/to/app.app', undefined, warnings);
       const metadata = createTestMetadata({ showWarningDetails: true });
       
       const response = presenter.present(result, metadata);
@@ -332,43 +332,16 @@ describe('BuildXcodePresenter', () => {
   describe('when presenting errors', () => {
     it('should format validation errors in user-friendly way', () => {
       const presenter = createSUT();
-      // Create a mock ZodError with the structure we need
-      const zodError = Object.assign(new Error('Validation failed'), {
-        name: 'ZodError',
-        issues: [{
-          code: 'too_small',
-          minimum: 1,
-          type: 'string',
-          message: 'Scheme is required',
-          path: ['scheme']
-        }]
-      });
-      
-      const response = presenter.presentError(zodError);
-      
+      // Use actual domain error from BuildRequest
+      const schemeError = new Error('Scheme is required');
+      schemeError.name = 'BuildRequest.RequiredSchemeError';
+
+      const response = presenter.presentError(schemeError);
+
       // We WANT user-friendly messages, not JSON
       expect(response.content[0].text).toBe('❌ Scheme is required');
       expect(response.content[0].text).not.toContain('JSON');
       expect(response.content[0].text).not.toContain('[{');
-    });
-    
-    it('should format multiple validation errors clearly', () => {
-      const presenter = createSUT();
-      // Create a real ZodError-like object with multiple issues
-      const zodError = Object.assign(new Error('Validation failed'), {
-        name: 'ZodError',
-        issues: [
-          { message: 'Scheme is required', path: ['scheme'] },
-          { message: 'Invalid destination', path: ['destination'] }
-        ]
-      });
-      
-      const response = presenter.presentError(zodError);
-      
-      // We WANT clear, readable error messages
-      expect(response.content[0].text).toContain('❌ Validation errors:');
-      expect(response.content[0].text).toContain('Scheme is required');
-      expect(response.content[0].text).toContain('Invalid destination');
     });
     
     it('should handle non-validation errors normally', () => {
@@ -378,26 +351,6 @@ describe('BuildXcodePresenter', () => {
       const response = presenter.presentError(error);
       
       expect(response.content[0].text).toBe('❌ Project path does not exist');
-    });
-    
-    it('should handle ZodError objects directly', () => {
-      const presenter = createSUT();
-      // Simulate a ZodError-like object
-      const zodError = {
-        name: 'ZodError',
-        issues: [
-          { message: 'Scheme is required', path: ['scheme'] },
-          { message: 'Invalid destination', path: ['destination'] }
-        ],
-        message: 'Validation failed'
-      };
-      
-      const response = presenter.presentError(zodError);
-      
-      // We WANT the issues formatted nicely
-      expect(response.content[0].text).toContain('❌ Validation errors:');
-      expect(response.content[0].text).toContain('Scheme is required');
-      expect(response.content[0].text).toContain('Invalid destination');
     });
   });
 });

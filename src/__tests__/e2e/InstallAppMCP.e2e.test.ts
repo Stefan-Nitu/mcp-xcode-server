@@ -27,7 +27,7 @@ describe('Install App MCP E2E', () => {
   let client: Client;
   let transport: StdioClientTransport;
   let testManager: TestProjectManager;
-  let testSimulatorId: string;
+  let testDeviceId: string;
   let testAppPath: string;
   
   beforeAll(async () => {
@@ -73,18 +73,18 @@ describe('Install App MCP E2E', () => {
     const createResult = await execAsync(
       `xcrun simctl create "TestSimulator-InstallAppMCP" "iPhone 15" "${iosRuntime.identifier}"`
     );
-    testSimulatorId = createResult.stdout.trim();
+    testDeviceId = createResult.stdout.trim();
     
     // Boot the simulator and wait for it to be ready
-    await bootAndWaitForSimulator(testSimulatorId, 30);
+    await bootAndWaitForSimulator(testDeviceId, 30);
   });
   
   afterAll(async () => {
     // Clean up simulator
-    if (testSimulatorId) {
+    if (testDeviceId) {
       try {
-        await execAsync(`xcrun simctl shutdown "${testSimulatorId}"`);
-        await execAsync(`xcrun simctl delete "${testSimulatorId}"`);
+        await execAsync(`xcrun simctl shutdown "${testDeviceId}"`);
+        await execAsync(`xcrun simctl delete "${testDeviceId}"`);
       } catch (error) {
         // Ignore cleanup errors
       }
@@ -113,7 +113,7 @@ describe('Install App MCP E2E', () => {
           name: 'install_app',
           arguments: {
             appPath: testAppPath,
-            simulatorId: testSimulatorId
+            simulatorId: testDeviceId
           }
         }
       },

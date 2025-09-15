@@ -11,8 +11,8 @@ describe('InstallRequest', () => {
       );
       
       // Assert
-      expect(request.appPath).toBe('/path/to/app.app');
-      expect(request.simulatorId).toBe('iPhone-15-Simulator');
+      expect(request.appPath.toString()).toBe('/path/to/app.app');
+      expect(request.simulatorId?.toString()).toBe('iPhone-15-Simulator');
     });
 
     it('should create valid install request without simulator ID', () => {
@@ -22,7 +22,7 @@ describe('InstallRequest', () => {
       );
       
       // Assert
-      expect(request.appPath).toBe('/path/to/app.app');
+      expect(request.appPath.toString()).toBe('/path/to/app.app');
       expect(request.simulatorId).toBeUndefined();
     });
 
@@ -52,7 +52,7 @@ describe('InstallRequest', () => {
       );
       
       // Assert
-      expect(request.appPath).toBe('/path/to/MyApp.app');
+      expect(request.appPath.toString()).toBe('/path/to/MyApp.app');
     });
 
     it('should trim whitespace from simulator ID', () => {
@@ -63,7 +63,7 @@ describe('InstallRequest', () => {
       );
       
       // Assert
-      expect(request.simulatorId).toBe('test-sim');
+      expect(request.simulatorId?.toString()).toBe('test-sim');
     });
   });
 
@@ -81,7 +81,7 @@ describe('InstallRequest', () => {
       );
       
       // Assert
-      expect(request.appPath).toBe('/Users/developer/MyApp.app');
+      expect(request.appPath.toString()).toBe('/Users/developer/MyApp.app');
     });
 
     it('should accept relative paths within project', () => {
@@ -91,7 +91,7 @@ describe('InstallRequest', () => {
       );
       
       // Assert
-      expect(request.appPath).toBe('./build/Debug/MyApp.app');
+      expect(request.appPath.toString()).toBe('./build/Debug/MyApp.app');
     });
   });
 });

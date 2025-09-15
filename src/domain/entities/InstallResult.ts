@@ -1,6 +1,9 @@
+import { AppPath } from '../value-objects/AppPath.js';
+import { DeviceId } from '../value-objects/DeviceId.js';
+
 /**
  * Domain Entity: Represents the result of an app installation
- * 
+ *
  * Separates user-facing outcome from internal diagnostics
  */
 
@@ -10,21 +13,28 @@ export enum InstallOutcome {
   Failed = 'failed'
 }
 
-// Base class for all install-related errors  
+// Base class for all install-related errors
 export abstract class InstallError extends Error {}
 
 // Specific error types
 export class AppNotFoundError extends InstallError {
-  constructor(public readonly appPath: string) {
-    super(appPath);
+  constructor(public readonly appPath: AppPath) {
+    super(appPath.toString());
     this.name = 'AppNotFoundError';
   }
 }
 
 export class SimulatorNotFoundError extends InstallError {
-  constructor(public readonly simulatorId: string) {
-    super(simulatorId);
+  constructor(public readonly simulatorId: DeviceId) {
+    super(simulatorId.toString());
     this.name = 'SimulatorNotFoundError';
+  }
+}
+
+export class NoBootedSimulatorError extends InstallError {
+  constructor() {
+    super('No booted simulator found');
+    this.name = 'NoBootedSimulatorError';
   }
 }
 
@@ -37,8 +47,8 @@ export class InstallCommandFailedError extends InstallError {
 
 // Internal diagnostics (why/how it happened)
 export interface InstallDiagnostics {
-  readonly appPath: string;
-  readonly simulatorId?: string;
+  readonly appPath: AppPath;
+  readonly simulatorId?: DeviceId;
   readonly simulatorName?: string;
   readonly bundleId?: string;
   readonly error?: InstallError;
@@ -57,9 +67,9 @@ export const InstallResult = {
    */
   succeeded(
     bundleId: string,
-    simulatorId: string,
+    simulatorId: DeviceId,
     simulatorName: string,
-    appPath: string,
+    appPath: AppPath,
     diagnostics?: Partial<InstallDiagnostics>
   ): InstallResult {
     return Object.freeze({
@@ -80,8 +90,8 @@ export const InstallResult = {
    */
   failed(
     error: InstallError,
-    appPath: string,
-    simulatorId?: string,
+    appPath: AppPath,
+    simulatorId?: DeviceId,
     simulatorName?: string,
     diagnostics?: Partial<InstallDiagnostics>
   ): InstallResult {

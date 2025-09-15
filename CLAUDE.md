@@ -26,5 +26,6 @@ Only after reading all three documents should you proceed to help the user.
 This is an MCP (Model Context Protocol) server for Xcode operations. The codebase follows:
 - Clean/Hexagonal Architecture principles
 - Integration-focused testing (60% integration, 25% unit, 10% E2E, 5% static)
-- Parse-don't-validate pattern with Zod schemas
+- Parse-don't-validate pattern with domain validation
 - Domain primitives over primitive types
+- Type-safe enum comparisons (always use `SimulatorState.Booted`, never `'Booted'`)

@@ -312,6 +312,14 @@ export function createBuildXcodeController(): BuildXcodeController {
 - Infrastructure exceptions for technical failures
 - Presentation layer formats all errors for user display
 
+### 6. Type Safety and Enums
+- Always use enum values for comparisons, not string literals
+  - ✅ Good: `if (state === SimulatorState.Booted)`
+  - ❌ Bad: `if (state === 'Booted')`
+- Parse external data into domain types at system boundaries
+- Use validation functions (e.g., `Platform.parse()`) to convert strings to enums
+- This ensures type safety and catches invalid values early
+
 ## Migration Strategy
 
 When refactoring existing code to Clean Architecture:

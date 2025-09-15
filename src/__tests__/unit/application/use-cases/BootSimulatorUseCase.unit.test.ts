@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BootSimulatorUseCase } from '../../../../application/use-cases/BootSimulatorUseCase.js';
 import { BootRequest } from '../../../../domain/value-objects/BootRequest.js';
+import { DeviceId } from '../../../../domain/value-objects/DeviceId.js';
 import { BootResult, BootOutcome, SimulatorNotFoundError, BootCommandFailedError, SimulatorBusyError } from '../../../../domain/entities/BootResult.js';
 import { SimulatorState } from '../../../../domain/value-objects/SimulatorState.js';
 import { ISimulatorLocator, ISimulatorControl, SimulatorInfo } from '../../../../application/ports/SimulatorPorts.js';
@@ -29,7 +30,7 @@ describe('BootSimulatorUseCase', () => {
   describe('execute', () => {
     it('should boot a shutdown simulator', async () => {
       // Arrange
-      const request = BootRequest.create('iPhone-15');
+      const request = BootRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -56,7 +57,7 @@ describe('BootSimulatorUseCase', () => {
 
     it('should handle already booted simulator', async () => {
       // Arrange
-      const request = BootRequest.create('iPhone-15');
+      const request = BootRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -78,7 +79,7 @@ describe('BootSimulatorUseCase', () => {
 
     it('should return failure when simulator not found', async () => {
       // Arrange
-      const request = BootRequest.create('non-existent');
+      const request = BootRequest.create(DeviceId.create('non-existent'));
       mockLocator.findSimulator.mockResolvedValue(null);
 
       // Act
@@ -93,7 +94,7 @@ describe('BootSimulatorUseCase', () => {
 
     it('should return failure on boot error', async () => {
       // Arrange
-      const request = BootRequest.create('iPhone-15');
+      const request = BootRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -117,7 +118,7 @@ describe('BootSimulatorUseCase', () => {
     it('should boot simulator found by UUID', async () => {
       // Arrange
       const uuid = '838C707D-5703-4AEE-AF43-4798E0BA1B05';
-      const request = BootRequest.create(uuid);
+      const request = BootRequest.create(DeviceId.create(uuid));
       const simulatorInfo: SimulatorInfo = {
         id: uuid,
         name: 'iPhone 15',
@@ -141,7 +142,7 @@ describe('BootSimulatorUseCase', () => {
 
     it('should handle simulator in Booting state as already booted', async () => {
       // Arrange
-      const request = BootRequest.create('iPhone-15');
+      const request = BootRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -164,7 +165,7 @@ describe('BootSimulatorUseCase', () => {
 
     it('should return failure when simulator is ShuttingDown', async () => {
       // Arrange
-      const request = BootRequest.create('iPhone-15');
+      const request = BootRequest.create(DeviceId.create('iPhone-15'));
       const simulatorInfo: SimulatorInfo = {
         id: 'ABC123',
         name: 'iPhone 15',
@@ -187,27 +188,5 @@ describe('BootSimulatorUseCase', () => {
       expect(result.diagnostics.simulatorName).toBe('iPhone 15');
     });
 
-    it('should attempt to boot simulator in Unknown state', async () => {
-      // Arrange
-      const request = BootRequest.create('iPhone-15');
-      const simulatorInfo: SimulatorInfo = {
-        id: 'ABC123',
-        name: 'iPhone 15',
-        state: SimulatorState.Unknown,
-        platform: 'iOS',
-        runtime: 'iOS-17.0'
-      };
-      
-      mockLocator.findSimulator.mockResolvedValue(simulatorInfo);
-      mockControl.boot.mockResolvedValue(undefined);
-
-      // Act
-      const result = await useCase.execute(request);
-
-      // Assert
-      expect(mockControl.boot).toHaveBeenCalledWith('ABC123');
-      expect(result.outcome).toBe(BootOutcome.Booted);
-      expect(result.diagnostics.simulatorId).toBe('ABC123');
-    });
   });
 });

@@ -21,13 +21,6 @@ export interface ISimulatorLocator {
   findBootedSimulator(): Promise<SimulatorInfo | null>;
 }
 
-export interface ISimulatorStateQuery {
-  /**
-   * Get current state of a simulator
-   */
-  getState(simulatorId: string): Promise<SimulatorState>;
-}
-
 export interface ISimulatorControl {
   /**
    * Boot a simulator

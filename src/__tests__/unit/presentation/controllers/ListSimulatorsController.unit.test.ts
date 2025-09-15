@@ -196,8 +196,7 @@ describe('ListSimulatorsController', () => {
       });
 
       // Assert
-      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
-      expect(result.content[0].text).toContain('invalid');
+      expect(result.content[0].text).toBe('❌ Invalid platform: invalid. Valid values are: iOS, macOS, tvOS, watchOS, visionOS');
     });
   });
 });

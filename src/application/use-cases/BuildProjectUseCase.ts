@@ -83,7 +83,6 @@ export class BuildProjectUseCase {
       
       // Return build failure with formatter error
       return BuildResult.failed(
-        rawOutput,
         [],  // No parsed issues since formatter failed
         result.exitCode || 1,
         logPath,
@@ -117,7 +116,7 @@ export class BuildProjectUseCase {
         command
       });
       
-      return BuildResult.succeeded(output, appPath, logPath, warnings);
+      return BuildResult.succeeded(appPath, logPath, warnings);
     } else {
       // Failure path
       // Log failure via LogManager
@@ -142,7 +141,7 @@ export class BuildProjectUseCase {
       }
       
       // Return failure result
-      return BuildResult.failed(output, parsed.issues, result.exitCode, logPath);
+      return BuildResult.failed(parsed.issues, result.exitCode, logPath);
     }
   }
 }

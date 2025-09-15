@@ -278,8 +278,7 @@ describe('ListSimulatorsController Integration', () => {
         platform: 'Android'
       });
 
-      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
-      expect(result.content[0].text).toContain('Android');
+      expect(result.content[0].text).toBe('❌ Invalid platform: Android. Valid values are: iOS, macOS, tvOS, watchOS, visionOS');
     });
 
     it('should return error for invalid state', async () => {
@@ -288,8 +287,7 @@ describe('ListSimulatorsController Integration', () => {
         state: 'Running'
       });
 
-      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
-      expect(result.content[0].text).toContain('Running');
+      expect(result.content[0].text).toBe('❌ Invalid simulator state: Running. Valid values are: Booted, Booting, Shutdown, Shutting Down');
     });
   });
 });

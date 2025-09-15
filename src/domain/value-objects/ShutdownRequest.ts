@@ -1,6 +1,8 @@
+import { DeviceId } from './DeviceId.js';
+
 /**
  * Value object representing a request to shutdown a simulator
- * 
+ *
  * Encapsulates the device identifier (can be UUID or name)
  */
 export class ShutdownRequest {
@@ -11,15 +13,9 @@ export class ShutdownRequest {
   }
 
   /**
-   * Create a shutdown request with validation
+   * Create a shutdown request from a DeviceId
    */
-  static create(deviceId: string): ShutdownRequest {
-    const trimmedId = deviceId?.trim();
-    
-    if (!trimmedId) {
-      throw new Error('Device ID cannot be empty');
-    }
-    
-    return new ShutdownRequest(trimmedId);
+  static create(deviceId: DeviceId): ShutdownRequest {
+    return new ShutdownRequest(deviceId.toString());
   }
 }

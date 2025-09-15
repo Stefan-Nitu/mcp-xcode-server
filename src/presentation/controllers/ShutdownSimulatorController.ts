@@ -1,17 +1,9 @@
-import { z } from 'zod';
 import { ShutdownSimulatorUseCase } from '../../application/use-cases/ShutdownSimulatorUseCase.js';
+import { DeviceId } from '../../domain/value-objects/DeviceId.js';
 import { ShutdownRequest } from '../../domain/value-objects/ShutdownRequest.js';
 import { ShutdownResult, ShutdownOutcome, SimulatorNotFoundError, ShutdownCommandFailedError } from '../../domain/entities/ShutdownResult.js';
-import { deviceIdSchema } from '../validation/ToolInputValidators.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 import { MCPController } from '../interfaces/MCPController.js';
-
-// Compose the validation schema from reusable validators
-const shutdownSimulatorSchema = z.object({
-  deviceId: deviceIdSchema
-});
-
-type ShutdownSimulatorArgs = z.infer<typeof shutdownSimulatorSchema>;
 
 /**
  * Controller for the shutdown_simulator MCP tool
@@ -49,12 +41,15 @@ export class ShutdownSimulatorController implements MCPController {
   
   async execute(args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
     try {
-      // Validate input
-      const validated = shutdownSimulatorSchema.parse(args) as ShutdownSimulatorArgs;
-      
+      // Cast to expected shape
+      const input = args as { deviceId: unknown };
+
+      // Create domain value object - will validate
+      const deviceId = DeviceId.create(input.deviceId);
+
       // Create domain request
-      const request = ShutdownRequest.create(validated.deviceId);
-      
+      const request = ShutdownRequest.create(deviceId);
+
       // Execute use case
       const result = await this.useCase.execute(request);
       

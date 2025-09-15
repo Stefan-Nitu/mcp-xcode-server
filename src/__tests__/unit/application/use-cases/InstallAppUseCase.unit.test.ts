@@ -1,4 +1,4 @@
-import { InstallResult, InstallOutcome, InstallCommandFailedError, SimulatorNotFoundError } from '../../../../domain/entities/InstallResult.js';
+import { InstallResult, InstallOutcome, InstallCommandFailedError, SimulatorNotFoundError, NoBootedSimulatorError } from '../../../../domain/entities/InstallResult.js';
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { InstallAppUseCase } from '../../../../application/use-cases/InstallAppUseCase.js';
 import { InstallRequest } from '../../../../domain/value-objects/InstallRequest.js';
@@ -87,7 +87,7 @@ describe('InstallAppUseCase', () => {
       // Assert
       expect(result.outcome).toBe(InstallOutcome.Succeeded);
       expect(result.diagnostics.bundleId).toBe('MyApp.app');
-      expect(result.diagnostics.simulatorId).toBe('test-simulator-id');
+      expect(result.diagnostics.simulatorId?.toString()).toBe('test-simulator-id');
       expect(mockInstallApp).toHaveBeenCalledWith('/path/to/MyApp.app', 'test-simulator-id');
     });
 
@@ -123,7 +123,7 @@ describe('InstallAppUseCase', () => {
       // Assert
       expect(result.outcome).toBe(InstallOutcome.Failed);
       expect(result.diagnostics.error).toBeInstanceOf(SimulatorNotFoundError);
-      expect((result.diagnostics.error as SimulatorNotFoundError).simulatorId).toBe('non-existent-id');
+      expect((result.diagnostics.error as SimulatorNotFoundError).simulatorId.toString()).toBe('non-existent-id');
       expect(mockSaveDebugData).toHaveBeenCalledWith(
         'install-app-failed',
         expect.objectContaining({ reason: 'simulator_not_found' }),
@@ -170,7 +170,7 @@ describe('InstallAppUseCase', () => {
 
       // Assert
       expect(result.outcome).toBe(InstallOutcome.Succeeded);
-      expect(result.diagnostics.simulatorId).toBe('test-simulator-id');
+      expect(result.diagnostics.simulatorId?.toString()).toBe('test-simulator-id');
       expect(mockFindBootedSimulator).toHaveBeenCalled();
       expect(mockInstallApp).toHaveBeenCalledWith('/path/to/MyApp.app', 'test-simulator-id');
     });
@@ -187,8 +187,7 @@ describe('InstallAppUseCase', () => {
 
       // Assert
       expect(result.outcome).toBe(InstallOutcome.Failed);
-      expect(result.diagnostics.error).toBeInstanceOf(SimulatorNotFoundError);
-      expect((result.diagnostics.error as SimulatorNotFoundError).simulatorId).toBe('booted');
+      expect(result.diagnostics.error).toBeInstanceOf(NoBootedSimulatorError);
       expect(mockSaveDebugData).toHaveBeenCalledWith(
         'install-app-failed',
         expect.objectContaining({ reason: 'simulator_not_found' }),

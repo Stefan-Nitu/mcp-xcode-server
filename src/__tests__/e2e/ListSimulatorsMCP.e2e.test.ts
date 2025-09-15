@@ -193,8 +193,6 @@ describe('List Simulators MCP E2E', () => {
     expect(result.content).toBeInstanceOf(Array);
 
     const textContent = result.content.find((c: any) => c.type === 'text') as { type: string; text: string } | undefined;
-    expect(textContent?.text).toMatch(/^❌ Invalid enum value/);
-    expect(textContent?.text).toContain('Android');
-    expect(textContent?.text).toContain("Expected 'iOS'");
+    expect(textContent?.text).toBe('❌ Invalid platform: Android. Valid values are: iOS, macOS, tvOS, watchOS, visionOS');
   });
 });

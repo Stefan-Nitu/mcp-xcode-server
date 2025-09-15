@@ -1,32 +1,25 @@
-import { z } from 'zod';
 import { InstallAppUseCase } from '../../application/use-cases/InstallAppUseCase.js';
 import { InstallRequest } from '../../domain/value-objects/InstallRequest.js';
-import { 
+import {
   InstallResult,
   InstallOutcome,
   InstallCommandFailedError,
-  SimulatorNotFoundError 
+  SimulatorNotFoundError,
+  NoBootedSimulatorError
 } from '../../domain/entities/InstallResult.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
-import {
-  appPathSchema,
-  simulatorIdSchema
-} from '../validation/ToolInputValidators.js';
 import { MCPController } from '../interfaces/MCPController.js';
 
 /**
  * MCP Controller for installing apps on simulators
- * 
+ *
  * Handles input validation and orchestrates the install app use case
  */
 
-// Compose the validation schema from reusable validators
-const installAppSchema = z.object({
-  appPath: appPathSchema,
-  simulatorId: simulatorIdSchema
-});
-
-type InstallAppArgs = z.infer<typeof installAppSchema>;
+interface InstallAppArgs {
+  appPath: unknown;
+  simulatorId?: unknown;
+}
 
 export class InstallAppController implements MCPController {
   // MCP Tool metadata
@@ -64,15 +57,19 @@ export class InstallAppController implements MCPController {
   
   async execute(args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
     try {
-      // Validate input
-      const validated = installAppSchema.parse(args) as InstallAppArgs;
-      
-      // Create domain request
-      const request = InstallRequest.create(validated.appPath, validated.simulatorId);
-      
+      // Type guard for input
+      if (!args || typeof args !== 'object') {
+        throw new Error('Invalid input: expected an object');
+      }
+
+      const input = args as InstallAppArgs;
+
+      // Create domain request (validation happens here)
+      const request = InstallRequest.create(input.appPath, input.simulatorId);
+
       // Execute use case
       const result = await this.useCase.execute(request);
-      
+
       // Format response
       return {
         content: [{
@@ -97,15 +94,16 @@ export class InstallAppController implements MCPController {
     
     switch (outcome) {
       case InstallOutcome.Succeeded:
-        return `✅ Successfully installed ${diagnostics.bundleId} on ${diagnostics.simulatorName} (${diagnostics.simulatorId})`;
+        return `✅ Successfully installed ${diagnostics.bundleId} on ${diagnostics.simulatorName} (${diagnostics.simulatorId?.toString()})`;
       
       case InstallOutcome.Failed:
         const { error } = diagnostics;
         
+        if (error instanceof NoBootedSimulatorError) {
+          return `❌ No booted simulator found. Please boot a simulator first or specify a simulator ID.`;
+        }
+
         if (error instanceof SimulatorNotFoundError) {
-          if (error.simulatorId === 'booted') {
-            return `❌ No booted simulator found. Please boot a simulator first or specify a simulator ID.`;
-          }
           return `❌ Simulator not found: ${error.simulatorId}`;
         }
         
@@ -113,7 +111,7 @@ export class InstallAppController implements MCPController {
           const message = ErrorFormatter.format(error);
           // Include simulator context if available
           if (diagnostics.simulatorName && diagnostics.simulatorId) {
-            return `❌ ${diagnostics.simulatorName} (${diagnostics.simulatorId}) - ${message}`;
+            return `❌ ${diagnostics.simulatorName} (${diagnostics.simulatorId.toString()}) - ${message}`;
           }
           return `❌ ${message}`;
         }
