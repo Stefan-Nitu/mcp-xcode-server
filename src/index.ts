@@ -43,6 +43,7 @@ import { BuildXcodeControllerFactory } from './factories/BuildXcodeControllerFac
 import { InstallAppControllerFactory } from './factories/InstallAppControllerFactory.js';
 import { BootSimulatorControllerFactory } from './factories/BootSimulatorControllerFactory.js';
 import { ShutdownSimulatorControllerFactory } from './factories/ShutdownSimulatorControllerFactory.js';
+import { ListSimulatorsControllerFactory } from './factories/ListSimulatorsControllerFactory.js';
 
 type Tool = {
   execute(args: any): Promise<any>;
@@ -76,7 +77,7 @@ class XcodeServer {
     // Create instances of all tools
     const toolInstances = [
       // Simulator management
-      // new ListSimulatorsTool(),
+      ListSimulatorsControllerFactory.create(),
       BootSimulatorControllerFactory.create(),
       ShutdownSimulatorControllerFactory.create(),
       // new ViewSimulatorScreenTool(),
