@@ -29,10 +29,9 @@ describe('ListSimulatorsController E2E', () => {
 
   describe('list real simulators', () => {
     it('should list all available simulators', async () => {
-      // Act
+      // Arrange, Act, Assert
       const result = await controller.execute({});
 
-      // Assert
       expect(result).toMatchObject({
         content: expect.arrayContaining([
           expect.objectContaining({
@@ -43,30 +42,32 @@ describe('ListSimulatorsController E2E', () => {
       });
 
       const text = result.content[0].text;
-      if (text.includes('No simulators found')) {
-        expect(text).toBe('⚠️ No simulators found');
-      } else {
-        expect(text).toMatch(/Found \d+ simulator/);
-      }
+      expect(text).toMatch(/Found \d+ simulator/);
+
+      // Verify actual device lines exist
+      const deviceLines = text.split('\n').filter(line =>
+        line.includes('(') && line.includes(')') && line.includes('-')
+      );
+      expect(deviceLines.length).toBeGreaterThan(0);
     });
 
     it('should filter by iOS platform', async () => {
-      // Act
+      // Arrange, Act, Assert
       const result = await controller.execute({ platform: 'iOS' });
 
-      // Assert
       const text = result.content[0].text;
+      expect(text).toMatch(/Found \d+ simulator/);
 
-      if (!text.includes('No simulators found')) {
-        const lines = text.split('\n');
-        const deviceLines = lines.filter(line =>
-          line.includes('(') && line.includes(')') && line.includes('-')
-        );
+      const deviceLines = text.split('\n').filter(line =>
+        line.includes('(') && line.includes(')') && line.includes('-')
+      );
 
-        for (const line of deviceLines) {
-          expect(line).toMatch(/iPhone|iPad|iPod/);
-          expect(line).not.toMatch(/Apple TV|Apple Watch/);
-        }
+      expect(deviceLines.length).toBeGreaterThan(0);
+      for (const line of deviceLines) {
+        // All devices should show iOS runtime since we filtered by iOS platform
+        expect(line).toContain(' - iOS ');
+        // Should not contain other platform devices
+        expect(line).not.toMatch(/Apple TV|Apple Watch/);
       }
     });
 
@@ -100,121 +101,124 @@ describe('ListSimulatorsController E2E', () => {
     });
 
     it('should show runtime information', async () => {
-      // Act
+      // Arrange, Act, Assert
       const result = await controller.execute({});
 
-      // Assert
       const text = result.content[0].text;
+      expect(text).toMatch(/Found \d+ simulator/);
 
-      if (!text.includes('No simulators found')) {
-        const lines = text.split('\n');
-        const deviceLines = lines.filter(line =>
-          line.includes('(') && line.includes(')') && line.includes('-')
-        );
+      const deviceLines = text.split('\n').filter(line =>
+        line.includes('(') && line.includes(')') && line.includes('-')
+      );
 
-        if (deviceLines.length > 0) {
-          for (const line of deviceLines) {
-            expect(line).toMatch(/iOS \d+\.\d+|tvOS \d+\.\d+|watchOS \d+\.\d+|visionOS \d+\.\d+/);
-          }
-        }
+      expect(deviceLines.length).toBeGreaterThan(0);
+      for (const line of deviceLines) {
+        expect(line).toMatch(/iOS \d+\.\d+|tvOS \d+\.\d+|watchOS \d+\.\d+|visionOS \d+\.\d+/);
       }
     });
 
     it('should filter by tvOS platform', async () => {
-      // Act
+      // Arrange, Act, Assert
       const result = await controller.execute({ platform: 'tvOS' });
 
-      // Assert
       const text = result.content[0].text;
 
-      if (!text.includes('No simulators found')) {
-        const lines = text.split('\n');
-        const deviceLines = lines.filter(line =>
+      // tvOS simulators might not exist in all environments
+      if (text.includes('No simulators found')) {
+        expect(text).toBe('⚠️ No simulators found');
+      } else {
+        expect(text).toMatch(/Found \d+ simulator/);
+        const deviceLines = text.split('\n').filter(line =>
           line.includes('(') && line.includes(')') && line.includes('-')
         );
 
         for (const line of deviceLines) {
           expect(line).toContain('Apple TV');
+          expect(line).toContain(' - tvOS ');
         }
       }
     });
 
     it('should handle combined filters', async () => {
-      // Act
+      // Arrange, Act, Assert
       const result = await controller.execute({
         platform: 'iOS',
         state: 'Shutdown'
       });
 
-      // Assert
       const text = result.content[0].text;
+      expect(text).toMatch(/Found \d+ simulator/);
 
-      if (!text.includes('No simulators found')) {
-        const lines = text.split('\n');
-        const deviceLines = lines.filter(line =>
-          line.includes('(') && line.includes(')') && line.includes('-')
-        );
+      const deviceLines = text.split('\n').filter(line =>
+        line.includes('(') && line.includes(')') && line.includes('-')
+      );
 
-        for (const line of deviceLines) {
-          expect(line).toMatch(/iPhone|iPad|iPod/);
-          expect(line).toContain('Shutdown');
-        }
+      expect(deviceLines.length).toBeGreaterThan(0);
+      for (const line of deviceLines) {
+        expect(line).toContain(' - iOS ');
+        expect(line).toContain('Shutdown');
       }
     });
   });
 
   describe('error handling', () => {
-    it('should reject invalid platform', async () => {
-      // Act & Assert
-      await expect(controller.execute({
+    it('should return error for invalid platform', async () => {
+      // Arrange, Act, Assert
+      const result = await controller.execute({
         platform: 'Android'
-      })).rejects.toThrow();
+      });
+
+      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
+      expect(result.content[0].text).toContain('Android');
     });
 
-    it('should reject invalid state', async () => {
-      // Act & Assert
-      await expect(controller.execute({
+    it('should return error for invalid state', async () => {
+      // Arrange, Act, Assert
+      const result = await controller.execute({
         state: 'Running'
-      })).rejects.toThrow();
+      });
+
+      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
+      expect(result.content[0].text).toContain('Running');
     });
 
-    it('should handle invalid input types', async () => {
-      // Act & Assert
-      await expect(controller.execute({
+    it('should return error for invalid input types', async () => {
+      // Arrange, Act, Assert
+      const result1 = await controller.execute({
         platform: 123
-      })).rejects.toThrow();
+      });
 
-      await expect(controller.execute({
+      expect(result1.content[0].text).toMatch(/^❌/);
+      expect(result1.content[0].text).toContain('Expected');
+
+      const result2 = await controller.execute({
         state: true
-      })).rejects.toThrow();
+      });
+
+      expect(result2.content[0].text).toMatch(/^❌/);
+      expect(result2.content[0].text).toContain('Expected');
     });
   });
 
   describe('output formatting', () => {
     it('should format simulator list properly', async () => {
-      // Act
+      // Arrange, Act, Assert
       const result = await controller.execute({});
 
-      // Assert
       const text = result.content[0].text;
+      expect(text).toMatch(/^✅ Found \d+ simulator/);
 
-      if (!text.includes('No simulators found')) {
-        expect(text).toMatch(/^✅ Found \d+ simulator/);
+      const lines = text.split('\n');
+      expect(lines[0]).toMatch(/^✅ Found \d+ simulator/);
+      expect(lines[1]).toBe('');
 
-        const lines = text.split('\n');
-        expect(lines[0]).toMatch(/^✅ Found \d+ simulator/);
+      const deviceLines = lines.filter(line =>
+        line.includes('(') && line.includes(')') && line.includes('-')
+      );
 
-        if (lines.length > 1) {
-          expect(lines[1]).toBe('');
-        }
-
-        const deviceLines = lines.filter(line =>
-          line.includes('(') && line.includes(')') && line.includes('-')
-        );
-
-        for (const line of deviceLines) {
-          expect(line).toMatch(/^• .+ \([A-F0-9-]+\) - (Booted|Shutdown) - (iOS|tvOS|watchOS|visionOS) \d+\.\d+$/);
-        }
+      expect(deviceLines.length).toBeGreaterThan(0);
+      for (const line of deviceLines) {
+        expect(line).toMatch(/^• .+ \([A-F0-9-]+\) - (Booted|Booting|Shutdown|Shutting Down|Unknown) - (iOS|tvOS|watchOS|visionOS|macOS|Unknown) \d+\.\d+$/);
       }
     });
 

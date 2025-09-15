@@ -186,14 +186,18 @@ describe('ListSimulatorsController', () => {
       expect(result.content[0].text).toContain('iOS 17.2');
     });
 
-    it('should validate input parameters', async () => {
+    it('should return validation error for invalid input', async () => {
       // Arrange
       const { sut } = createSUT();
 
-      // Act & Assert
-      await expect(sut.execute({
+      // Act
+      const result = await sut.execute({
         platform: 'invalid'
-      })).rejects.toThrow();
+      });
+
+      // Assert
+      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
+      expect(result.content[0].text).toContain('invalid');
     });
   });
 });

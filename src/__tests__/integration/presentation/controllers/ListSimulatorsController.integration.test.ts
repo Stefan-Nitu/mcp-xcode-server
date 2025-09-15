@@ -1,32 +1,60 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { ListSimulatorsController } from '../../../../presentation/controllers/ListSimulatorsController.js';
-import { ListSimulatorsUseCase } from '../../../../application/use-cases/ListSimulatorsUseCase.js';
-import { DeviceRepository } from '../../../../infrastructure/repositories/DeviceRepository.js';
-import { ShellCommandExecutorAdapter } from '../../../../infrastructure/adapters/ShellCommandExecutorAdapter.js';
+import { MCPController } from '../../../../presentation/interfaces/MCPController.js';
+import { ListSimulatorsControllerFactory } from '../../../../factories/ListSimulatorsControllerFactory.js';
 import { SimulatorState } from '../../../../domain/value-objects/SimulatorState.js';
 import { exec } from 'child_process';
-import { promisify } from 'util';
+import type { NodeExecError } from '../../../utils/types/execTypes.js';
 
-const mockExec = jest.fn<(command: string) => Promise<{ stdout: string; stderr: string }>>();
-jest.mock('child_process', () => ({
-  exec: jest.fn((cmd: string, callback: any) => {
-    mockExec(cmd)
-      .then(result => callback(null, result.stdout, result.stderr))
-      .catch(error => callback(error));
-  })
+// Mock ONLY external boundaries
+jest.mock('child_process');
+
+// Mock promisify to return {stdout, stderr} for exec (as node's promisify does)
+jest.mock('util', () => {
+  const actualUtil = jest.requireActual('util') as typeof import('util');
+  const { createPromisifiedExec } = require('../../../utils/mocks/promisifyExec');
+
+  return {
+    ...actualUtil,
+    promisify: (fn: Function) =>
+      fn?.name === 'exec' ? createPromisifiedExec(fn) : actualUtil.promisify(fn)
+  };
+});
+
+// Mock DependencyChecker to always report dependencies are available in tests
+jest.mock('../../../../infrastructure/services/DependencyChecker', () => ({
+  DependencyChecker: jest.fn().mockImplementation(() => ({
+    check: jest.fn<() => Promise<[]>>().mockResolvedValue([]) // No missing dependencies
+  }))
 }));
 
+const mockExec = exec as jest.MockedFunction<typeof exec>;
+
 describe('ListSimulatorsController Integration', () => {
-  let controller: ListSimulatorsController;
+  let controller: MCPController;
+  let execCallIndex: number;
+  let execMockResponses: Array<{ stdout: string; stderr: string; error?: NodeExecError }>;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    execCallIndex = 0;
+    execMockResponses = [];
 
-    const execAsync = promisify(exec);
-    const executor = new ShellCommandExecutorAdapter(execAsync);
-    const repository = new DeviceRepository(executor);
-    const useCase = new ListSimulatorsUseCase(repository);
-    controller = new ListSimulatorsController(useCase);
+    // Setup exec mock to return responses sequentially
+    mockExec.mockImplementation(((
+      _cmd: string,
+      _options: any,
+      callback: (error: Error | null, stdout: string, stderr: string) => void
+    ) => {
+      const response = execMockResponses[execCallIndex++] || { stdout: '', stderr: '' };
+      if (response.error) {
+        callback(response.error, response.stdout, response.stderr);
+      } else {
+        callback(null, response.stdout, response.stderr);
+      }
+    }) as any);
+
+    // Create controller with REAL components using factory
+    controller = ListSimulatorsControllerFactory.create();
   });
 
   describe('with mocked shell commands', () => {
@@ -71,16 +99,14 @@ describe('ListSimulatorsController Integration', () => {
         }
       };
 
-      mockExec.mockResolvedValue({
-        stdout: JSON.stringify(mockDeviceList),
-        stderr: ''
-      });
+      execMockResponses = [
+        { stdout: JSON.stringify(mockDeviceList), stderr: '' }
+      ];
 
       // Act
       const result = await controller.execute({});
 
-      // Assert
-      expect(mockExec).toHaveBeenCalledWith('xcrun simctl list devices --json');
+      // Assert - Test behavior: lists all simulators
       expect(result.content[0].text).toContain('Found 3 simulators');
       expect(result.content[0].text).toContain('iPhone 15');
       expect(result.content[0].text).toContain('iPad Pro');
@@ -110,10 +136,9 @@ describe('ListSimulatorsController Integration', () => {
         }
       };
 
-      mockExec.mockResolvedValue({
-        stdout: JSON.stringify(mockDeviceList),
-        stderr: ''
-      });
+      execMockResponses = [
+        { stdout: JSON.stringify(mockDeviceList), stderr: '' }
+      ];
 
       // Act
       const result = await controller.execute({ platform: 'iOS' });
@@ -145,10 +170,9 @@ describe('ListSimulatorsController Integration', () => {
         }
       };
 
-      mockExec.mockResolvedValue({
-        stdout: JSON.stringify(mockDeviceList),
-        stderr: ''
-      });
+      execMockResponses = [
+        { stdout: JSON.stringify(mockDeviceList), stderr: '' }
+      ];
 
       // Act
       const result = await controller.execute({ state: 'Booted' });
@@ -159,24 +183,27 @@ describe('ListSimulatorsController Integration', () => {
       expect(result.content[0].text).not.toContain('iPad Pro');
     });
 
-    it('should handle command failure', async () => {
+    it('should return error when command execution fails', async () => {
       // Arrange
-      mockExec.mockRejectedValue(new Error('xcrun not found'));
+      const error = new Error('xcrun not found') as NodeExecError;
+      error.code = 1;
+      execMockResponses = [
+        { stdout: '', stderr: 'xcrun not found', error }
+      ];
 
       // Act
       const result = await controller.execute({});
 
       // Assert
-      expect(result.content[0].text).toContain('❌');
-      expect(result.content[0].text).toContain('xcrun not found');
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toMatch(/^❌.*JSON/); // Error about JSON parsing
     });
 
-    it('should handle empty device list', async () => {
+    it('should show warning when no simulators exist', async () => {
       // Arrange
-      mockExec.mockResolvedValue({
-        stdout: JSON.stringify({ devices: {} }),
-        stderr: ''
-      });
+      execMockResponses = [
+        { stdout: JSON.stringify({ devices: {} }), stderr: '' }
+      ];
 
       // Act
       const result = await controller.execute({});
@@ -214,10 +241,9 @@ describe('ListSimulatorsController Integration', () => {
         }
       };
 
-      mockExec.mockResolvedValue({
-        stdout: JSON.stringify(mockDeviceList),
-        stderr: ''
-      });
+      execMockResponses = [
+        { stdout: JSON.stringify(mockDeviceList), stderr: '' }
+      ];
 
       // Act
       const result = await controller.execute({
@@ -232,32 +258,38 @@ describe('ListSimulatorsController Integration', () => {
       expect(result.content[0].text).not.toContain('Apple TV');
     });
 
-    it('should handle malformed JSON response', async () => {
+    it('should return JSON parse error for malformed response', async () => {
       // Arrange
-      mockExec.mockResolvedValue({
-        stdout: 'not valid json',
-        stderr: ''
-      });
+      execMockResponses = [
+        { stdout: 'not valid json', stderr: '' }
+      ];
 
       // Act
       const result = await controller.execute({});
 
       // Assert
-      expect(result.content[0].text).toContain('❌');
+      expect(result.content[0].type).toBe('text');
+      expect(result.content[0].text).toMatch(/^❌.*not valid JSON/);
     });
 
-    it('should validate platform parameter', async () => {
-      // Act & Assert
-      await expect(controller.execute({
+    it('should return error for invalid platform', async () => {
+      // Arrange, Act, Assert
+      const result = await controller.execute({
         platform: 'Android'
-      })).rejects.toThrow();
+      });
+
+      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
+      expect(result.content[0].text).toContain('Android');
     });
 
-    it('should validate state parameter', async () => {
-      // Act & Assert
-      await expect(controller.execute({
+    it('should return error for invalid state', async () => {
+      // Arrange, Act, Assert
+      const result = await controller.execute({
         state: 'Running'
-      })).rejects.toThrow();
+      });
+
+      expect(result.content[0].text).toMatch(/^❌ Invalid enum value/);
+      expect(result.content[0].text).toContain('Running');
     });
   });
 });

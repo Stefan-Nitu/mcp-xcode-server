@@ -81,15 +81,20 @@ describe('List Simulators MCP E2E', () => {
     const textContent = result.content.find((c: any) => c.type === 'text') as { type: string; text: string } | undefined;
     const text = textContent?.text || '';
 
-    if (!text.includes('No simulators found')) {
-      const lines = text.split('\n');
-      const deviceLines = lines.filter((line: string) =>
-        line.includes('(') && line.includes(')') && line.includes('-')
-      );
+    // Should find iOS simulators
+    expect(text).toMatch(/Found \d+ simulator/);
 
-      for (const line of deviceLines) {
-        expect(line).toMatch(/iPhone|iPad|iPod/);
-      }
+    const lines = text.split('\n');
+    const deviceLines = lines.filter((line: string) =>
+      line.includes('(') && line.includes(')') && line.includes('-')
+    );
+
+    expect(deviceLines.length).toBeGreaterThan(0);
+    for (const line of deviceLines) {
+      // All devices should show iOS runtime since we filtered by iOS platform
+      expect(line).toContain(' - iOS ');
+      // Should not contain other platform devices
+      expect(line).not.toMatch(/Apple TV|Apple Watch/);
     }
   });
 
@@ -114,15 +119,17 @@ describe('List Simulators MCP E2E', () => {
     const textContent = result.content.find((c: any) => c.type === 'text') as { type: string; text: string } | undefined;
     const text = textContent?.text || '';
 
-    if (!text.includes('No simulators found')) {
-      const lines = text.split('\n');
-      const deviceLines = lines.filter(line =>
-        line.includes('(') && line.includes(')') && line.includes('-')
-      );
+    // Should find simulators in shutdown state
+    expect(text).toMatch(/Found \d+ simulator/);
 
-      for (const line of deviceLines) {
-        expect(line).toContain('Shutdown');
-      }
+    const lines = text.split('\n');
+    const deviceLines = lines.filter(line =>
+      line.includes('(') && line.includes(')') && line.includes('-')
+    );
+
+    expect(deviceLines.length).toBeGreaterThan(0);
+    for (const line of deviceLines) {
+      expect(line).toContain('Shutdown');
     }
   });
 
@@ -148,14 +155,20 @@ describe('List Simulators MCP E2E', () => {
     const textContent = result.content.find((c: any) => c.type === 'text') as { type: string; text: string } | undefined;
     const text = textContent?.text || '';
 
-    if (!text.includes('No simulators found')) {
+    // The combined filter might not find any booted iOS simulators
+    // but the test should still assert the behavior
+    if (text.includes('No simulators found')) {
+      expect(text).toBe('⚠️ No simulators found');
+    } else {
+      expect(text).toMatch(/Found \d+ simulator/);
+
       const lines = text.split('\n');
       const deviceLines = lines.filter(line =>
         line.includes('(') && line.includes(')') && line.includes('-')
       );
 
       for (const line of deviceLines) {
-        expect(line).toMatch(/iPhone|iPad|iPod/);
+        expect(line).toContain(' - iOS ');
         expect(line).toContain('Booted');
       }
     }
@@ -180,6 +193,8 @@ describe('List Simulators MCP E2E', () => {
     expect(result.content).toBeInstanceOf(Array);
 
     const textContent = result.content.find((c: any) => c.type === 'text') as { type: string; text: string } | undefined;
-    expect(textContent?.text).toContain('❌');
+    expect(textContent?.text).toMatch(/^❌ Invalid enum value/);
+    expect(textContent?.text).toContain('Android');
+    expect(textContent?.text).toContain("Expected 'iOS'");
   });
 });

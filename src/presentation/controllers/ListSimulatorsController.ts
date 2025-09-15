@@ -54,13 +54,14 @@ export class ListSimulatorsController implements MCPController {
   }
 
   async execute(args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
-    const validated = listSimulatorsSchema.parse(args);
+    try {
+      const validated = listSimulatorsSchema.parse(args);
 
-    const platform = validated.platform ? Platform[validated.platform as keyof typeof Platform] : undefined;
-    const state = validated.state ? this.mapStringToState(validated.state) : undefined;
+      const platform = validated.platform ? Platform[validated.platform as keyof typeof Platform] : undefined;
+      const state = validated.state ? this.mapStringToState(validated.state) : undefined;
 
-    const request = ListSimulatorsRequest.create(platform, state);
-    const result = await this.useCase.execute(request);
+      const request = ListSimulatorsRequest.create(platform, state);
+      const result = await this.useCase.execute(request);
 
     if (!result.isSuccess) {
       return {
@@ -95,6 +96,14 @@ export class ListSimulatorsController implements MCPController {
         text: lines.join('\n')
       }]
     };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `❌ ${ErrorFormatter.format(error as Error)}`
+        }]
+      };
+    }
   }
 
   private mapStringToState(state: string): SimulatorState {
