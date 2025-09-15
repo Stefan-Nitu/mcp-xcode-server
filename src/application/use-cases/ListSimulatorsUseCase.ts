@@ -66,7 +66,7 @@ export class ListSimulatorsUseCase {
     if (runtime.includes('iOS')) return 'iOS';
     if (runtime.includes('tvOS')) return 'tvOS';
     if (runtime.includes('watchOS')) return 'watchOS';
-    if (runtime.includes('visionOS')) return 'visionOS';
+    if (runtime.includes('xrOS') || runtime.includes('visionOS')) return 'visionOS';
     if (runtime.includes('macOS')) return 'macOS';
     return 'Unknown';
   }
