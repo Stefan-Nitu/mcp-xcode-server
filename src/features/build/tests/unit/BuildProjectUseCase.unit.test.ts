@@ -11,7 +11,6 @@ import { IOutputFormatter } from '../../../../application/ports/OutputFormatterP
 import { XcbeautifyOutputParserAdapter } from '../../infrastructure/XcbeautifyOutputParserAdapter.js';
 import { BuildDestinationMapperAdapter } from '../../infrastructure/BuildDestinationMapperAdapter.js';
 import { XcodeBuildCommandAdapter } from '../../infrastructure/XcodeBuildCommandAdapter.js';
-import { SystemArchitectureDetector } from '../../../../infrastructure/services/SystemArchitectureDetector.js';
 import { existsSync } from 'fs';
 
 jest.mock('fs', () => ({
@@ -39,11 +38,6 @@ describe('BuildProjectUseCase', () => {
       execute: mockExecute
     };
     
-    const mockArchExecute = jest.fn<(command: string, options?: ExecutionOptions) => Promise<ExecutionResult>>();
-    mockArchExecute.mockResolvedValue({ stdout: 'arm64\n', stderr: '', exitCode: 0 });
-    const mockArchExecutor: jest.Mocked<ICommandExecutor> = {
-      execute: mockArchExecute
-    };
     
     const mockFindApp = jest.fn<IAppLocator['findApp']>();
     const mockAppLocator: jest.Mocked<IAppLocator> = {
@@ -66,8 +60,7 @@ describe('BuildProjectUseCase', () => {
       format: mockFormat
     };
     
-    const architectureDetector = new SystemArchitectureDetector(mockArchExecutor);
-    const destinationMapper = new BuildDestinationMapperAdapter(architectureDetector);
+    const destinationMapper = new BuildDestinationMapperAdapter();
     const commandBuilder = new XcodeBuildCommandAdapter();
     const outputParser = new XcbeautifyOutputParserAdapter();
     

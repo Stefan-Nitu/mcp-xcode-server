@@ -1,53 +1,42 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import { BuildDestinationMapperAdapter } from '../../infrastructure/BuildDestinationMapperAdapter.js';
-import { SystemArchitectureDetector } from '../../../../infrastructure/services/SystemArchitectureDetector.js';
 import { BuildDestination } from '../../domain/BuildDestination.js';
 
 /**
  * Unit tests for BuildDestinationMapper
- * 
+ *
  * Following testing philosophy:
  * - Test behavior, not implementation
- * - Mock only dependencies (SystemArchitectureDetector)
  * - Use factory methods for test data
  * - DAMP over DRY for clarity
  */
 
 describe('BuildDestinationMapper', () => {
-  // Factory for creating SUT and mocks
-  function createSUT(architecture = 'arm64') {
-    const mockGetCurrentArchitecture = jest.fn<() => Promise<string>>();
-    mockGetCurrentArchitecture.mockResolvedValue(architecture);
-    
-    // Create a proper mock that extends the class
-    const mockDetector = Object.create(SystemArchitectureDetector.prototype);
-    mockDetector.isAppleSilicon = jest.fn<() => Promise<boolean>>();
-    mockDetector.getCurrentArchitecture = mockGetCurrentArchitecture;
-    
-    const sut = new BuildDestinationMapperAdapter(mockDetector);
-    
-    return { sut, mockGetCurrentArchitecture };
+  // Factory for creating SUT
+  function createSUT() {
+    const sut = new BuildDestinationMapperAdapter();
+    return { sut };
   }
   
   describe('toXcodeBuildOptions', () => {
     describe('iOS destinations', () => {
-      it('should map iOSSimulator to simulator with architecture optimization', async () => {
+      it('should map iOSSimulator to simulator with ONLY_ACTIVE_ARCH optimization', async () => {
         // Arrange
-        const { sut } = createSUT('arm64');
-        
+        const { sut } = createSUT();
+
         // Act
         const result = await sut.toXcodeBuildOptions(BuildDestination.iOSSimulator);
-        
+
         // Assert
         expect(result).toEqual({
           destination: 'generic/platform=iOS Simulator',
-          additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
+          additionalSettings: ['ONLY_ACTIVE_ARCH=YES']
         });
       });
-      
-      it('should map iOSSimulator with x86_64 architecture', async () => {
+
+      it('should map iOSSimulatorUniversal without optimization', async () => {
         // Arrange
-        const { sut } = createSUT('x86_64');
+        const { sut } = createSUT();
         
         // Act
         const result = await sut.toXcodeBuildOptions(BuildDestination.iOSSimulator);
@@ -55,7 +44,7 @@ describe('BuildDestinationMapper', () => {
         // Assert
         expect(result).toEqual({
           destination: 'generic/platform=iOS Simulator',
-          additionalSettings: ['ARCHS=x86_64', 'ONLY_ACTIVE_ARCH=YES']
+          additionalSettings: ['ONLY_ACTIVE_ARCH=YES']
         });
       });
       
@@ -89,7 +78,7 @@ describe('BuildDestinationMapper', () => {
     describe('tvOS destinations', () => {
       it('should map tvOSSimulator to simulator with architecture optimization', async () => {
         // Arrange
-        const { sut } = createSUT('arm64');
+        const { sut } = createSUT();
         
         // Act
         const result = await sut.toXcodeBuildOptions(BuildDestination.tvOSSimulator);
@@ -97,7 +86,7 @@ describe('BuildDestinationMapper', () => {
         // Assert
         expect(result).toEqual({
           destination: 'generic/platform=tvOS Simulator',
-          additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
+          additionalSettings: ['ONLY_ACTIVE_ARCH=YES']
         });
       });
       
@@ -118,7 +107,7 @@ describe('BuildDestinationMapper', () => {
     describe('watchOS destinations', () => {
       it('should map watchOSSimulator to simulator with architecture optimization', async () => {
         // Arrange
-        const { sut } = createSUT('arm64');
+        const { sut } = createSUT();
         
         // Act
         const result = await sut.toXcodeBuildOptions(BuildDestination.watchOSSimulator);
@@ -126,7 +115,7 @@ describe('BuildDestinationMapper', () => {
         // Assert
         expect(result).toEqual({
           destination: 'generic/platform=watchOS Simulator',
-          additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
+          additionalSettings: ['ONLY_ACTIVE_ARCH=YES']
         });
       });
       
@@ -147,7 +136,7 @@ describe('BuildDestinationMapper', () => {
     describe('visionOS destinations', () => {
       it('should map visionOSSimulator to xrOS Simulator with architecture optimization', async () => {
         // Arrange
-        const { sut } = createSUT('arm64');
+        const { sut } = createSUT();
         
         // Act
         const result = await sut.toXcodeBuildOptions(BuildDestination.visionOSSimulator);
@@ -155,7 +144,7 @@ describe('BuildDestinationMapper', () => {
         // Assert
         expect(result).toEqual({
           destination: 'generic/platform=xrOS Simulator',
-          additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
+          additionalSettings: ['ONLY_ACTIVE_ARCH=YES']
         });
       });
       
@@ -176,7 +165,7 @@ describe('BuildDestinationMapper', () => {
     describe('macOS destinations', () => {
       it('should map macOSSimulator to macOS with architecture optimization', async () => {
         // Arrange
-        const { sut } = createSUT('arm64');
+        const { sut } = createSUT();
         
         // Act
         const result = await sut.toXcodeBuildOptions(BuildDestination.macOS);
@@ -184,7 +173,7 @@ describe('BuildDestinationMapper', () => {
         // Assert
         expect(result).toEqual({
           destination: 'platform=macOS',
-          additionalSettings: ['ARCHS=arm64', 'ONLY_ACTIVE_ARCH=YES']
+          additionalSettings: ['ONLY_ACTIVE_ARCH=YES']
         });
       });
       
@@ -208,41 +197,18 @@ describe('BuildDestinationMapper', () => {
         const { sut } = createSUT();
         // Force an invalid enum value through type casting
         const unknownDestination = 'UnknownDestination' as BuildDestination;
-        
+
         // Act
         const result = await sut.toXcodeBuildOptions(unknownDestination);
-        
+
         // Assert
         expect(result).toEqual({
-          destination: 'generic/platform=iOS Simulator'
+          destination: 'generic/platform=iOS Simulator',
+          additionalSettings: ['ONLY_ACTIVE_ARCH=YES']
         });
       });
     });
     
-    describe('architecture detection integration', () => {
-      it('should call architecture detector once per invocation', async () => {
-        // Arrange
-        const { sut, mockGetCurrentArchitecture } = createSUT();
-        
-        // Act
-        await sut.toXcodeBuildOptions(BuildDestination.iOSSimulator);
-        
-        // Assert
-        expect(mockGetCurrentArchitecture).toHaveBeenCalledTimes(1);
-      });
-      
-      it('should use detected architecture in build settings', async () => {
-        // Arrange
-        const customArch = 'custom-arch';
-        const { sut } = createSUT(customArch);
-        
-        // Act
-        const result = await sut.toXcodeBuildOptions(BuildDestination.macOS);
-        
-        // Assert
-        expect(result.additionalSettings).toContain(`ARCHS=${customArch}`);
-      });
-    });
   });
   
   describe('platform name mapping', () => {

@@ -1,9 +1,13 @@
 import { existsSync, rmSync, readdirSync, statSync } from 'fs';
 import { join, resolve } from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { createModuleLogger } from '../../../logger';
 import { config } from '../../../config';
 import { TestEnvironmentCleaner } from './TestEnvironmentCleaner';
 import { gitResetTestArtifacts } from './gitResetTestArtifacts';
+
+const execAsync = promisify(exec);
 
 const logger = createModuleLogger('TestProjectManager');
 
@@ -87,6 +91,59 @@ export class TestProjectManager {
   async setup() {
     // Clean up any leftover build artifacts before starting
     this.cleanBuildArtifacts();
+  }
+
+  /**
+   * Build a test app for simulator testing
+   * Uses optimized settings to avoid hanging on code signing or large output
+   * @param projectType Which test project to build (defaults to 'xcodeProject')
+   * @returns Path to the built .app bundle
+   */
+  async buildApp(projectType: 'xcodeProject' | 'xcodeProjectSwiftTesting' | 'watchOSProject' = 'xcodeProject'): Promise<string> {
+    let projectPath: string;
+    let scheme: string;
+
+    switch (projectType) {
+      case 'xcodeProject':
+        projectPath = this.xcodeProjectPath;
+        scheme = this.schemes.xcodeProject;
+        break;
+      case 'xcodeProjectSwiftTesting':
+        projectPath = this.xcodeProjectSwiftTestingPath;
+        scheme = this.schemes.xcodeProjectSwiftTesting;
+        break;
+      case 'watchOSProject':
+        projectPath = this.watchOSProjectPath;
+        scheme = this.schemes.watchOSProject;
+        break;
+    }
+
+    // Build with optimized settings for testing
+    // Use generic/platform but with ONLY_ACTIVE_ARCH to build for current architecture only
+    await execAsync(
+      `xcodebuild -project "${projectPath}" ` +
+      `-scheme "${scheme}" ` +
+      `-configuration Debug ` +
+      `-destination 'generic/platform=iOS Simulator' ` +
+      `-derivedDataPath "${this.paths.derivedDataPath}" ` +
+      `ONLY_ACTIVE_ARCH=YES ` +
+      `CODE_SIGNING_ALLOWED=NO ` +
+      `CODE_SIGNING_REQUIRED=NO ` +
+      `build`,
+      { maxBuffer: 50 * 1024 * 1024 }
+    );
+
+    // Find the built app
+    const findResult = await execAsync(
+      `find "${this.paths.derivedDataPath}" -name "*.app" -type d | head -1`
+    );
+    const appPath = findResult.stdout.trim();
+
+    if (!appPath || !existsSync(appPath)) {
+      throw new Error('Failed to find built app');
+    }
+
+    return appPath;
   }
 
   private cleanBuildArtifacts() {

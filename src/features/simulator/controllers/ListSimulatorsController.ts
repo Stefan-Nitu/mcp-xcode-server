@@ -70,7 +70,7 @@ export class ListSimulatorsController implements MCPController {
       return {
         content: [{
           type: 'text',
-          text: '⚠️ No simulators found'
+          text: '🔍 No simulators found'
         }]
       };
     }

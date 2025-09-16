@@ -209,7 +209,7 @@ describe('ListSimulatorsController Integration', () => {
       const result = await controller.execute({});
 
       // Assert
-      expect(result.content[0].text).toBe('⚠️ No simulators found');
+      expect(result.content[0].text).toBe('🔍 No simulators found');
     });
 
     it('should filter by multiple criteria', async () => {

@@ -54,7 +54,7 @@ describe('List Simulators MCP E2E', () => {
 
     const text = textContent?.text || '';
     if (text.includes('No simulators found')) {
-      expect(text).toBe('⚠️ No simulators found');
+      expect(text).toBe('🔍 No simulators found');
     } else {
       expect(text).toMatch(/Found \d+ simulator/);
     }
@@ -158,7 +158,7 @@ describe('List Simulators MCP E2E', () => {
     // The combined filter might not find any booted iOS simulators
     // but the test should still assert the behavior
     if (text.includes('No simulators found')) {
-      expect(text).toBe('⚠️ No simulators found');
+      expect(text).toBe('🔍 No simulators found');
     } else {
       expect(text).toMatch(/Found \d+ simulator/);
 

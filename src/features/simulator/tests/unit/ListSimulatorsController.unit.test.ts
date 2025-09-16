@@ -147,7 +147,7 @@ describe('ListSimulatorsController', () => {
       const result = await sut.execute({});
 
       // Assert
-      expect(result.content[0].text).toBe('⚠️ No simulators found');
+      expect(result.content[0].text).toBe('🔍 No simulators found');
     });
 
     it('should handle errors gracefully', async () => {

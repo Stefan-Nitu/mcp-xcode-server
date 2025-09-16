@@ -162,3 +162,24 @@ export async function shutdownAndWaitForSimulator(
 
   await waitForSimulatorShutdown(simulatorId, maxSeconds);
 }
+
+/**
+ * Cleanup a test simulator by shutting it down and deleting it
+ * @param simulatorId The simulator UUID to cleanup
+ */
+export async function cleanupTestSimulator(simulatorId: string | undefined): Promise<void> {
+  if (!simulatorId) return;
+
+  try {
+    await execAsync(`xcrun simctl shutdown "${simulatorId}"`);
+  } catch {
+    // Ignore shutdown errors - simulator might already be shutdown
+  }
+
+  try {
+    await execAsync(`xcrun simctl delete "${simulatorId}"`);
+  } catch {
+    // Ignore delete errors - simulator might already be deleted
+  }
+}
+

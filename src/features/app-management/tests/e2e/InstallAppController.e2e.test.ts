@@ -20,7 +20,6 @@ import { TestProjectManager } from '../../../../shared/tests/utils/TestProjectMa
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
-import * as path from 'path';
 import { SimulatorState } from '../../../simulator/domain/SimulatorState.js';
 import { bootAndWaitForSimulator } from '../../../../shared/tests/utils/testHelpers.js';
 
@@ -37,26 +36,8 @@ describe('InstallAppController E2E', () => {
     testManager = new TestProjectManager();
     await testManager.setup();
     
-    // Build the test app first
-    const buildResult = await execAsync(
-      `xcodebuild -project "${testManager.paths.xcodeProjectXCTestPath}" ` +
-      `-scheme TestProjectXCTest ` +
-      `-configuration Debug ` +
-      `-destination 'generic/platform=iOS Simulator' ` +
-      `-derivedDataPath "${testManager.paths.derivedDataPath}" ` +
-      `build`,
-      { maxBuffer: 50 * 1024 * 1024 }
-    );
-    
-    // Find the built app
-    const findResult = await execAsync(
-      `find "${testManager.paths.derivedDataPath}" -name "*.app" -type d | head -1`
-    );
-    testAppPath = findResult.stdout.trim();
-    
-    if (!testAppPath || !fs.existsSync(testAppPath)) {
-      throw new Error('Failed to build test app');
-    }
+    // Build the test app using TestProjectManager
+    testAppPath = await testManager.buildApp('xcodeProject');
     
     // Get the latest iOS runtime
     const runtimesResult = await execAsync('xcrun simctl list runtimes --json');

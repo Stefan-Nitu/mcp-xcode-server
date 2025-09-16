@@ -38,27 +38,9 @@ describe('Install App MCP E2E', () => {
     // Build the server
     const { execSync } = await import('child_process');
     execSync('npm run build', { stdio: 'inherit' });
-    
-    // Build the test app
-    await execAsync(
-      `xcodebuild -project "${testManager.paths.xcodeProjectXCTestPath}" ` +
-      `-scheme TestProjectXCTest ` +
-      `-configuration Debug ` +
-      `-destination 'generic/platform=iOS Simulator' ` +
-      `-derivedDataPath "${testManager.paths.derivedDataPath}" ` +
-      `build`,
-      { maxBuffer: 50 * 1024 * 1024 }
-    );
-    
-    // Find the built app
-    const findResult = await execAsync(
-      `find "${testManager.paths.derivedDataPath}" -name "*.app" -type d | head -1`
-    );
-    testAppPath = findResult.stdout.trim();
-    
-    if (!testAppPath || !fs.existsSync(testAppPath)) {
-      throw new Error('Failed to build test app');
-    }
+
+    // Build the test app using TestProjectManager
+    testAppPath = await testManager.buildApp('xcodeProject');
     
     // Get the latest iOS runtime
     const runtimesResult = await execAsync('xcrun simctl list runtimes --json');

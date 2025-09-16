@@ -96,7 +96,7 @@ describe('ListSimulatorsController E2E', () => {
           expect(line).toContain('Booted');
         }
       } else {
-        expect(text).toBe('⚠️ No simulators found');
+        expect(text).toBe('🔍 No simulators found');
       }
     });
 
@@ -125,7 +125,7 @@ describe('ListSimulatorsController E2E', () => {
 
       // tvOS simulators might not exist in all environments
       if (text.includes('No simulators found')) {
-        expect(text).toBe('⚠️ No simulators found');
+        expect(text).toBe('🔍 No simulators found');
       } else {
         expect(text).toMatch(/Found \d+ simulator/);
         const deviceLines = text.split('\n').filter((line: string) =>
@@ -229,7 +229,7 @@ describe('ListSimulatorsController E2E', () => {
       const text = result.content[0].text;
 
       if (text.includes('No simulators found')) {
-        expect(text).toBe('⚠️ No simulators found');
+        expect(text).toBe('🔍 No simulators found');
       }
     });
   });

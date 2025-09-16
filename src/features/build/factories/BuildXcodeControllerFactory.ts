@@ -14,7 +14,6 @@ import { LogManagerInstance } from '../../../utils/LogManagerInstance.js';
 import { XcbeautifyOutputParserAdapter } from '../infrastructure/XcbeautifyOutputParserAdapter.js';
 import { XcbeautifyFormatterAdapter } from '../infrastructure/XcbeautifyFormatterAdapter.js';
 import { ConfigProviderAdapter } from '../../../shared/infrastructure/ConfigProviderAdapter.js';
-import { SystemArchitectureDetector } from '../../../infrastructure/services/SystemArchitectureDetector.js';
 
 // Decorator and dependency checking
 import { DependencyCheckingDecorator } from '../../../presentation/decorators/DependencyCheckingDecorator.js';
@@ -28,8 +27,7 @@ export class BuildXcodeControllerFactory {
     // Create infrastructure adapters
     const execAsync = promisify(exec);
     const executor = new ShellCommandExecutorAdapter(execAsync);
-    const systemArchitectureDetector = new SystemArchitectureDetector(executor);
-    const destinationMapper = new BuildDestinationMapperAdapter(systemArchitectureDetector);
+    const destinationMapper = new BuildDestinationMapperAdapter();
     const commandBuilder = new XcodeBuildCommandAdapter();
     const appLocator = new BuildArtifactLocatorAdapter(executor);
     const logManager = new LogManagerInstance();
