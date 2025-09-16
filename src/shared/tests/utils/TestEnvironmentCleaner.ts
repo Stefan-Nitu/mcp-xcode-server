@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import { createModuleLogger } from '../../logger';
+import { createModuleLogger } from '../../../logger';
 
 const logger = createModuleLogger('TestEnvironmentCleaner');
 

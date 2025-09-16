@@ -15,7 +15,7 @@ import { MCPController } from '../../../../presentation/interfaces/MCPController
 import { InstallAppControllerFactory } from '../../factories/InstallAppControllerFactory.js';
 import { exec } from 'child_process';
 import { existsSync, statSync } from 'fs';
-import type { NodeExecError } from '../../../../__tests__/utils/types/execTypes.js';
+import type { NodeExecError } from '../../../../shared/tests/types/execTypes.js';
 
 // Mock ONLY external boundaries
 jest.mock('child_process');
@@ -24,7 +24,7 @@ jest.mock('fs');
 // Mock promisify to return {stdout, stderr} for exec (as node's promisify does)
 jest.mock('util', () => {
   const actualUtil = jest.requireActual('util') as typeof import('util');
-  const { createPromisifiedExec } = require('../../../../__tests__/utils/mocks/promisifyExec');
+  const { createPromisifiedExec } = require('../../../../shared/tests/mocks/promisifyExec');
 
   return {
     ...actualUtil,
@@ -69,7 +69,7 @@ describe('InstallAppController Integration', () => {
     
     // Setup selective exec mock for xcrun simctl commands
     const actualExec = (jest.requireActual('child_process') as typeof import('child_process')).exec;
-    const { createSelectiveExecMock } = require('../../../../__tests__/utils/mocks/selectiveExecMock');
+    const { createSelectiveExecMock } = require('../../../../shared/tests/mocks/selectiveExecMock');
     
     const isSimctlCommand = (cmd: string) => 
       cmd.includes('xcrun simctl');

@@ -12,7 +12,7 @@ import { MCPController } from '../../../../presentation/interfaces/MCPController
 import { ShutdownSimulatorControllerFactory } from '../../factories/ShutdownSimulatorControllerFactory.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { bootAndWaitForSimulator } from '../../../../__tests__/utils/testHelpers.js';
+import { bootAndWaitForSimulator } from '../../../../shared/tests/utils/testHelpers.js';
 
 const execAsync = promisify(exec);
 

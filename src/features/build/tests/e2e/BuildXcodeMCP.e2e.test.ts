@@ -10,8 +10,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { createAndConnectClient, cleanupClientAndTransport } from '../../../../__tests__/utils/testHelpers.js';
-import { TestProjectManager } from '../../../../__tests__/utils/TestProjectManager.js';
+import { createAndConnectClient, cleanupClientAndTransport } from '../../../../shared/tests/utils/testHelpers.js';
+import { TestProjectManager } from '../../../../shared/tests/utils/TestProjectManager.js';
 
 describe('Build Xcode MCP E2E', () => {
   let client: Client;

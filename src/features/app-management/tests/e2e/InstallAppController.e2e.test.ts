@@ -16,13 +16,13 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { MCPController } from '../../../../presentation/interfaces/MCPController.js';
 import { InstallAppControllerFactory } from '../../factories/InstallAppControllerFactory.js';
-import { TestProjectManager } from '../../../../__tests__/utils/TestProjectManager.js';
+import { TestProjectManager } from '../../../../shared/tests/utils/TestProjectManager.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SimulatorState } from '../../../simulator/domain/SimulatorState.js';
-import { bootAndWaitForSimulator } from '../../../../__tests__/utils/testHelpers.js';
+import { bootAndWaitForSimulator } from '../../../../shared/tests/utils/testHelpers.js';
 
 const execAsync = promisify(exec);
 

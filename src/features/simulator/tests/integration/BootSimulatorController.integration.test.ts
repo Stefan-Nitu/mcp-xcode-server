@@ -3,7 +3,7 @@ import { MCPController } from '../../../../presentation/interfaces/MCPController
 import { BootSimulatorControllerFactory } from '../../factories/BootSimulatorControllerFactory.js';
 import { SimulatorState } from '../../domain/SimulatorState.js';
 import { exec } from 'child_process';
-import type { NodeExecError } from '../../../../__tests__/utils/types/execTypes.js';
+import type { NodeExecError } from '../../../../shared/tests/types/execTypes.js';
 
 // Mock ONLY external boundaries
 jest.mock('child_process');
@@ -11,7 +11,7 @@ jest.mock('child_process');
 // Mock promisify to return {stdout, stderr} for exec (as node's promisify does)
 jest.mock('util', () => {
   const actualUtil = jest.requireActual('util') as typeof import('util');
-  const { createPromisifiedExec } = require('../../../../__tests__/utils/mocks/promisifyExec');
+  const { createPromisifiedExec } = require('../../../../shared/tests/mocks/promisifyExec');
 
   return {
     ...actualUtil,

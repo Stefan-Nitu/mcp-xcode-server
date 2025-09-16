@@ -3,7 +3,7 @@ import { MCPController } from '../../../../presentation/interfaces/MCPController
 import { BuildXcodeControllerFactory } from '../../factories/BuildXcodeControllerFactory.js';
 import { exec } from 'child_process';
 import { existsSync } from 'fs';
-import type { NodeExecError, ExecMockCall } from '../../../../__tests__/utils/types/execTypes.js';
+import type { NodeExecError, ExecMockCall } from '../../../../shared/tests/types/execTypes.js';
 
 // Mock ONLY external boundaries
 jest.mock('child_process');
@@ -11,7 +11,7 @@ jest.mock('child_process');
 // Mock promisify to return {stdout, stderr} for exec (as node's promisify does)
 jest.mock('util', () => {
   const actualUtil = jest.requireActual('util') as typeof import('util');
-  const { createPromisifiedExec } = require('../../../../__tests__/utils/mocks/promisifyExec');
+  const { createPromisifiedExec } = require('../../../../shared/tests/mocks/promisifyExec');
 
   return {
     ...actualUtil,
@@ -86,8 +86,8 @@ describe('BuildXcodeController Integration', () => {
     
     // Setup selective exec mock - only mocks xcodebuild commands
     const actualExec = (jest.requireActual('child_process') as typeof import('child_process')).exec;
-    const { createSelectiveExecMock } = require('../../../../__tests__/utils/mocks/selectiveExecMock');
-    const { isXcodebuildCommand } = require('../../../../__tests__/utils/mocks/xcodebuildHelpers');
+    const { createSelectiveExecMock } = require('../../../../shared/tests/mocks/selectiveExecMock');
+    const { isXcodebuildCommand } = require('../../../../shared/tests/mocks/xcodebuildHelpers');
     
     mockExec.mockImplementation(
       createSelectiveExecMock(

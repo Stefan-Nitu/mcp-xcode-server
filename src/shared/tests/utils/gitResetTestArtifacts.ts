@@ -5,7 +5,7 @@
 
 import { execSync } from 'child_process';
 import { resolve } from 'path';
-import { createModuleLogger } from '../../logger.js';
+import { createModuleLogger } from '../../../logger.js';
 
 const logger = createModuleLogger('GitResetTestArtifacts');
 

@@ -1,7 +1,7 @@
 import { existsSync, rmSync, readdirSync, statSync } from 'fs';
 import { join, resolve } from 'path';
-import { createModuleLogger } from '../../logger';
-import { config } from '../../config';
+import { createModuleLogger } from '../../../logger';
+import { config } from '../../../config';
 import { TestEnvironmentCleaner } from './TestEnvironmentCleaner';
 import { gitResetTestArtifacts } from './gitResetTestArtifacts';
 

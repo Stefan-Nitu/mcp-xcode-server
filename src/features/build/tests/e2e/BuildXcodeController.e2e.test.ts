@@ -12,7 +12,7 @@
 
 import { MCPController } from '../../../../presentation/interfaces/MCPController.js';
 import { BuildXcodeControllerFactory } from '../../factories/BuildXcodeControllerFactory.js';
-import { TestProjectManager } from '../../../../__tests__/utils/TestProjectManager.js';
+import { TestProjectManager } from '../../../../shared/tests/utils/TestProjectManager.js';
 import * as fs from 'fs';
 
 describe('BuildXcodeController E2E', () => {

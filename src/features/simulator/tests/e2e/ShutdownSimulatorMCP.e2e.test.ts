@@ -15,7 +15,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/glo
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { createAndConnectClient, cleanupClientAndTransport, bootAndWaitForSimulator } from '../../../../__tests__/utils/testHelpers.js';
+import { createAndConnectClient, cleanupClientAndTransport, bootAndWaitForSimulator } from '../../../../shared/tests/utils/testHelpers.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 

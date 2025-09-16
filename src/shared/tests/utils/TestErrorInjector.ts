@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { createModuleLogger } from '../../logger';
+import { createModuleLogger } from '../../../logger';
 import { gitResetTestArtifacts, gitResetFile } from './gitResetTestArtifacts';
 
 const logger = createModuleLogger('TestErrorInjector');

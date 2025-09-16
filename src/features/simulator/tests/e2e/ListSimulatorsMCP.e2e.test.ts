@@ -10,7 +10,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { createAndConnectClient, cleanupClientAndTransport } from '../../../../__tests__/utils/testHelpers.js';
+import { createAndConnectClient, cleanupClientAndTransport } from '../../../../shared/tests/utils/testHelpers.js';
 
 describe('List Simulators MCP E2E', () => {
   let client: Client;
