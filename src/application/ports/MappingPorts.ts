@@ -2,7 +2,7 @@
  * Port interfaces for mapping between domain and infrastructure concepts
  */
 
-import { BuildDestination } from '../../domain/value-objects/BuildDestination.js';
+import { BuildDestination } from '../../features/build/domain/BuildDestination.js';
 
 /**
  * Maps BuildDestination to xcodebuild-specific options

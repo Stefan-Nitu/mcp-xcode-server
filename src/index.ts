@@ -38,11 +38,13 @@ import { logger, logToolExecution, logError } from './logger.js';
 // } from './tools/index.js';
 
 // Import factories for Clean Architecture controllers
-import { BuildXcodeControllerFactory } from './factories/BuildXcodeControllerFactory.js';
-import { InstallAppControllerFactory } from './factories/InstallAppControllerFactory.js';
-import { BootSimulatorControllerFactory } from './factories/BootSimulatorControllerFactory.js';
-import { ShutdownSimulatorControllerFactory } from './factories/ShutdownSimulatorControllerFactory.js';
-import { ListSimulatorsControllerFactory } from './factories/ListSimulatorsControllerFactory.js';
+import {
+  BootSimulatorControllerFactory,
+  ShutdownSimulatorControllerFactory,
+  ListSimulatorsControllerFactory
+} from './features/simulator/index.js';
+import { BuildXcodeControllerFactory } from './features/build/index.js';
+import { InstallAppControllerFactory } from './features/app-management/index.js';
 
 type Tool = {
   execute(args: any): Promise<any>;

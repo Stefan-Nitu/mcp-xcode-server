@@ -59,21 +59,21 @@ Each layer has a single, well-defined responsibility. Business logic is complete
 
 **Example Structure**:
 ```
-src/domain/
-├── entities/
-│   ├── XcodeProject.ts
-│   ├── BuildTarget.ts
-│   └── TestResult.ts
-├── valueObjects/
-│   ├── BuildConfiguration.ts
-│   ├── Platform.ts
-│   └── Version.ts
-├── services/
-│   └── BuildValidationService.ts
-├── repositories/
-│   └── IProjectRepository.ts    # Interface only
-└── exceptions/
-    └── InvalidBuildConfigurationError.ts
+src/features/{feature}/domain/
+├── BuildRequest.ts          # Domain entities
+├── BuildResult.ts
+├── BuildIssue.ts            # Value objects
+├── BuildDestination.ts
+└── PlatformInfo.ts
+
+src/shared/domain/           # Shared domain objects
+├── Platform.ts
+├── DeviceId.ts
+├── AppPath.ts
+└── ProjectPath.ts
+
+src/domain/services/         # Domain services
+└── PlatformDetector.ts
 ```
 
 ### Application Layer
@@ -236,10 +236,53 @@ export class BuildXcodeController {
 - For simple responses, format directly in the controller
 - Always use ErrorFormatter for consistent error messages
 
+## Feature-Based Organization
+
+The codebase is organized by features (vertical slices) rather than technical layers (horizontal slices). Each feature contains its complete stack:
+
+```
+src/features/
+├── build/                   # Build feature
+│   ├── domain/             # Domain objects for build
+│   ├── use-cases/          # Build-specific use cases
+│   ├── infrastructure/     # Build adapters
+│   ├── controllers/        # Build MCP controllers
+│   ├── factories/          # Build dependency injection
+│   └── tests/              # Build tests (unit, integration, e2e)
+├── simulator/              # Simulator management feature
+│   ├── domain/
+│   ├── use-cases/
+│   ├── infrastructure/
+│   ├── controllers/
+│   ├── factories/
+│   └── tests/
+└── app-management/         # App installation feature
+    ├── domain/
+    ├── use-cases/
+    ├── infrastructure/
+    ├── controllers/
+    ├── factories/
+    └── tests/
+```
+
+**Benefits**:
+- **Feature Cohesion**: All code for a feature is in one place
+- **Independent Development**: Teams can own entire features
+- **Easy Navigation**: Find all related code quickly
+- **Clear Boundaries**: Features have explicit interfaces
+
+**Shared Code**:
+```
+src/shared/                 # Cross-feature shared code
+├── domain/                # Shared domain objects
+├── infrastructure/        # Shared adapters
+└── tests/                 # Shared test utilities
+```
+
 ## Additional Directories
 
 ### Factories
-**Location**: `src/factories/`
+**Location**: `src/features/{feature}/factories/`
 
 **Purpose**: Creates and wires up all dependencies, implementing dependency injection patterns.
 

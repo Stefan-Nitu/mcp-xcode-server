@@ -1,4 +1,4 @@
-import { OutputFormatterError } from '../../../domain/entities/BuildResult.js';
+import { OutputFormatterError } from '../../../features/build/domain/BuildResult.js';
 import { ErrorFormattingStrategy } from './ErrorFormattingStrategy.js';
 
 /**

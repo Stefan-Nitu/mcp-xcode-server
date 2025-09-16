@@ -1,0 +1,147 @@
+// No infrastructure imports! Only domain and application layer
+
+// Domain
+import { BuildRequest } from '../domain/BuildRequest.js';
+import { BuildResult } from '../domain/BuildResult.js';
+
+// Application ports
+import { IBuildCommand } from '../../../application/ports/BuildPorts.js';
+import { ICommandExecutor } from '../../../application/ports/CommandPorts.js';
+import { IAppLocator } from '../../../application/ports/ArtifactPorts.js';
+import { ILogManager } from '../../../application/ports/LoggingPorts.js';
+import { IOutputParser } from '../../../application/ports/OutputParserPorts.js';
+import { IBuildDestinationMapper } from '../../../application/ports/MappingPorts.js';
+import { IOutputFormatter } from '../../../application/ports/OutputFormatterPorts.js';
+
+/**
+ * Use Case: Build an Xcode project
+ * Orchestrates the build process using domain logic and infrastructure services
+ */
+export class BuildProjectUseCase {
+  constructor(
+    private destinationMapper: IBuildDestinationMapper,
+    private commandBuilder: IBuildCommand,
+    private executor: ICommandExecutor,
+    private appLocator: IAppLocator,
+    private logManager: ILogManager,
+    private outputParser: IOutputParser,
+    private outputFormatter: IOutputFormatter
+  ) {}
+  
+  async execute(request: BuildRequest): Promise<BuildResult> {
+    // Request is already validated and created at the border (BuildXcodeTool)
+    // Use case just orchestrates business logic
+    
+    // 3. Map domain destination to infrastructure format
+    const mappedDestination = await this.destinationMapper.toXcodeBuildOptions(
+      request.destination
+    );
+    
+    // 4. Build command with already-mapped values
+    const command = this.commandBuilder.build(
+      request.projectPath.toString(),
+      request.projectPath.isWorkspace,
+      {
+        scheme: request.scheme,
+        configuration: request.configuration,
+        destination: mappedDestination.destination,
+        additionalSettings: mappedDestination.additionalSettings,
+        derivedDataPath: request.derivedDataPath
+      }
+    );
+    
+    // Log via LogManager instead of direct logger
+    this.logManager.saveDebugData('build-command', { command }, request.projectPath.name);
+    
+    // 5. Execute build
+    const result = await this.executor.execute(command, {
+      maxBuffer: 50 * 1024 * 1024,
+      shell: '/bin/bash'
+    });
+    
+    // 6. Format the output (e.g., through xcbeautify)
+    const rawOutput = result.stdout + (result.stderr ? `\n${result.stderr}` : '');
+    
+    let output: string;
+    try {
+      output = await this.outputFormatter.format(rawOutput);
+    } catch (formatterError: any) {
+      // If formatter fails (e.g., xcbeautify not installed), return build failure
+      this.logManager.saveDebugData('formatter-error', { 
+        error: formatterError.message,
+        rawOutput: rawOutput.substring(0, 500) // Save first 500 chars for debugging
+      }, request.projectPath.name);
+      
+      const logPath = this.logManager.saveLog('build', rawOutput, request.projectPath.name, {
+        scheme: request.scheme,
+        configuration: request.configuration,
+        destination: request.destination,
+        exitCode: result.exitCode,
+        command,
+        formatterError: formatterError.message
+      });
+      
+      // Return build failure with formatter error
+      return BuildResult.failed(
+        [],  // No parsed issues since formatter failed
+        result.exitCode || 1,
+        logPath,
+        formatterError
+      );
+    }
+    
+    // 7. Process result
+    if (result.exitCode === 0) {
+      // Success path
+      const appPath = await this.appLocator.findApp(request.derivedDataPath);
+      
+      // Parse output to extract any warnings even for successful builds
+      const parsed = this.outputParser.parseBuildOutput(output);
+      const warnings = parsed.issues.filter(issue => issue.isWarning());
+      
+      // Log success via LogManager
+      this.logManager.saveDebugData('build-success', {
+        project: request.projectPath.name,
+        scheme: request.scheme,
+        configuration: request.configuration,
+        destination: request.destination,
+        warningCount: warnings.length
+      }, request.projectPath.name);
+      
+      const logPath = this.logManager.saveLog('build', output, request.projectPath.name, {
+        scheme: request.scheme,
+        configuration: request.configuration,
+        destination: request.destination,
+        exitCode: result.exitCode,
+        command
+      });
+      
+      return BuildResult.succeeded(appPath, logPath, warnings);
+    } else {
+      // Failure path
+      // Log failure via LogManager
+      this.logManager.saveDebugData('build-failure', { exitCode: result.exitCode }, request.projectPath.name);
+      
+      // Use injected output parser
+      const parsed = this.outputParser.parseBuildOutput(output);
+      
+      const logPath = this.logManager.saveLog('build', output, request.projectPath.name, {
+        scheme: request.scheme,
+        configuration: request.configuration,
+        destination: request.destination,
+        exitCode: result.exitCode,
+        command,
+        issues: parsed.issues
+      });
+      
+      // Extract errors from issues for logging
+      const errors = parsed.issues.filter(issue => issue.isError());
+      if (errors.length > 0) {
+        this.logManager.saveDebugData('build-errors', errors, request.projectPath.name);
+      }
+      
+      // Return failure result
+      return BuildResult.failed(parsed.issues, result.exitCode, logPath);
+    }
+  }
+}

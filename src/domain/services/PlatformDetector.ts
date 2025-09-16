@@ -1,5 +1,5 @@
-import { Platform } from '../value-objects/Platform.js';
-import { BuildDestination } from '../value-objects/BuildDestination.js';
+import { Platform } from '../../shared/domain/Platform.js';
+import { BuildDestination } from '../../features/build/domain/BuildDestination.js';
 
 /**
  * Domain Service: Detects platform from build destination

@@ -15,7 +15,10 @@ module.exports = {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
-  testMatch: ['**/__tests__/e2e/**/*.test.ts'],
+  testMatch: [
+    '**/__tests__/e2e/**/*.test.ts',
+    '**/src/features/**/tests/e2e/**/*.test.ts'
+  ],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',

@@ -88,7 +88,7 @@ export class XcodeInfo {
     
     if (platform) {
       // Add a generic destination for the platform to get appropriate settings
-      const { PlatformInfo } = await import('../../domain/value-objects/PlatformInfo.js');
+      const { PlatformInfo } = await import('../../features/build/domain/PlatformInfo.js');
       const platformInfo = PlatformInfo.fromPlatform(platform);
       const destination = platformInfo.generateGenericDestination();
       command += ` -destination '${destination}'`;

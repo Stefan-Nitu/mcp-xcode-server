@@ -4,7 +4,7 @@
 
 // Re-export Platform from domain for backward compatibility
 // TODO: Update all imports to use domain directly
-export { Platform } from './domain/value-objects/Platform.js';
+export { Platform } from './shared/domain/Platform.js';
 
 export interface SimulatorDevice {
   udid: string;

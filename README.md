@@ -183,20 +183,28 @@ The server follows Clean/Hexagonal Architecture with SOLID principles:
 ### Core Structure
 ```
 src/
-├── domain/           # Core business logic (no dependencies)
-│   ├── entities/     # Business entities
-│   ├── value-objects/# Immutable value types with validation
-│   └── errors/       # Domain-specific errors
-├── application/      # Use cases and application logic
-│   ├── use-cases/    # Application-specific workflows
-│   └── ports/        # Interface definitions
-├── infrastructure/   # External integrations
-│   ├── adapters/     # Implementations of ports
-│   └── services/     # External service integrations
-├── presentation/     # MCP interface layer
-│   ├── controllers/  # MCP tool controllers
-│   └── formatters/   # Output formatting
-└── factories/        # Dependency injection
+├── features/         # Feature-based vertical slices
+│   ├── build/       # Build feature
+│   │   ├── domain/  # Build domain objects
+│   │   ├── use-cases/
+│   │   ├── infrastructure/
+│   │   ├── controllers/
+│   │   └── factories/
+│   ├── simulator/   # Simulator management
+│   │   └── ...same structure...
+│   └── app-management/ # App installation
+│       └── ...same structure...
+├── shared/          # Cross-feature shared code
+│   ├── domain/      # Shared value objects
+│   └── infrastructure/
+├── application/     # Application layer ports
+│   └── ports/       # Interface definitions
+├── presentation/    # MCP presentation layer
+│   ├── interfaces/  # MCP contracts
+│   └── formatters/  # Output formatting
+└── infrastructure/  # Shared infrastructure
+    ├── repositories/
+    └── services/
 ```
 
 ### Key Design Principles

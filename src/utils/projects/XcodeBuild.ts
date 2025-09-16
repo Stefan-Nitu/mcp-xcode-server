@@ -2,7 +2,7 @@ import { execAsync } from '../../utils.js';
 import { execSync } from 'child_process';
 import { createModuleLogger } from '../../logger.js';
 import { Platform } from '../../types.js';
-import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
+import { PlatformInfo } from '../../features/build/domain/PlatformInfo.js';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
 import { config } from '../../config.js';

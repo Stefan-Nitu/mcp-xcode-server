@@ -1,4 +1,4 @@
-import { BuildIssue } from '../../domain/value-objects/BuildIssue.js';
+import { BuildIssue } from '../../features/build/domain/BuildIssue.js';
 
 /**
  * Port interface for parsing build output

@@ -1,5 +1,5 @@
-import { BuildResult, BuildOutcome, OutputFormatterError } from '../../domain/entities/BuildResult.js';
-import { Platform } from '../../domain/value-objects/Platform.js';
+import { BuildResult, BuildOutcome, OutputFormatterError } from '../../features/build/domain/BuildResult.js';
+import { Platform } from '../../shared/domain/Platform.js';
 import { ErrorFormatter } from '../formatters/ErrorFormatter.js';
 import { MCPResponse } from '../interfaces/MCPResponse.js';
 

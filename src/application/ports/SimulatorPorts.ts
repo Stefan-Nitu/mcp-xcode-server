@@ -1,4 +1,4 @@
-import { SimulatorState } from '../../domain/value-objects/SimulatorState.js';
+import { SimulatorState } from '../../features/simulator/domain/SimulatorState.js';
 
 /**
  * Port interfaces for simulator operations

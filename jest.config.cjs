@@ -17,7 +17,10 @@ module.exports = {
   },
   testMatch: [
     '**/__tests__/**/*.test.ts',
-    '!**/__tests__/e2e/**/*.test.ts'
+    '**/src/features/**/tests/**/*.test.ts',
+    '**/src/shared/tests/**/*.test.ts',
+    '!**/__tests__/e2e/**/*.test.ts',
+    '!**/src/features/**/tests/e2e/**/*.test.ts'
   ],
   collectCoverageFrom: [
     'src/**/*.ts',

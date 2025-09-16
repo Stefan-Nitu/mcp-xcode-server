@@ -1,7 +1,7 @@
 import { execAsync } from '../../utils.js';
 import { createModuleLogger } from '../../logger.js';
 import { Platform } from '../../types.js';
-import { PlatformInfo } from '../../domain/value-objects/PlatformInfo.js';
+import { PlatformInfo } from '../../features/build/domain/PlatformInfo.js';
 import path from 'path';
 
 const logger = createModuleLogger('XcodeArchive');

@@ -10,7 +10,7 @@ DerivedData/
 *.xcuserdata
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
-build/
+/build/
 *.app
 *.ipa
 *.dSYM.zip
