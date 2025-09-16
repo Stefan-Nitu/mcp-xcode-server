@@ -116,3 +116,49 @@ export async function bootAndWaitForSimulator(
 
   await waitForSimulatorBoot(simulatorId, maxSeconds);
 }
+
+/**
+ * Wait for a simulator to reach the Shutdown state
+ * @param simulatorId The simulator UUID to wait for
+ * @param maxSeconds Maximum seconds to wait (default 30)
+ * @returns Promise that resolves when shutdown or rejects on timeout
+ */
+export async function waitForSimulatorShutdown(
+  simulatorId: string,
+  maxSeconds: number = 30
+): Promise<void> {
+  for (let i = 0; i < maxSeconds; i++) {
+    const listResult = await execAsync('xcrun simctl list devices --json');
+    const devices = JSON.parse(listResult.stdout);
+
+    for (const runtime of Object.values(devices.devices) as any[]) {
+      const device = runtime.find((d: any) => d.udid === simulatorId);
+      if (device && device.state === 'Shutdown') {
+        return; // Successfully shutdown
+      }
+    }
+
+    // Wait 1 second before trying again
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  throw new Error(`Failed to shutdown simulator ${simulatorId} after ${maxSeconds} seconds`);
+}
+
+/**
+ * Shutdown a simulator and wait for it to be shutdown
+ * @param simulatorId The simulator UUID to shutdown
+ * @param maxSeconds Maximum seconds to wait (default 30)
+ */
+export async function shutdownAndWaitForSimulator(
+  simulatorId: string,
+  maxSeconds: number = 30
+): Promise<void> {
+  try {
+    await execAsync(`xcrun simctl shutdown "${simulatorId}"`);
+  } catch {
+    // Ignore if already shutdown
+  }
+
+  await waitForSimulatorShutdown(simulatorId, maxSeconds);
+}

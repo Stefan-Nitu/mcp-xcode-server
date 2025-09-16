@@ -11,11 +11,11 @@
  * NO MOCKS - Uses real MCP server, real simulators
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { createAndConnectClient, cleanupClientAndTransport, bootAndWaitForSimulator } from '../../../../shared/tests/utils/testHelpers.js';
+import { createAndConnectClient, cleanupClientAndTransport, bootAndWaitForSimulator, shutdownAndWaitForSimulator } from '../../../../shared/tests/utils/testHelpers.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -68,25 +68,19 @@ describe('Shutdown Simulator MCP E2E', () => {
     ({ client, transport } = await createAndConnectClient());
   });
   
-  beforeEach(async () => {
-    // Ensure simulator is booted before each test (so we can shut it down)
-    await bootAndWaitForSimulator(testDeviceId, 30);
-  });
-  
   afterAll(async () => {
-    // Shutdown the test simulator
-    try {
-      await execAsync(`xcrun simctl shutdown "${testDeviceId}"`);
-    } catch {
-      // Ignore if already shutdown
-    }
-    
+    // Ensure test simulator is shutdown
+    await shutdownAndWaitForSimulator(testDeviceId);
+
     // Cleanup MCP connection
     await cleanupClientAndTransport(client, transport);
   });
 
   describe('shutdown simulator through MCP', () => {
     it('should shutdown simulator via MCP protocol', async () => {
+      // Arrange - Boot the simulator first
+      await bootAndWaitForSimulator(testDeviceId, 30);
+
       // Act - Call tool through MCP
       const result = await client.callTool({
         name: 'shutdown_simulator',
@@ -116,9 +110,8 @@ describe('Shutdown Simulator MCP E2E', () => {
     });
     
     it('should handle already shutdown simulator via MCP', async () => {
-      // Arrange - shutdown the simulator first
-      await execAsync(`xcrun simctl shutdown "${testDeviceId}"`);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for shutdown
+      // Arrange - ensure simulator is shutdown
+      await shutdownAndWaitForSimulator(testDeviceId);
       
       // Act - Call tool through MCP
       const result = await client.callTool({
@@ -134,6 +127,9 @@ describe('Shutdown Simulator MCP E2E', () => {
     });
     
     it('should shutdown simulator by UUID via MCP', async () => {
+      // Arrange - Boot the simulator first
+      await bootAndWaitForSimulator(testDeviceId, 30);
+
       // Act - Call tool with UUID
       const result = await client.callTool({
         name: 'shutdown_simulator',
