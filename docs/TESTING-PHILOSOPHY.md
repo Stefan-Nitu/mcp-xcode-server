@@ -556,7 +556,7 @@ Is the logic complex?
 
 ## Implementation Checklist
 
-- [ ] Parse inputs at system boundaries using Zod
+- [ ] Parse inputs at system boundaries using domain validation
 - [ ] Create domain primitives for core concepts (DeviceId, BundleId, etc.)
 - [ ] Remove integration tests that test implementation
 - [ ] Convert E2E tests to integration tests where possible
