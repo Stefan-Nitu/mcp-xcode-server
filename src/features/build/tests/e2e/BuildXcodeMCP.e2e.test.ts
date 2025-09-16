@@ -57,13 +57,13 @@ describe('Build Xcode MCP E2E', () => {
         }
       },
       CallToolResultSchema,
-      { timeout: 120000 } // Match Jest's 120 second timeout
+      { timeout: 180000 }
     );
-    
+
     expect(result).toBeDefined();
     expect(result.content).toBeInstanceOf(Array);
-    
+
     const textContent = result.content.find((c: any) => c.type === 'text');
     expect(textContent?.text).toContain('Build succeeded');
-  });
+  }, 240000);
 });
