@@ -56,11 +56,8 @@ describe('InstallAppController', () => {
         appPath: '/path/to/app.app',
         simulatorId: 'iPhone-15-Simulator'
       });
-      
+
       // Assert
-      expect(mockExecute).toHaveBeenCalledWith(
-        expect.any(InstallRequest)
-      );
       expect(result.content[0].text).toBe('✅ Successfully installed com.example.app on iPhone 15 (iPhone-15-Simulator)');
     });
 
@@ -79,11 +76,8 @@ describe('InstallAppController', () => {
       const result = await sut.execute({
         appPath: '/path/to/app.app'
       });
-      
+
       // Assert
-      expect(mockExecute).toHaveBeenCalledWith(
-        expect.any(InstallRequest)
-      );
       expect(result.content[0].text).toBe('✅ Successfully installed com.example.app on iPhone 15 (Booted-iPhone-15)');
     });
 

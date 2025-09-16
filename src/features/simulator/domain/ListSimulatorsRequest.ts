@@ -7,13 +7,15 @@ import { SimulatorState } from './SimulatorState.js';
 export class ListSimulatorsRequest {
   constructor(
     public readonly platform?: Platform,
-    public readonly state?: SimulatorState
+    public readonly state?: SimulatorState,
+    public readonly name?: string
   ) {}
 
   static create(
     platform?: Platform,
-    state?: SimulatorState
+    state?: SimulatorState,
+    name?: string
   ): ListSimulatorsRequest {
-    return new ListSimulatorsRequest(platform, state);
+    return new ListSimulatorsRequest(platform, state, name);
   }
 }

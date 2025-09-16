@@ -65,6 +65,14 @@ export class ListSimulatorsUseCase {
       return false;
     }
 
+    if (request.name) {
+      const nameLower = simulator.name.toLowerCase();
+      const filterLower = request.name.toLowerCase();
+      if (!nameLower.includes(filterLower)) {
+        return false;
+      }
+    }
+
     return true;
   }
 

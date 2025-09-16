@@ -366,5 +366,111 @@ describe('ListSimulatorsUseCase', () => {
       expect(result.count).toBe(0);
       expect(result.simulators).toHaveLength(0);
     });
+
+    it('should filter by device name with partial match', async () => {
+      // Arrange
+      mockDeviceRepository.getAllDevices.mockResolvedValue({
+        'com.apple.CoreSimulator.SimRuntime.iOS-17-0': [
+          {
+            udid: 'ABC123',
+            name: 'iPhone 15 Pro',
+            state: 'Booted',
+            isAvailable: true
+          },
+          {
+            udid: 'DEF456',
+            name: 'iPhone 14',
+            state: 'Shutdown',
+            isAvailable: true
+          },
+          {
+            udid: 'GHI789',
+            name: 'iPad Pro',
+            state: 'Shutdown',
+            isAvailable: true
+          }
+        ]
+      });
+
+      const request = ListSimulatorsRequest.create(undefined, undefined, '15');
+
+      // Act
+      const result = await sut.execute(request);
+
+      // Assert
+      expect(result.isSuccess).toBe(true);
+      expect(result.count).toBe(1);
+      expect(result.simulators[0].name).toBe('iPhone 15 Pro');
+    });
+
+    it('should filter by device name case-insensitive', async () => {
+      // Arrange
+      mockDeviceRepository.getAllDevices.mockResolvedValue({
+        'com.apple.CoreSimulator.SimRuntime.iOS-17-0': [
+          {
+            udid: 'ABC123',
+            name: 'iPhone 15 Pro',
+            state: 'Booted',
+            isAvailable: true
+          },
+          {
+            udid: 'DEF456',
+            name: 'iPad Air',
+            state: 'Shutdown',
+            isAvailable: true
+          }
+        ]
+      });
+
+      const request = ListSimulatorsRequest.create(undefined, undefined, 'iphone');
+
+      // Act
+      const result = await sut.execute(request);
+
+      // Assert
+      expect(result.isSuccess).toBe(true);
+      expect(result.count).toBe(1);
+      expect(result.simulators[0].name).toBe('iPhone 15 Pro');
+    });
+
+    it('should combine all filters (platform, state, and name)', async () => {
+      // Arrange
+      mockDeviceRepository.getAllDevices.mockResolvedValue({
+        'com.apple.CoreSimulator.SimRuntime.iOS-17-0': [
+          {
+            udid: 'ABC123',
+            name: 'iPhone 15 Pro',
+            state: 'Booted',
+            isAvailable: true
+          },
+          {
+            udid: 'DEF456',
+            name: 'iPhone 15',
+            state: 'Shutdown',
+            isAvailable: true
+          }
+        ],
+        'com.apple.CoreSimulator.SimRuntime.tvOS-17-0': [
+          {
+            udid: 'GHI789',
+            name: 'Apple TV 15',
+            state: 'Booted',
+            isAvailable: true
+          }
+        ]
+      });
+
+      const request = ListSimulatorsRequest.create(Platform.iOS, SimulatorState.Booted, '15');
+
+      // Act
+      const result = await sut.execute(request);
+
+      // Assert
+      expect(result.isSuccess).toBe(true);
+      expect(result.count).toBe(1);
+      expect(result.simulators[0].name).toBe('iPhone 15 Pro');
+      expect(result.simulators[0].platform).toBe('iOS');
+      expect(result.simulators[0].state).toBe(SimulatorState.Booted);
+    });
   });
 });

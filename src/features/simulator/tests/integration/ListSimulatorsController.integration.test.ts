@@ -289,5 +289,159 @@ describe('ListSimulatorsController Integration', () => {
 
       expect(result.content[0].text).toBe('❌ Invalid simulator state: Running. Valid values are: Booted, Booting, Shutdown, Shutting Down');
     });
+
+    it('should filter by device name with partial match', async () => {
+      // Arrange
+      const mockDeviceList = {
+        devices: {
+          'com.apple.CoreSimulator.SimRuntime.iOS-17-0': [
+            {
+              udid: 'ABC123',
+              isAvailable: true,
+              state: 'Booted',
+              name: 'iPhone 15 Pro'
+            },
+            {
+              udid: 'DEF456',
+              isAvailable: true,
+              state: 'Shutdown',
+              name: 'iPhone 14'
+            },
+            {
+              udid: 'GHI789',
+              isAvailable: true,
+              state: 'Shutdown',
+              name: 'iPad Pro'
+            }
+          ]
+        }
+      };
+
+      execMockResponses = [
+        { stdout: JSON.stringify(mockDeviceList), stderr: '' }
+      ];
+
+      // Act
+      const result = await controller.execute({ name: '15' });
+
+      // Assert - Tests actual behavior: only devices with "15" in name
+      expect(result.content[0].text).toContain('Found 1 simulator');
+      expect(result.content[0].text).toContain('iPhone 15 Pro');
+      expect(result.content[0].text).not.toContain('iPhone 14');
+      expect(result.content[0].text).not.toContain('iPad Pro');
+    });
+
+    it('should filter by device name case-insensitive', async () => {
+      // Arrange
+      const mockDeviceList = {
+        devices: {
+          'com.apple.CoreSimulator.SimRuntime.iOS-17-0': [
+            {
+              udid: 'ABC123',
+              isAvailable: true,
+              state: 'Booted',
+              name: 'iPhone 15 Pro'
+            },
+            {
+              udid: 'DEF456',
+              isAvailable: true,
+              state: 'Shutdown',
+              name: 'iPad Air'
+            }
+          ]
+        }
+      };
+
+      execMockResponses = [
+        { stdout: JSON.stringify(mockDeviceList), stderr: '' }
+      ];
+
+      // Act
+      const result = await controller.execute({ name: 'iphone' });
+
+      // Assert - Case-insensitive matching
+      expect(result.content[0].text).toContain('Found 1 simulator');
+      expect(result.content[0].text).toContain('iPhone 15 Pro');
+      expect(result.content[0].text).not.toContain('iPad Air');
+    });
+
+    it('should combine all filters (platform, state, and name)', async () => {
+      // Arrange
+      const mockDeviceList = {
+        devices: {
+          'com.apple.CoreSimulator.SimRuntime.iOS-17-0': [
+            {
+              udid: 'ABC123',
+              isAvailable: true,
+              state: 'Booted',
+              name: 'iPhone 15 Pro'
+            },
+            {
+              udid: 'DEF456',
+              isAvailable: true,
+              state: 'Shutdown',
+              name: 'iPhone 15'
+            },
+            {
+              udid: 'GHI789',
+              isAvailable: true,
+              state: 'Booted',
+              name: 'iPhone 14'
+            }
+          ],
+          'com.apple.CoreSimulator.SimRuntime.tvOS-17-0': [
+            {
+              udid: 'TV123',
+              isAvailable: true,
+              state: 'Booted',
+              name: 'Apple TV 15'
+            }
+          ]
+        }
+      };
+
+      execMockResponses = [
+        { stdout: JSON.stringify(mockDeviceList), stderr: '' }
+      ];
+
+      // Act
+      const result = await controller.execute({
+        platform: 'iOS',
+        state: 'Booted',
+        name: '15'
+      });
+
+      // Assert - All filters applied together
+      expect(result.content[0].text).toContain('Found 1 simulator');
+      expect(result.content[0].text).toContain('iPhone 15 Pro');
+      expect(result.content[0].text).not.toContain('iPhone 14'); // Wrong name
+      expect(result.content[0].text).not.toContain('Apple TV'); // Wrong platform
+    });
+
+    it('should show no simulators when name filter matches nothing', async () => {
+      // Arrange
+      const mockDeviceList = {
+        devices: {
+          'com.apple.CoreSimulator.SimRuntime.iOS-17-0': [
+            {
+              udid: 'ABC123',
+              isAvailable: true,
+              state: 'Booted',
+              name: 'iPhone 15 Pro'
+            }
+          ]
+        }
+      };
+
+      execMockResponses = [
+        { stdout: JSON.stringify(mockDeviceList), stderr: '' }
+      ];
+
+      // Act
+      const result = await controller.execute({ name: 'Galaxy' });
+
+      // Assert
+      expect(result.content[0].text).toBe('🔍 No simulators found');
+    });
   });
 });

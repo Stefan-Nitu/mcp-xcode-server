@@ -57,11 +57,8 @@ describe('BootSimulatorController', () => {
       const result = await sut.execute({
         deviceId: 'iPhone-15'
       });
-      
+
       // Assert
-      expect(mockExecute).toHaveBeenCalledWith(
-        expect.any(BootRequest)
-      );
       expect(result.content[0].text).toBe('✅ Successfully booted simulator: iPhone 15 (ABC123)');
     });
 

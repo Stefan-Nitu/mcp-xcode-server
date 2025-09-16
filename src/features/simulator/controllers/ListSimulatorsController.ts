@@ -31,6 +31,10 @@ export class ListSimulatorsController implements MCPController {
           type: 'string' as const,
           description: 'Filter by simulator state',
           enum: ['Booted', 'Shutdown'] as const
+        },
+        name: {
+          type: 'string' as const,
+          description: 'Filter by device name (partial match, case-insensitive)'
         }
       },
       required: [] as const
@@ -48,13 +52,13 @@ export class ListSimulatorsController implements MCPController {
   async execute(args: unknown): Promise<{ content: Array<{ type: string; text: string }> }> {
     try {
       // Cast to expected shape
-      const input = args as { platform?: string; state?: string };
+      const input = args as { platform?: string; state?: string; name?: string };
 
       // Use the new validation functions
       const platform = Platform.parseOptional(input.platform);
       const state = SimulatorState.parseOptional(input.state);
 
-      const request = ListSimulatorsRequest.create(platform, state);
+      const request = ListSimulatorsRequest.create(platform, state, input.name);
       const result = await this.useCase.execute(request);
 
     if (!result.isSuccess) {

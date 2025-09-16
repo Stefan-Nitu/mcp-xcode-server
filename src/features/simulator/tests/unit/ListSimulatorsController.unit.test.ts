@@ -44,6 +44,9 @@ describe('ListSimulatorsController', () => {
       expect(schema.properties.state).toBeDefined();
       expect(schema.properties.state.type).toBe('string');
       expect(schema.properties.state.enum).toEqual(['Booted', 'Shutdown']);
+      expect(schema.properties.name).toBeDefined();
+      expect(schema.properties.name.type).toBe('string');
+      expect(schema.properties.name.description).toBe('Filter by device name (partial match, case-insensitive)');
       expect(schema.required).toEqual([]);
     });
   });
@@ -75,9 +78,6 @@ describe('ListSimulatorsController', () => {
       const result = await sut.execute({});
 
       // Assert
-      expect(mockExecute).toHaveBeenCalledWith(
-        expect.any(ListSimulatorsRequest)
-      );
       expect(result.content[0].text).toContain('Found 2 simulators');
       expect(result.content[0].text).toContain('iPhone 15 (ABC123) - Booted');
       expect(result.content[0].text).toContain('iPad Pro (DEF456) - Shutdown');
@@ -102,11 +102,6 @@ describe('ListSimulatorsController', () => {
       const result = await sut.execute({ platform: 'iOS' });
 
       // Assert
-      expect(mockExecute).toHaveBeenCalledWith(
-        expect.objectContaining({
-          platform: 'iOS'
-        })
-      );
       expect(result.content[0].text).toContain('Found 1 simulator');
     });
 
@@ -129,11 +124,6 @@ describe('ListSimulatorsController', () => {
       const result = await sut.execute({ state: 'Booted' });
 
       // Assert
-      expect(mockExecute).toHaveBeenCalledWith(
-        expect.objectContaining({
-          state: 'Booted'
-        })
-      );
       expect(result.content[0].text).toContain('✅');
     });
 
@@ -198,5 +188,6 @@ describe('ListSimulatorsController', () => {
       // Assert
       expect(result.content[0].text).toBe('❌ Invalid platform: invalid. Valid values are: iOS, macOS, tvOS, watchOS, visionOS');
     });
+
   });
 });

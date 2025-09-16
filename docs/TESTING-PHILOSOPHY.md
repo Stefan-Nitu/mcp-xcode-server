@@ -392,7 +392,87 @@ test('returns success message with device name', async () => {
 - Validation logic
 - Pure functions
 
-### 3. Test Naming Conventions
+### 3. MCP Controller Testing Guidelines
+
+#### What Controllers Are
+In our MCP server architecture, Controllers are the presentation layer that:
+- Define MCP tool metadata (name, description, input schema)
+- Orchestrate the flow: validate input → call use case → format output
+- Handle error presentation with consistent formatting
+
+#### Unit Tests for Controllers - ONLY Test the Contract
+Controller unit tests should ONLY verify:
+1. **MCP Tool Metadata**: Name, description, and schema definition
+2. **Error Formatting**: How errors are presented to users (❌ prefix, etc.)
+3. **Success Formatting**: How success is presented (✅ prefix, etc.)
+
+**DO NOT TEST**:
+- How the controller calls the use case (implementation detail)
+- What parameters are passed to the use case
+- Whether the use case was called
+
+#### ✅ Good Controller Unit Test
+```typescript
+describe('BuildXcodeController', () => {
+  function createSUT() {
+    // Minimal mocks just to instantiate
+    const mockUseCase = {} as BuildProjectUseCase;
+    const mockPresenter = {} as BuildXcodePresenter;
+    return new BuildXcodeController(mockUseCase, mockPresenter);
+  }
+
+  it('should define correct tool metadata', () => {
+    const sut = createSUT();
+    expect(sut.name).toBe('build_xcode');
+    expect(sut.description).toBe('Build an Xcode project or workspace');
+  });
+
+  it('should format success with ✅ emoji', async () => {
+    const { sut, mockExecute } = createSUT();
+    mockExecute.mockResolvedValue(BuildResult.succeeded(...));
+
+    const result = await sut.execute({...});
+
+    // Test WHAT the user sees, not HOW it's produced
+    expect(result.content[0].text).toContain('✅');
+    expect(result.content[0].text).toContain('Build succeeded');
+  });
+});
+```
+
+#### ❌ Bad Controller Unit Test
+```typescript
+it('should call use case with correct parameters', async () => {
+  const { sut, mockExecute } = createSUT();
+
+  await sut.execute({ platform: 'iOS' });
+
+  // Testing HOW, not WHAT - implementation detail!
+  expect(mockExecute).toHaveBeenCalledWith(
+    expect.objectContaining({ platform: Platform.iOS })
+  );
+});
+```
+
+#### Integration Tests for Controllers - Test Behavior
+Integration tests should verify the actual behavior with real components:
+```typescript
+it('should filter simulators by name', async () => {
+  // Mock only external boundary (shell command)
+  mockExec.mockImplementation(...);
+
+  // Use real controller with real use case and repository
+  const controller = ListSimulatorsControllerFactory.create();
+
+  const result = await controller.execute({ name: 'iPhone 15' });
+
+  // Test actual behavior
+  expect(result.content[0].text).toContain('iPhone 15 Pro');
+  expect(result.content[0].text).not.toContain('iPhone 14');
+});
+```
+
+### 4. Test Naming Conventions
 
 #### File Naming Pattern
 
