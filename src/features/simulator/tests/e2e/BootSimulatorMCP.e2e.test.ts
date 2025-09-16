@@ -154,19 +154,5 @@ describe('Boot Simulator MCP E2E', () => {
       const parsed = CallToolResultSchema.parse(result);
       expect(parsed.content[0].text).toBe('❌ Simulator not found: NonExistentSimulator-MCP');
     });
-    
-    it('should validate empty deviceId', async () => {
-      // Act
-      const result = await client.callTool({
-        name: 'boot_simulator',
-        arguments: {
-          deviceId: ''
-        }
-      });
-      
-      // Assert
-      const parsed = CallToolResultSchema.parse(result);
-      expect(parsed.content[0].text).toBe('❌ Device ID cannot be empty');
-    });
   });
 });

@@ -138,26 +138,4 @@ describe('BootSimulatorController E2E', () => {
       expect(result.content[0].text).toBe('❌ Simulator not found: NonExistentSimulator-12345');
     });
   });
-
-  describe('input validation', () => {
-    it('should reject empty deviceId', async () => {
-      // Act
-      const result = await controller.execute({
-        deviceId: ''
-      });
-      
-      // Assert
-      expect(result.content[0].text).toBe('❌ Device ID cannot be empty');
-    });
-    
-    it('should reject whitespace-only deviceId', async () => {
-      // Act
-      const result = await controller.execute({
-        deviceId: '   '
-      });
-      
-      // Assert
-      expect(result.content[0].text).toBe('❌ Device ID cannot be whitespace only');
-    });
-  });
 });

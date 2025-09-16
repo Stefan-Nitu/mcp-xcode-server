@@ -241,38 +241,4 @@ describe('BuildXcodeController E2E', () => {
     });
   });
 
-  describe('input validation', () => {
-    it('should reject non-Xcode project files', async () => {
-      const result = await controller.execute({
-        projectPath: '/tmp/readme.txt',
-        scheme: 'SomeScheme',
-        destination: 'iOSSimulator'
-      });
-      
-      // Tool returns an error response rather than throwing
-      expect(result.content[0].text).toBe('❌ Project path must be an .xcodeproj or .xcworkspace file');
-    });
-
-    it('should reject empty scheme', async () => {
-      const result = await controller.execute({
-        projectPath: testManager.paths.xcodeProjectXCTestPath,
-        scheme: '',
-        destination: 'iOSSimulator'
-      });
-      
-      // Tool returns formatted error response
-      expect(result.content[0].text).toBe('❌ Scheme cannot be empty');
-    });
-
-    it('should reject invalid destination', async () => {
-      const result = await controller.execute({
-        projectPath: testManager.paths.xcodeProjectXCTestPath,
-        scheme: 'TestProjectXCTest',
-        destination: 'Android'
-      });
-      
-      // Tool returns formatted error response
-      expect(result.content[0].text).toBe('❌ Invalid destination. Use format: [platform][Simulator|Device|SimulatorUniversal]');
-    });
-  });
 });

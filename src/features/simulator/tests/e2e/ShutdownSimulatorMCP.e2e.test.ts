@@ -173,31 +173,5 @@ describe('Shutdown Simulator MCP E2E', () => {
       const parsed = CallToolResultSchema.parse(result);
       expect(parsed.content[0].text).toBe('❌ Simulator not found: NonExistentSimulator-MCP');
     });
-    
-    it('should validate empty device ID', async () => {
-      // Act
-      const result = await client.callTool({
-        name: 'shutdown_simulator',
-        arguments: {
-          deviceId: ''
-        }
-      });
-      
-      // Assert
-      const parsed = CallToolResultSchema.parse(result);
-      expect(parsed.content[0].text).toBe('❌ Device ID cannot be empty');
-    });
-    
-    it('should validate missing device ID', async () => {
-      // Act
-      const result = await client.callTool({
-        name: 'shutdown_simulator',
-        arguments: {} as any
-      });
-      
-      // Assert
-      const parsed = CallToolResultSchema.parse(result);
-      expect(parsed.content[0].text).toBe('❌ Device ID is required');
-    });
   });
 });

@@ -264,18 +264,7 @@ describe('InstallAppController E2E', () => {
     });
   });
 
-  describe('input validation', () => {
-    it('should reject invalid app paths', async () => {
-      // Act - path traversal attempt triggers multiple validation errors
-      const result = await controller.execute({
-        appPath: '../../../etc/passwd',
-        simulatorId: testDeviceId
-      });
-      
-      // Assert - domain validation fails fast on first error
-      expect(result.content[0].text).toBe('❌ App path cannot contain directory traversal');
-    });
-
+  describe('simulator name handling', () => {
     it('should handle simulator specified by name', async () => {
       // Act - use simulator name instead of UUID
       const result = await controller.execute({

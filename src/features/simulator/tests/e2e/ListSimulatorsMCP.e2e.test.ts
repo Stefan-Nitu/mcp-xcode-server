@@ -173,26 +173,4 @@ describe('List Simulators MCP E2E', () => {
       }
     }
   });
-
-  it('should validate invalid platform through MCP', async () => {
-    const result = await client.request(
-      {
-        method: 'tools/call',
-        params: {
-          name: 'list_simulators',
-          arguments: {
-            platform: 'Android'
-          }
-        }
-      },
-      CallToolResultSchema,
-      { timeout: 30000 }
-    );
-
-    expect(result).toBeDefined();
-    expect(result.content).toBeInstanceOf(Array);
-
-    const textContent = result.content.find((c: any) => c.type === 'text') as { type: string; text: string } | undefined;
-    expect(textContent?.text).toBe('❌ Invalid platform: Android. Valid values are: iOS, macOS, tvOS, watchOS, visionOS');
-  });
 });

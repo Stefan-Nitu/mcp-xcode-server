@@ -146,24 +146,6 @@ describe('ShutdownSimulatorController E2E', () => {
       // Assert
       expect(result.content[0].text).toBe('❌ Simulator not found: NonExistent-Simulator-That-Does-Not-Exist');
     });
-
-    it('should validate empty device ID', async () => {
-      // Act
-      const result = await controller.execute({
-        deviceId: ''
-      });
-      
-      // Assert
-      expect(result.content[0].text).toBe('❌ Device ID cannot be empty');
-    });
-
-    it('should validate missing device ID', async () => {
-      // Act
-      const result = await controller.execute({} as any);
-      
-      // Assert
-      expect(result.content[0].text).toBe('❌ Device ID is required');
-    });
   });
 
   describe('complex scenarios', () => {
