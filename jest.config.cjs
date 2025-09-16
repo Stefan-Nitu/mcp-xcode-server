@@ -16,19 +16,14 @@ module.exports = {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   testMatch: [
-    '**/__tests__/**/*.test.ts',
-    '**/src/features/**/tests/**/*.test.ts',
-    '**/src/shared/tests/**/*.test.ts',
-    '**/src/infrastructure/tests/**/*.test.ts',
-    '**/src/domain/tests/**/*.test.ts',
-    '**/src/presentation/tests/**/*.test.ts',
-    '!**/__tests__/e2e/**/*.test.ts',
-    '!**/src/features/**/tests/e2e/**/*.test.ts'
+    '**/*.unit.test.ts',
+    '**/*.integration.test.ts'
   ],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/*.test.ts',
+    '!src/**/tests/**/*',
     '!src/__tests__/**/*',
     '!src/index.ts',
   ],

@@ -13,8 +13,8 @@
     "dev": "tsc && node dist/index.js",
     "test": "jest && jest --config jest.e2e.config.cjs --runInBand",
     "test:coverage": "jest --coverage",
-    "test:unit": "jest src/__tests__/unit/",
-    "test:integration": "jest src/__tests__/integration/",
+    "test:unit": "jest '*.unit.test.ts'",
+    "test:integration": "jest '*.integration.test.ts'",
     "test:e2e": "jest --config jest.e2e.config.cjs --runInBand",
     "postinstall": "cd XcodeProjectModifier && swift build -c release",
     "build:modifier": "cd XcodeProjectModifier && swift build -c release"
